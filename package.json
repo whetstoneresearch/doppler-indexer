@@ -1,0 +1,30 @@
+{
+  "name": "doppler-v3-indexer",
+  "version": "0.0.2",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "ponder dev",
+    "start": "ponder start",
+    "db": "ponder db",
+    "codegen": "ponder codegen",
+    "lint": "eslint .",
+    "typecheck": "tsc"
+  },
+  "dependencies": {
+    "@uniswap/v3-sdk": "^3.24.0",
+    "hono": "^4.6.19",
+    "jsbi": "^4.3.0",
+    "ponder": "^0.11.27",
+    "viem": "2.23.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.9.0",
+    "eslint": "^8.53.0",
+    "eslint-config-ponder": "^0.8.5",
+    "typescript": "^5.2.2"
+  },
+  "engines": {
+    "node": ">=18.14"
+  }
+}
