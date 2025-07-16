@@ -1,7 +1,8 @@
 import { IndexerConfigs } from "./types";
 import { unichainConfig } from "./unichain";
-import { baseSepoliaConfig, baseConfig } from "./base";
+import { baseConfig } from "./base";
 import { inkConfig } from "./ink";
+import { baseSepoliaConfig } from "./baseSepolia";
 
 export * from "./types";
 export * from "./constants";

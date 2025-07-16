@@ -1,5 +1,5 @@
 import { Address } from "viem";
-import { ChainConfig } from "./types";
+import { IChainConfig } from "@app/types/config";
 import {
   CHAIN_IDS,
   START_BLOCKS,
@@ -9,7 +9,7 @@ import {
   RPC_ENV_VARS
 } from "./constants";
 
-export const inkConfig: ChainConfig = {
+export const inkConfig: IChainConfig = {
   id: CHAIN_IDS.ink,
   name: "ink",
   startBlock: START_BLOCKS.ink,

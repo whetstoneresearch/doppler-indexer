@@ -13,5 +13,5 @@ export default {
             max: process.env.DATABASE_POOL_MAX ? parseInt(process.env.DATABASE_POOL_MAX) : 100,
         },
     },
-    enabledChains: ["baseSepolia", "unichain", "ink", "base"] as const,
+    enabledChains: ["baseSepolia"] as const,
 } satisfies ISettings;

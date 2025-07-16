@@ -1,5 +1,5 @@
 import { Address } from "viem";
-import { ChainConfig } from "./types";
+import { IChainConfig } from "@app/types/config";
 import {
   CHAIN_IDS,
   START_BLOCKS,
@@ -9,7 +9,7 @@ import {
   RPC_ENV_VARS
 } from "./constants";
 
-export const unichainConfig: ChainConfig = {
+export const unichainConfig: IChainConfig = {
   id: CHAIN_IDS.unichain,
   name: "unichain",
   startBlock: START_BLOCKS.unichain,

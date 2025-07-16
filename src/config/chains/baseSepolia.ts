@@ -8,15 +8,17 @@ import {
   RPC_ENV_VARS,
   LOCKABLE_V3_INITIALIZER_START_BLOCKS,
 } from "./constants";
-import { ChainConfig, factory } from "ponder";
+import { factory } from "ponder";
 import { BLOCK_INTERVALS } from "../blocks";
 import { AirlockABI, LockableUniswapV3InitializerABI, UniswapV3InitializerABI, UniswapV4InitializerABI } from "@app/abis";
 import { UniswapV3MigratorAbi } from "@app/abis/v3-abis/UniswapV3Migrator";
+import { IChainConfig } from "@app/types/config";
+import { ChainConfig } from "ponder";
 
 // todo: fix this v bad
 type AddressConfig = Address | Address[] | any 
 
-export const baseSepoliaConfig = {
+export const baseSepoliaConfig: IChainConfig = {
   id: CHAIN_IDS.baseSepolia,
   name: "baseSepolia",
   startBlock: START_BLOCKS.baseSepolia,

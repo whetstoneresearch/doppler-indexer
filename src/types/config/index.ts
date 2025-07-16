@@ -7,7 +7,6 @@ import { V4Addresses } from "../v4-types";
  * Network identifiers
  */
 export type Network =
-  | "mainnet"
   | "unichain"
   | "baseSepolia"
   | "ink"
@@ -16,7 +15,7 @@ export type Network =
 /**
  * Chain configuration
  */
-export interface ChainConfig {
+export interface IChainConfig {
   id: number;
   name: Network;
   startBlock: number;
@@ -62,7 +61,7 @@ export interface OracleAddresses {
 /**
  * Indexer configurations
  */
-export type IndexerConfigs = Record<Network, ChainConfig>;
+export type IndexerConfigs = Record<Network, IChainConfig>;
 export type DopplerConfig = IndexerConfigs; // Alias for compatibility
 
 /**
@@ -83,7 +82,7 @@ export interface CheckpointConfig {
   name: string;
   chains: Network[];
   interval: number;
-  getStartBlock: (chainConfig: ChainConfig) => number;
+  getStartBlock: (chainConfig: IChainConfig) => number;
 }
 
 /**
@@ -93,7 +92,7 @@ export interface MetricRefresherConfig {
   name: string;
   chains: Network[];
   interval: number;
-  getStartBlock: (chainConfig: ChainConfig) => number;
+  getStartBlock: (chainConfig: IChainConfig) => number;
 }
 
 /**
