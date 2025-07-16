@@ -10,7 +10,6 @@ import {
   PoolManagerABI,
   UniswapV2PairABI,
 } from "./src/abis";
-import { UniswapV2FactoryABI } from "@app/abis/UniswapV2Factory";
 import { BLOCK_INTERVALS } from "@app/config/blocks/intervals";
 import {
   chainConfigs,
@@ -38,22 +37,22 @@ export default createConfig({
       id: 1,
       rpc: http(process.env.PONDER_RPC_URL_1),
     },
-    // unichain: {
-    //   id: CHAIN_IDS.unichain,
-    //   rpc: http(process.env.PONDER_RPC_URL_130),
-    // },
+    unichain: {
+      id: CHAIN_IDS.unichain,
+      rpc: http(process.env.PONDER_RPC_URL_130),
+    },
     baseSepolia: {
       id: CHAIN_IDS.baseSepolia,
       rpc: http(process.env.PONDER_RPC_URL_84532),
     },
-    // ink: {
-    //   id: CHAIN_IDS.ink,
-    //   rpc: http(process.env.PONDER_RPC_URL_57073),
-    // },
-    // base: {
-    //   id: CHAIN_IDS.base,
-    //   rpc: http(process.env.PONDER_RPC_URL_8453),
-    // },
+    ink: {
+      id: CHAIN_IDS.ink,
+      rpc: http(process.env.PONDER_RPC_URL_57073),
+    },
+    base: {
+      id: CHAIN_IDS.base,
+      rpc: http(process.env.PONDER_RPC_URL_8453),
+    },
   },
   blocks: {
     ChainlinkEthPriceFeed: {
@@ -61,51 +60,54 @@ export default createConfig({
       startBlock: mainnet.startBlock,
       interval: BLOCK_INTERVALS.FIVE_MINUTES, // every 5 minutes
     },
-    // BaseSepoliaV4PoolCheckpoints: {
-    //   chain: "baseSepolia",
-    //   startBlock: baseSepolia.v4StartBlock,
-    //   interval: BLOCK_INTERVALS.FIFTY_BLOCKS, // every 50 blocks
-    // },
-    // BaseV4PoolCheckpoints: {
-    //   chain: "base",
-    //   startBlock: base.v4StartBlock,
-    //   interval: BLOCK_INTERVALS.FIFTY_BLOCKS, // every 50 blocks
-    // },
-    // UnichainV4PoolCheckpoints: {
-    //   chain: "unichain",
-    //   startBlock: unichain.v4StartBlock,
-    //   interval: BLOCK_INTERVALS.FIFTY_BLOCKS, // every 50 blocks
-    // },
-    // InkV4PoolCheckpoints: {
-    //   chain: "ink",
-    //   startBlock: ink.v4StartBlock,
-    //   interval: BLOCK_INTERVALS.FIFTY_BLOCKS, // every 50 blocks
-    // },
-    // MetricRefresherUnichain: {
-    //   chain: "unichain",
-    //   startBlock: unichain.startBlock,
-    //   interval: BLOCK_INTERVALS.THOUSAND_BLOCKS, // every 1000 blocks
-    // },
-    // MetricRefresherInk: {
-    //   chain: "ink",
-    //   startBlock: ink.startBlock,
-    //   interval: BLOCK_INTERVALS.THOUSAND_BLOCKS, // every 1000 blocks
-    // },
-    // MetricRefresherBase: {
-    //   chain: "base",
-    //   startBlock: base.startBlock,
-    //   interval: BLOCK_INTERVALS.THOUSAND_BLOCKS, // every 1000 blocks
-    // },
-    // MetricRefresherBaseSepolia: {
-    //   chain: "baseSepolia",
-    //   startBlock: baseSepolia.startBlock,
-    //   interval: BLOCK_INTERVALS.THOUSAND_BLOCKS, // every 1000 blocks
-    // },
-    // PendingTokenImagesBase: {
-    //   chain: "base",
-    //   startBlock: base.startBlock,
-    //   interval: BLOCK_INTERVALS.THOUSAND_BLOCKS * 3, // Check every 3000 blocks
-    // },
+    MetricRefresher: {
+      chain: {
+        unichain: {
+          startBlock: unichain.startBlock,
+          interval: BLOCK_INTERVALS.THOUSAND_BLOCKS, // every 1000 blocks
+        },
+        baseSepolia: {
+          startBlock: baseSepolia.startBlock,
+          interval: BLOCK_INTERVALS.THOUSAND_BLOCKS, // every 1000 blocks
+        },
+        ink: {
+          startBlock: ink.startBlock,
+          interval: BLOCK_INTERVALS.THOUSAND_BLOCKS, // every 1000 blocks
+        },
+        base: {
+          startBlock: base.startBlock,
+          interval: BLOCK_INTERVALS.THOUSAND_BLOCKS, // every 1000 blocks
+        },
+      },
+    },
+    V4CheckpointsRefresher: {
+      chain: {
+        baseSepolia: {
+          startBlock: baseSepolia.v4StartBlock,
+          interval: BLOCK_INTERVALS.FIFTY_BLOCKS, // every 50 blocks
+        },
+        base: {
+          startBlock: base.v4StartBlock,
+          interval: BLOCK_INTERVALS.FIFTY_BLOCKS, // every 50 blocks
+        },
+        unichain: {
+          startBlock: unichain.v4StartBlock,
+          interval: BLOCK_INTERVALS.FIFTY_BLOCKS, // every 50 blocks
+        },
+        ink: {
+          startBlock: ink.v4StartBlock,
+          interval: BLOCK_INTERVALS.FIFTY_BLOCKS, // every 50 blocks
+        },
+      },
+    },
+    PendingTokenImages: {
+      chain: {
+        base: {
+          startBlock: base.startBlock,
+          interval: BLOCK_INTERVALS.THOUSAND_BLOCKS * 3, // Check every 3000 blocks
+        },
+      },
+    },
   },
   contracts: {
     Airlock: {
