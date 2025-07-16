@@ -19,10 +19,12 @@ export const unichainConfig: ChainConfig = {
   addresses: {
     v2: {
       factory: "0x1f98400000000000000000000000000000000002" as Address,
+      v2Migrator: "0xf6023127f6E937091D5B605680056A6D27524bad" as Address,
     },
     v3: {
       v3Initializer: "0x9F4e56be80f08ba1A2445645EFa6d231E27b43ec" as Address,
       lockableV3Initializer: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
+      v3Migrator: COMMON_ADDRESSES.ZERO_ADDRESS,
     },
     v4: {
       poolManager: "0x1F98400000000000000000000000000000000004" as Address,
@@ -40,7 +42,6 @@ export const unichainConfig: ChainConfig = {
       tokenFactory: "0x43d0D97EC9241A8F05A264f94B82A1d2E600f2B3" as Address,
       universalRouter: "0xef740bf23acae26f6492b10de645d6b98dc8eaf3" as Address,
       governanceFactory: "0x99C94B9Df930E1E21a4E4a2c105dBff21bF5c5aE" as Address,
-      migrator: "0xf6023127f6E937091D5B605680056A6D27524bad" as Address,
       weth: COMMON_ADDRESSES.WETH_BASE,
     },
     oracle: ORACLE_ADDRESSES,

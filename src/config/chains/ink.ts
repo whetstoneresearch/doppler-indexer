@@ -19,10 +19,12 @@ export const inkConfig: ChainConfig = {
   addresses: {
     v2: {
       factory: "0xfe57A6BA1951F69aE2Ed4abe23e0f095DF500C04" as Address,
+      v2Migrator: "0x5F3bA43D44375286296Cb85F1EA2EBfa25dde731" as Address,
     },
     v3: {
       v3Initializer: "0xaA47D2977d622DBdFD33eeF6a8276727c52EB4e5" as Address,
       lockableV3Initializer: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
+      v3Migrator: COMMON_ADDRESSES.ZERO_ADDRESS,
     },
     v4: {
       poolManager: "0x360e68faccca8ca495c1b759fd9eee466db9fb32" as Address,
@@ -40,7 +42,6 @@ export const inkConfig: ChainConfig = {
       tokenFactory: "0xFAafdE6a5b658684cC5eb0C5c2c755B00A246F45" as Address,
       universalRouter: "0x112908dac86e20e7241b0927479ea3bf935d1fa0" as Address,
       governanceFactory: "0xb4deE32EB70A5E55f3D2d861F49Fb3D79f7a14d9" as Address,
-      migrator: "0x5F3bA43D44375286296Cb85F1EA2EBfa25dde731" as Address,
       weth: COMMON_ADDRESSES.WETH_BASE,
     },
     oracle: ORACLE_ADDRESSES,

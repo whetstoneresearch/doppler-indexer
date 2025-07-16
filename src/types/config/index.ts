@@ -46,7 +46,6 @@ export interface SharedAddresses {
   tokenFactory: Address;
   universalRouter: Address;
   governanceFactory: Address;
-  migrator: Address;
   weth: Address;
 }
 

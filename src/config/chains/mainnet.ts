@@ -11,10 +11,12 @@ export const mainnetConfig: ChainConfig = {
   addresses: {
     v2: {
       factory: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
+      v2Migrator: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
     },
     v3: {
       v3Initializer: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
       lockableV3Initializer: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
+      v3Migrator: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
     },
     v4: {
       poolManager: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
@@ -32,7 +34,6 @@ export const mainnetConfig: ChainConfig = {
       tokenFactory: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
       universalRouter: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
       governanceFactory: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
-      migrator: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
       weth: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
     },
     oracle: ORACLE_ADDRESSES,

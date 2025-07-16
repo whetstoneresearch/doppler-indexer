@@ -5,6 +5,7 @@ import { Address } from "viem";
  */
 export interface V2Addresses {
   factory: Address;
+  v2Migrator: Address;
 }
 
 /**

@@ -26,7 +26,13 @@ export const V4_START_BLOCKS = {
 } as const;
 
 export const LOCKABLE_V3_INITIALIZER_START_BLOCKS = {
-  baseSepolia: 28070024
+  baseSepolia: 28150553,
+  base: 32640102,
+} as const;
+
+export const SELF_CORRECTING_V4_INITIALIZER_START_BLOCKS = {
+  base: 32424227,
+  baseSepolia: 27934624,
 } as const;
 
 // Special contract addresses used across chains

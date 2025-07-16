@@ -65,7 +65,10 @@ ponder.on("UniswapV2Pair:Swap", async ({ event, context }) => {
     amount1,
   });
 
-  const price = PriceService.computePriceFromReserves({ assetBalance, quoteBalance });
+  const price = PriceService.computePriceFromReserves({
+    assetBalance,
+    quoteBalance,
+  });
 
   const { totalSupply } = await insertTokenIfNotExists({
     tokenAddress: baseToken,
@@ -96,19 +99,18 @@ ponder.on("UniswapV2Pair:Swap", async ({ event, context }) => {
     }
   } else {
     if (amount0In > 0n) {
-      quoteDelta = amount0In
+      quoteDelta = amount0In;
     } else {
       quoteDelta = amount0Out;
     }
   }
-  const swapValueUsd = quoteDelta * ethPrice / CHAINLINK_ETH_DECIMALS;
+  const swapValueUsd = (quoteDelta * ethPrice) / CHAINLINK_ETH_DECIMALS;
 
   const priceChange = await compute24HourPriceChange({
     poolAddress: address,
     marketCapUsd: metrics.marketCapUsd,
     context,
   });
-
 
   // Create swap data
   const swapData = SwapOrchestrator.createSwapData({
@@ -146,7 +148,7 @@ ponder.on("UniswapV2Pair:Swap", async ({ event, context }) => {
   };
 
   // Perform common updates via orchestrator
-  Promise.all([
+  await Promise.all([
     await SwapOrchestrator.performSwapUpdates(
       {
         swapData,
@@ -212,7 +214,10 @@ ponder.on("UniswapV2PairUnichain:Swap", async ({ event, context }) => {
     amount1,
   });
 
-  const price = PriceService.computePriceFromReserves({ assetBalance, quoteBalance });
+  const price = PriceService.computePriceFromReserves({
+    assetBalance,
+    quoteBalance,
+  });
 
   const { totalSupply } = await insertTokenIfNotExists({
     tokenAddress: baseToken,
@@ -255,7 +260,7 @@ ponder.on("UniswapV2PairUnichain:Swap", async ({ event, context }) => {
       quoteDelta = amount0Out;
     }
   }
-  const swapValueUsd = quoteDelta * ethPrice / CHAINLINK_ETH_DECIMALS;
+  const swapValueUsd = (quoteDelta * ethPrice) / CHAINLINK_ETH_DECIMALS;
 
   // Create swap data
   const swapData = SwapOrchestrator.createSwapData({
