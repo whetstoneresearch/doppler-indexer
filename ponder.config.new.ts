@@ -17,7 +17,6 @@ import {
   CHAIN_IDS,
   V4_START_BLOCKS,
   LOCKABLE_V3_INITIALIZER_START_BLOCKS,
-  SELF_CORRECTING_V4_INITIALIZER_START_BLOCKS,
 } from "./src/config/chains";
 import { LockableUniswapV3InitializerABI } from "@app/abis/v3-abis/LockableUniswapV3InitializerABI";
 import { UniswapV3MigratorAbi } from "@app/abis/v3-abis/UniswapV3Migrator";
@@ -155,49 +154,35 @@ export default createConfig({
       chain: {
         unichain: {
           startBlock: V4_START_BLOCKS.unichain,
-          address: unichain.addresses.v4.v4Initializer,
+          address: [
+            unichain.addresses.v4.v4Initializer,
+            unichain.addresses.v4.v4Initializer2,
+            unichain.addresses.v4.v4InitializerSelfCorrecting,
+          ],
         },
         ink: {
           startBlock: V4_START_BLOCKS.ink,
-          address: ink.addresses.v4.v4Initializer,
+          address: [
+            ink.addresses.v4.v4Initializer,
+            ink.addresses.v4.v4Initializer2,
+            ink.addresses.v4.v4InitializerSelfCorrecting,
+          ],
         },
         baseSepolia: {
           startBlock: V4_START_BLOCKS.baseSepolia,
-          address: baseSepolia.addresses.v4.v4Initializer,
+          address: [
+            baseSepolia.addresses.v4.v4Initializer,
+            baseSepolia.addresses.v4.v4Initializer2,
+            baseSepolia.addresses.v4.v4InitializerSelfCorrecting,
+          ],
         },
         base: {
           startBlock: V4_START_BLOCKS.base,
-          address: base.addresses.v4.v4Initializer,
-        },
-      },
-    },
-    UniswapV4Initializer2: {
-      abi: UniswapV4InitializerABI,
-      chain: {
-        base: {
-          startBlock: V4_START_BLOCKS.base,
-          address: base.addresses.v4.v4Initializer2,
-        },
-        unichain: {
-          startBlock: V4_START_BLOCKS.unichain,
-          address: unichain.addresses.v4.v4Initializer2,
-        },
-        ink: {
-          startBlock: V4_START_BLOCKS.ink,
-          address: ink.addresses.v4.v4Initializer2,
-        },
-      },
-    },
-    UniswapV4InitializerSelfCorrecting: {
-      abi: UniswapV4InitializerABI,
-      chain: {
-        base: {
-          startBlock: SELF_CORRECTING_V4_INITIALIZER_START_BLOCKS.base,
-          address: base.addresses.v4.v4InitializerSelfCorrecting,
-        },
-        baseSepolia: {
-          startBlock: SELF_CORRECTING_V4_INITIALIZER_START_BLOCKS.baseSepolia,
-          address: baseSepolia.addresses.v4.v4InitializerSelfCorrecting,
+          address: [
+            base.addresses.v4.v4Initializer,
+            base.addresses.v4.v4Initializer2,
+            base.addresses.v4.v4InitializerSelfCorrecting,
+          ],
         },
       },
     },
@@ -417,7 +402,11 @@ export default createConfig({
         baseSepolia: {
           startBlock: V4_START_BLOCKS.baseSepolia,
           address: factory({
-            address: baseSepolia.addresses.v4.v4Initializer,
+            address: [
+              baseSepolia.addresses.v4.v4Initializer,
+              baseSepolia.addresses.v4.v4Initializer2,
+              baseSepolia.addresses.v4.v4InitializerSelfCorrecting,
+            ],
             event: getAbiItem({ abi: UniswapV4InitializerABI, name: "Create" }),
             parameter: "poolOrHook",
           }),
@@ -425,7 +414,11 @@ export default createConfig({
         base: {
           startBlock: V4_START_BLOCKS.base,
           address: factory({
-            address: base.addresses.v4.v4Initializer,
+            address: [
+              base.addresses.v4.v4Initializer,
+              base.addresses.v4.v4Initializer2,
+              base.addresses.v4.v4InitializerSelfCorrecting,
+            ],
             event: getAbiItem({ abi: UniswapV4InitializerABI, name: "Create" }),
             parameter: "poolOrHook",
           }),
@@ -433,7 +426,11 @@ export default createConfig({
         unichain: {
           startBlock: V4_START_BLOCKS.unichain,
           address: factory({
-            address: unichain.addresses.v4.v4Initializer,
+            address: [
+              unichain.addresses.v4.v4Initializer,
+              unichain.addresses.v4.v4Initializer2,
+              unichain.addresses.v4.v4InitializerSelfCorrecting,
+            ],
             event: getAbiItem({ abi: UniswapV4InitializerABI, name: "Create" }),
             parameter: "poolOrHook",
           }),
@@ -441,57 +438,11 @@ export default createConfig({
         ink: {
           startBlock: V4_START_BLOCKS.ink,
           address: factory({
-            address: ink.addresses.v4.v4Initializer,
-            event: getAbiItem({ abi: UniswapV4InitializerABI, name: "Create" }),
-            parameter: "poolOrHook",
-          }),
-        },
-      },
-    },
-    UniswapV4Pool2: {
-      abi: DopplerABI,
-      chain: {
-        base: {
-          startBlock: V4_START_BLOCKS.base,
-          address: factory({
-            address: base.addresses.v4.v4Initializer2,
-            event: getAbiItem({ abi: UniswapV4InitializerABI, name: "Create" }),
-            parameter: "poolOrHook",
-          }),
-        },
-        unichain: {
-          startBlock: V4_START_BLOCKS.unichain,
-          address: factory({
-            address: unichain.addresses.v4.v4Initializer2,
-            event: getAbiItem({ abi: UniswapV4InitializerABI, name: "Create" }),
-            parameter: "poolOrHook",
-          }),
-        },
-        ink: {
-          startBlock: V4_START_BLOCKS.ink,
-          address: factory({
-            address: ink.addresses.v4.v4Initializer2,
-            event: getAbiItem({ abi: UniswapV4InitializerABI, name: "Create" }),
-            parameter: "poolOrHook",
-          }),
-        },
-      },
-    },
-    UniswapV4PoolSelfCorrecting: {
-      abi: DopplerABI,
-      chain: {
-        base: {
-          startBlock: SELF_CORRECTING_V4_INITIALIZER_START_BLOCKS.base,
-          address: factory({
-            address: base.addresses.v4.v4InitializerSelfCorrecting,
-            event: getAbiItem({ abi: UniswapV4InitializerABI, name: "Create" }),
-            parameter: "poolOrHook",
-          }),
-        },
-        baseSepolia: {
-          startBlock: SELF_CORRECTING_V4_INITIALIZER_START_BLOCKS.baseSepolia,
-          address: factory({
-            address: baseSepolia.addresses.v4.v4InitializerSelfCorrecting,
+            address: [
+              ink.addresses.v4.v4Initializer,
+              ink.addresses.v4.v4Initializer2,
+              ink.addresses.v4.v4InitializerSelfCorrecting,
+            ],
             event: getAbiItem({ abi: UniswapV4InitializerABI, name: "Create" }),
             parameter: "poolOrHook",
           }),

@@ -20,17 +20,14 @@ import {
 } from "./src/config/chains";
 import { LockableUniswapV3InitializerABI } from "@app/abis/v3-abis/LockableUniswapV3InitializerABI";
 import { UniswapV3MigratorAbi } from "@app/abis/v3-abis/UniswapV3Migrator";
+import settings from "./settings";
 
 const { unichain, mainnet, baseSepolia, ink, base } = chainConfigs;
 
+const { enabledChains, dbSettings } = settings;
+
 export default createConfig({
-  database: {
-    kind: "postgres",
-    connectionString: "postgresql://postgres:postgres@localhost:5432/default",
-    poolConfig: {
-      max: 100,
-    },
-  },
+  database: dbSettings,
   ordering: "multichain",
   chains: {
     mainnet: {
