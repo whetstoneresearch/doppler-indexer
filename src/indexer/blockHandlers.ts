@@ -53,9 +53,10 @@ ponder.on("ChainlinkEthPriceFeed:block", async ({ event, context }) => {
     .onConflictDoNothing();
 });
 
-ponder.on("PendingTokenImages:block", async ({ event, context }) => {
-  await handlePendingTokenImages({
-    context,
-    timestamp: Number(event.block.timestamp),
-  });
-});
+// TODO: add back
+// ponder.on("PendingTokenImages:block", async ({ event, context }) => {
+//   await handlePendingTokenImages({
+//     context,
+//     timestamp: Number(event.block.timestamp),
+//   });
+// });

@@ -1,4 +1,4 @@
-import { Hex } from "viem";
+import { Chain, Hex } from "viem";
 import { Context } from "ponder:registry";
 import { AirlockABI } from "@app/abis";
 import { AssetData } from "@app/types/shared";

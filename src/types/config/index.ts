@@ -7,6 +7,7 @@ import { V4Addresses } from "../v4-types";
  * Network identifiers
  */
 export type Network =
+  | "mainnet"
   | "unichain"
   | "baseSepolia"
   | "ink"

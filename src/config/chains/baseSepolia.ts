@@ -1,4 +1,4 @@
-import { Address, getAbiItem, http } from "viem";
+import { Address, getAbiItem, http, HttpTransport } from "viem";
 import {
   CHAIN_IDS,
   START_BLOCKS,
@@ -73,7 +73,12 @@ interface IContractConfig {
 }
 
 interface IDopplerChainConfig {
-  chain: ChainConfig;
+  // chain: ChainConfig;
+  chain: {
+    id: number;
+    rpc: HttpTransport;
+  };
+
   metricRefresher: IMetricRefresherConfig;
 
   // enable for v2 migrator indexing

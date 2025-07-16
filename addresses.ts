@@ -90,6 +90,8 @@ export const configs: IndexerConfigs = {
       factory: zeroAddress as Address,
     },
     v3: {
+      // TODO: Probably wrong, just satisfying types
+      lockableV3Initializer: zeroAddress as Address,
       v3Initializer: zeroAddress as Address,
     },
     v4: {
@@ -117,6 +119,8 @@ export const configs: IndexerConfigs = {
       factory: "0x1f98400000000000000000000000000000000002" as Address,
     },
     v3: {
+      // TODO: Probably wrong, just satisfying types
+      lockableV3Initializer: zeroAddress as Address,
       v3Initializer: "0x9F4e56be80f08ba1A2445645EFa6d231E27b43ec" as Address,
     },
     v4: {
@@ -146,6 +150,8 @@ export const configs: IndexerConfigs = {
       factory: "0x7Ae58f10f7849cA6F5fB71b7f45CB416c9204b1e" as Address,
     },
     v3: {
+      // TODO: Probably wrong, just satisfying types
+      lockableV3Initializer: zeroAddress as Address,
       v3Initializer: "0x4c3062b9ccfdbcb10353f57c1b59a29d4c5cfa47" as Address,
     },
     v4: {
@@ -175,6 +181,8 @@ export const configs: IndexerConfigs = {
       factory: "0xfe57A6BA1951F69aE2Ed4abe23e0f095DF500C04" as Address,
     },
     v3: {
+      // TODO: Probably wrong, just satisfying types
+      lockableV3Initializer: zeroAddress as Address,
       v3Initializer: "0xaA47D2977d622DBdFD33eeF6a8276727c52EB4e5" as Address,
     },
     v4: {
@@ -204,6 +212,8 @@ export const configs: IndexerConfigs = {
       factory: "0x8909Dc15e40173Ff4699343b6eB8132c65e18eC6" as Address,
     },
     v3: {
+      // TODO: Probably wrong, just satisfying types
+      lockableV3Initializer: zeroAddress as Address,
       v3Initializer: "0xaA47D2977d622DBdFD33eeF6a8276727c52EB4e5" as Address,
     },
     v4: {

@@ -3,7 +3,7 @@ import { generateCheckpointBlocks } from "./checkpoints";
 import { generateMetricBlocks } from "./metrics";
 import { generatePendingImageBlocks } from "./pending-images";
 import { BLOCK_INTERVALS } from "./intervals";
-import { chainConfigs } from "../chains";
+import { chainConfigs, START_BLOCKS } from "../chains";
 
 export * from "./types";
 export * from "./intervals";
@@ -15,7 +15,7 @@ export * from "./pending-images";
 export const generateOracleBlocks = (): BlockConfigMap => ({
   ChainlinkEthPriceFeed: {
     chain: "mainnet",
-    startBlock: chainConfigs.mainnet.startBlock,
+    startBlock: START_BLOCKS.mainnet,
     interval: BLOCK_INTERVALS.FIVE_MINUTES,
   },
 });
