@@ -172,24 +172,25 @@ export default createConfig({
         //   address: base.addresses.v4.v4Initializer,
         // },
       },
+      address: [],
     },
-    UniswapV4Initializer2: {
-      abi: UniswapV4InitializerABI,
-      chain: {
-        // base: {
-        //   startBlock: V4_START_BLOCKS.base,
-        //   address: base.addresses.v4.v4Initializer2,
-        // },
-        // unichain: {
-        //   startBlock: V4_START_BLOCKS.unichain,
-        //   address: unichain.addresses.v4.v4Initializer2,
-        // },
-        // ink: {
-        //   startBlock: V4_START_BLOCKS.ink,
-        //   address: ink.addresses.v4.v4Initializer2,
-        // },
-      },
-    },
+    // UniswapV4Initializer2: {
+    //   abi: UniswapV4InitializerABI,
+    //   chain: {
+    //     // base: {
+    //     //   startBlock: V4_START_BLOCKS.base,
+    //     //   address: base.addresses.v4.v4Initializer2,
+    //     // },
+    //     // unichain: {
+    //     //   startBlock: V4_START_BLOCKS.unichain,
+    //     //   address: unichain.addresses.v4.v4Initializer2,
+    //     // },
+    //     // ink: {
+    //     //   startBlock: V4_START_BLOCKS.ink,
+    //     //   address: ink.addresses.v4.v4Initializer2,
+    //     // },
+    //   },
+    // },
     UniswapV4InitializerSelfCorrecting: {
       abi: UniswapV4InitializerABI,
       chain: {
