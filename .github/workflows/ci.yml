@@ -27,4 +27,4 @@ jobs:
         run: bun dev &
 
       - name: wait for indexer to start
-        run: bunx wait-on http://localhost:3000/health
+        run: bunx wait-on http://localhost:42069/health
