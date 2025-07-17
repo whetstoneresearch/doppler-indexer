@@ -1,6 +1,6 @@
 import { baseSepoliaConst } from "@app/config/chains/baseSepolia";
 import { Address, zeroAddress } from "viem";
-import { ORACLE_ADDRESSES } from "@app/config/chains/constants";
+import { ORACLE_ADDRESSES, START_BLOCKS, V4_START_BLOCKS } from "@app/config/chains/constants";
 
 export type Network =
   | "mainnet"
@@ -17,14 +17,8 @@ export const CHAIN_IDS = {
   // base: 8453,
 } as const;
 
-const mainnetStartBlock = 21781000;
-
-
 // const unichainStartBlock = 8536880;
 // const v4UnichainStartBlock = 17686805;
-
-const baseSepoliaStartBlock = 22668126;
-const v4BaseSepoliaStartBlock = 26638492;
 
 // const inkStartBlock = 9500879;
 // const v4InkStartBlock = 14937170;
@@ -106,8 +100,8 @@ export const configs: IndexerConfigs = {
       weth: zeroAddress as Address,
     },
     oracle: ORACLE_ADDRESSES,
-    startBlock: mainnetStartBlock,
-    oracleStartBlock: mainnetStartBlock,
+    startBlock: START_BLOCKS.mainnet,
+    oracleStartBlock: START_BLOCKS.mainnet,
   },
   // unichain: {
   //   v2: {
@@ -143,9 +137,9 @@ export const configs: IndexerConfigs = {
   baseSepolia: {
     ...baseSepoliaConst.addresses,
     oracle: ORACLE_ADDRESSES,
-    startBlock: baseSepoliaStartBlock,
-    v4StartBlock: v4BaseSepoliaStartBlock,
-    oracleStartBlock: mainnetStartBlock,
+    startBlock: START_BLOCKS.baseSepolia,
+    v4StartBlock: V4_START_BLOCKS.baseSepolia,
+    oracleStartBlock: START_BLOCKS.mainnet,
   },
   // ink: {
   //   v2: {
