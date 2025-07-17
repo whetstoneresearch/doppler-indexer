@@ -5,7 +5,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  typecheck:
+  ci:
+    timeout-minutes: 3
     runs-on: blacksmith-2vcpu-ubuntu-2204
     steps:
       - uses: actions/checkout@v4
@@ -23,7 +24,7 @@ jobs:
         env:
           PONDER_RPC_URL_1: https://eth-mainnet.g.alchemy.com/v2/${{ secrets.ALCHEMY_API_KEY }}
           PONDER_RPC_URL_84532: https://base-sepolia.g.alchemy.com/v2/${{ secrets.ALCHEMY_API_KEY }}
-        run: bun start &
+        run: bun dev &
 
       - name: wait for indexer to start
         run: bunx wait-on http://localhost:3000/health
