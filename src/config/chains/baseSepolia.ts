@@ -10,7 +10,7 @@ import {
 } from "./constants";
 import { factory } from "ponder";
 import { BLOCK_INTERVALS } from "../blocks";
-import { AirlockABI, LockableUniswapV3InitializerABI, UniswapV3InitializerABI, UniswapV4InitializerABI } from "@app/abis";
+import { AirlockABI, DERC20ABI, DopplerABI, LockableUniswapV3InitializerABI, PoolManagerABI, UniswapV2PairABI, UniswapV3InitializerABI, UniswapV3PoolABI, UniswapV4InitializerABI } from "@app/abis";
 import { UniswapV3MigratorAbi } from "@app/abis/v3-abis/UniswapV3Migrator";
 import { IChainConfig } from "@app/types/config";
 import { ChainConfig } from "ponder";
@@ -18,7 +18,7 @@ import { ChainConfig } from "ponder";
 // todo: fix this v bad
 type AddressConfig = Address | Address[] | any 
 
-export const baseSepoliaConfig: IChainConfig = {
+export const baseSepoliaConst: IChainConfig = {
   id: CHAIN_IDS.baseSepolia,
   name: "baseSepolia",
   startBlock: START_BLOCKS.baseSepolia,
@@ -121,24 +121,24 @@ export const baseSepoliaDopplerChainConfig: IDopplerChainConfig = {
   },
   airlock: {
     startBlock: V4_START_BLOCKS.baseSepolia,
-    address: baseSepoliaConfig.addresses.shared.airlock,
+    address: baseSepoliaConst.addresses.shared.airlock,
   },
   uniswapV3Initializer: {
     startBlock: V4_START_BLOCKS.baseSepolia,
-    address: baseSepoliaConfig.addresses.v3.v3Initializer,
+    address: baseSepoliaConst.addresses.v3.v3Initializer,
   },
   uniswapV4Initializer: {
     startBlock: V4_START_BLOCKS.baseSepolia,
     address: [
-      baseSepoliaConfig.addresses.v4.v4Initializer,
-      baseSepoliaConfig.addresses.v4.v4Initializer2,
-      baseSepoliaConfig.addresses.v4.v4InitializerSelfCorrecting,
+      baseSepoliaConst.addresses.v4.v4Initializer,
+      baseSepoliaConst.addresses.v4.v4Initializer2,
+      baseSepoliaConst.addresses.v4.v4InitializerSelfCorrecting,
     ],
   },
   derc20: {
     startBlock: START_BLOCKS.baseSepolia,
     address: factory({
-        address: baseSepoliaConfig.addresses.shared.airlock,
+        address: baseSepoliaConst.addresses.shared.airlock,
         event: getAbiItem({ abi: AirlockABI, name: "Create" }),
         parameter: "asset",
     }),
@@ -146,12 +146,12 @@ export const baseSepoliaDopplerChainConfig: IDopplerChainConfig = {
   // todo: if we are using the migrator we will always use the migration pool down stream
   uniswapV3Migrator: {
     startBlock: 28245945, // hardcoded for now
-    address: baseSepoliaConfig.addresses.v3.v3Migrator,
+    address: baseSepoliaConst.addresses.v3.v3Migrator,
   },
   uniswapV3MigrationPool: {
     startBlock: 28245945, // hardcoded for now
     address: factory({
-      address: baseSepoliaConfig.addresses.v3.v3Migrator,
+      address: baseSepoliaConst.addresses.v3.v3Migrator,
       event: getAbiItem({ abi: UniswapV3MigratorAbi, name: "Migrate" }),
       parameter: "pool",
     }),
@@ -159,7 +159,7 @@ export const baseSepoliaDopplerChainConfig: IDopplerChainConfig = {
   uniswapV3Pool: {
     startBlock: V4_START_BLOCKS.baseSepolia,
     address: factory({
-        address: baseSepoliaConfig.addresses.v3.v3Initializer,
+        address: baseSepoliaConst.addresses.v3.v3Initializer,
         event: getAbiItem({ abi: UniswapV3InitializerABI, name: "Create" }),
         parameter: "poolOrHook",
     }),
@@ -167,7 +167,7 @@ export const baseSepoliaDopplerChainConfig: IDopplerChainConfig = {
   lockableUniswapV3Pool: {
     startBlock: LOCKABLE_V3_INITIALIZER_START_BLOCKS.baseSepolia,
     address: factory({
-      address: baseSepoliaConfig.addresses.v3.lockableV3Initializer,
+      address: baseSepoliaConst.addresses.v3.lockableV3Initializer,
       event: getAbiItem({ abi: LockableUniswapV3InitializerABI, name: "Create" }),
       parameter: "poolOrHook",
     }),
@@ -175,22 +175,22 @@ export const baseSepoliaDopplerChainConfig: IDopplerChainConfig = {
   uniswapV2Pair: {
     startBlock: START_BLOCKS.baseSepolia,
     address: factory({
-      address: baseSepoliaConfig.addresses.shared.airlock,
+      address: baseSepoliaConst.addresses.shared.airlock,
       event: getAbiItem({ abi: AirlockABI, name: "Migrate" }),
       parameter: "pool",
     }),
   },
   poolManager: {
     startBlock: V4_START_BLOCKS.baseSepolia,
-    address: baseSepoliaConfig.addresses.v4.poolManager,
+    address: baseSepoliaConst.addresses.v4.poolManager,
   },
   uniswapV4Pool: {
     startBlock: V4_START_BLOCKS.baseSepolia,
     address: factory({
     address: [
-        baseSepoliaConfig.addresses.v4.v4Initializer,
-        baseSepoliaConfig.addresses.v4.v4Initializer2,
-        baseSepoliaConfig.addresses.v4.v4InitializerSelfCorrecting,
+        baseSepoliaConst.addresses.v4.v4Initializer,
+        baseSepoliaConst.addresses.v4.v4Initializer2,
+        baseSepoliaConst.addresses.v4.v4InitializerSelfCorrecting,
     ],
     event: getAbiItem({ abi: UniswapV4InitializerABI, name: "Create" }),
     parameter: "poolOrHook",
@@ -198,6 +198,100 @@ export const baseSepoliaDopplerChainConfig: IDopplerChainConfig = {
   },
   lockableUniswapV3Initializer: {
     startBlock: LOCKABLE_V3_INITIALIZER_START_BLOCKS.baseSepolia,
-    address: baseSepoliaConfig.addresses.v3.lockableV3Initializer,
+    address: baseSepoliaConst.addresses.v3.lockableV3Initializer,
   }
 };
+
+export const baseSepoliaConfig = {
+  chains: {
+    baseSepolia: {
+      ...baseSepoliaDopplerChainConfig.chain,
+    },
+  },
+  blocks: {
+    MetricRefresher: {
+      chain: {
+        baseSepolia: baseSepoliaDopplerChainConfig.metricRefresher,
+      }
+    },
+    V4CheckpointsRefresher: {
+      chain: {
+        baseSepolia: baseSepoliaDopplerChainConfig.metricV4CheckpointRefresher,
+      }
+    },
+  },
+  contracts: {
+    Airlock: {
+      abi: AirlockABI,
+      chain: {
+        baseSepolia: baseSepoliaDopplerChainConfig.airlock,
+      }
+    },
+    UniswapV3Initializer: {
+      abi: UniswapV3InitializerABI,
+      chain: {
+        baseSepolia: baseSepoliaDopplerChainConfig.uniswapV3Initializer,
+      }
+    },
+    UniswapV4Initializer: {
+      abi: UniswapV4InitializerABI,
+      chain: {
+        baseSepolia: baseSepoliaDopplerChainConfig.uniswapV4Initializer,
+      }
+    },
+    DERC20: {
+      abi: DERC20ABI,
+      chain: {
+        baseSepolia: baseSepoliaDopplerChainConfig.derc20,
+      }
+    },
+    UniswapV3MigrationPool: {
+      abi: UniswapV3PoolABI,
+      chain: {
+        baseSepolia: baseSepoliaDopplerChainConfig.uniswapV3Migrator,
+      }
+    },
+    UniswapV3Migrator: {
+      abi: UniswapV3MigratorAbi,
+      chain: {
+        baseSepolia: baseSepoliaDopplerChainConfig.uniswapV3Migrator,
+      }
+    },
+    UniswapV3Pool: {
+      abi: UniswapV3PoolABI,
+      chain: {
+        baseSepolia: baseSepoliaDopplerChainConfig.uniswapV3Pool,
+      }
+    },
+    LockableUniswapV3Pool: {
+      abi: UniswapV3PoolABI,
+      chain: {
+        baseSepolia: baseSepoliaDopplerChainConfig.lockableUniswapV3Pool,
+      }
+    },
+    UniswapV2Pair: {
+      abi: UniswapV2PairABI,
+      chain: {
+        baseSepolia: baseSepoliaDopplerChainConfig.uniswapV2Pair,
+      }
+    },
+    PoolManager: {
+      abi: PoolManagerABI,
+      chain: {
+        baseSepolia: baseSepoliaDopplerChainConfig.poolManager,
+      }
+    },
+    UniswapV4Pool: {
+      abi: DopplerABI,
+      chain: {
+        baseSepolia: baseSepoliaDopplerChainConfig.uniswapV4Pool,
+      }
+    },
+    LockableUniswapV3Initializer: {
+      abi: LockableUniswapV3InitializerABI,
+      chain: {
+        baseSepolia: baseSepoliaDopplerChainConfig.lockableUniswapV3Initializer,
+      }
+    },
+  }
+} as const;

@@ -17,3 +17,13 @@ jobs:
         run: bun install
       - name: Typecheck
         run: bun typecheck
+      - name: Start pg
+        run: docker-compose -f docker-compose.yml up -d
+      - name: Run indexer
+        env:
+          PONDER_RPC_URL_1: https://eth-mainnet.g.alchemy.com/v2/${{ secrets.ALCHEMY_API_KEY }}
+          PONDER_RPC_URL_84532: https://base-sepolia.g.alchemy.com/v2/${{ secrets.ALCHEMY_API_KEY }}
+        run: bun start &
+
+      - name: wait for indexer to start
+        run: npx wait-on http://localhost:3000/health
