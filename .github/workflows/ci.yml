@@ -26,4 +26,4 @@ jobs:
         run: bun start &
 
       - name: wait for indexer to start
-        run: npx wait-on http://localhost:3000/health
+        run: bunx wait-on http://localhost:3000/health
