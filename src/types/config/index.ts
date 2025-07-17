@@ -1,4 +1,4 @@
-import { Address } from "viem";
+import { Address, HttpTransport } from "viem";
 import { V2Addresses } from "../v2-types";
 import { V3Addresses } from "../v3-types";
 import { V4Addresses } from "../v4-types";
@@ -18,6 +18,8 @@ export type Network =
  */
 export interface IChainConfig {
   id: number;
+  // TODO: make required once other configs are updated
+  rpc?: HttpTransport;
   name: Network;
   startBlock: number;
   v4StartBlock?: number;

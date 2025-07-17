@@ -13,13 +13,10 @@ import { BLOCK_INTERVALS } from "../blocks";
 import { AirlockABI, DERC20ABI, DopplerABI, LockableUniswapV3InitializerABI, PoolManagerABI, UniswapV2PairABI, UniswapV3InitializerABI, UniswapV3PoolABI, UniswapV4InitializerABI } from "@app/abis";
 import { UniswapV3MigratorAbi } from "@app/abis/v3-abis/UniswapV3Migrator";
 import { IChainConfig } from "@app/types/config";
-import { ChainConfig } from "ponder";
-
-// todo: fix this v bad
-type AddressConfig = Address | Address[] | any 
 
 export const baseSepoliaConst: IChainConfig = {
   id: CHAIN_IDS.baseSepolia,
+  rpc: http(process.env.PONDER_RPC_URL_84532),
   name: "baseSepolia",
   startBlock: START_BLOCKS.baseSepolia,
   v4StartBlock: V4_START_BLOCKS.baseSepolia,
@@ -60,163 +57,29 @@ export const baseSepoliaConst: IChainConfig = {
   },
 };
 
-interface IMetricRefresherConfig {
-  startBlock: number;
-  interval: number;
-}
-
-interface IMetricV4CheckpointRefresherConfig extends IMetricRefresherConfig {}
-
-interface IContractConfig {
-    startBlock: number;
-    address: AddressConfig;
-}
-
-interface IDopplerChainConfig {
-  // chain: ChainConfig;
-  chain: {
-    id: number;
-    rpc: HttpTransport;
-  };
-
-  metricRefresher: IMetricRefresherConfig;
-
-  // enable for v2 migrator indexing
-  airlock: IContractConfig;
-  uniswapV2Pair: IContractConfig;
-  derc20: IContractConfig;
-
-  // enable standard v3 pool indexing
-  uniswapV3Initializer: IContractConfig;
-  uniswapV3Pool: IContractConfig
-
-
-  // enable v4 pool indexing
-  uniswapV4Initializer: IContractConfig;
-  uniswapV4Pool: IContractConfig;
-  poolManager: IContractConfig;
-  metricV4CheckpointRefresher: IMetricV4CheckpointRefresherConfig;
-
-  // enable v3 migrator indexing
-  uniswapV3Migrator: IContractConfig;
-  uniswapV3MigrationPool: IContractConfig;
-
-  // enable lockable v3 pool indexing
-  lockableUniswapV3Initializer: IContractConfig;
-  lockableUniswapV3Pool: IContractConfig;
-}
-
-export const baseSepoliaDopplerChainConfig: IDopplerChainConfig = {
-  chain: {
-    id: CHAIN_IDS.baseSepolia,
-    rpc: http(process.env.PONDER_RPC_URL_84532),
-  },
-  metricRefresher: {
-    startBlock: START_BLOCKS.baseSepolia,
-    interval: BLOCK_INTERVALS.THOUSAND_BLOCKS,
-  },
-  metricV4CheckpointRefresher: {
-    startBlock: V4_START_BLOCKS.baseSepolia,
-    interval: BLOCK_INTERVALS.FIFTY_BLOCKS, // every 50 blocks
-  },
-  airlock: {
-    startBlock: V4_START_BLOCKS.baseSepolia,
-    address: baseSepoliaConst.addresses.shared.airlock,
-  },
-  uniswapV3Initializer: {
-    startBlock: V4_START_BLOCKS.baseSepolia,
-    address: baseSepoliaConst.addresses.v3.v3Initializer,
-  },
-  uniswapV4Initializer: {
-    startBlock: V4_START_BLOCKS.baseSepolia,
-    address: [
-      baseSepoliaConst.addresses.v4.v4Initializer,
-      baseSepoliaConst.addresses.v4.v4Initializer2,
-      baseSepoliaConst.addresses.v4.v4InitializerSelfCorrecting,
-    ],
-  },
-  derc20: {
-    startBlock: START_BLOCKS.baseSepolia,
-    address: factory({
-        address: baseSepoliaConst.addresses.shared.airlock,
-        event: getAbiItem({ abi: AirlockABI, name: "Create" }),
-        parameter: "asset",
-    }),
-  },
-  // todo: if we are using the migrator we will always use the migration pool down stream
-  uniswapV3Migrator: {
-    startBlock: 28245945, // hardcoded for now
-    address: baseSepoliaConst.addresses.v3.v3Migrator,
-  },
-  uniswapV3MigrationPool: {
-    startBlock: 28245945, // hardcoded for now
-    address: factory({
-      address: baseSepoliaConst.addresses.v3.v3Migrator,
-      event: getAbiItem({ abi: UniswapV3MigratorAbi, name: "Migrate" }),
-      parameter: "pool",
-    }),
-  },
-  uniswapV3Pool: {
-    startBlock: V4_START_BLOCKS.baseSepolia,
-    address: factory({
-        address: baseSepoliaConst.addresses.v3.v3Initializer,
-        event: getAbiItem({ abi: UniswapV3InitializerABI, name: "Create" }),
-        parameter: "poolOrHook",
-    }),
-  },
-  lockableUniswapV3Pool: {
-    startBlock: LOCKABLE_V3_INITIALIZER_START_BLOCKS.baseSepolia,
-    address: factory({
-      address: baseSepoliaConst.addresses.v3.lockableV3Initializer,
-      event: getAbiItem({ abi: LockableUniswapV3InitializerABI, name: "Create" }),
-      parameter: "poolOrHook",
-    }),
-  },
-  uniswapV2Pair: {
-    startBlock: START_BLOCKS.baseSepolia,
-    address: factory({
-      address: baseSepoliaConst.addresses.shared.airlock,
-      event: getAbiItem({ abi: AirlockABI, name: "Migrate" }),
-      parameter: "pool",
-    }),
-  },
-  poolManager: {
-    startBlock: V4_START_BLOCKS.baseSepolia,
-    address: baseSepoliaConst.addresses.v4.poolManager,
-  },
-  uniswapV4Pool: {
-    startBlock: V4_START_BLOCKS.baseSepolia,
-    address: factory({
-    address: [
-        baseSepoliaConst.addresses.v4.v4Initializer,
-        baseSepoliaConst.addresses.v4.v4Initializer2,
-        baseSepoliaConst.addresses.v4.v4InitializerSelfCorrecting,
-    ],
-    event: getAbiItem({ abi: UniswapV4InitializerABI, name: "Create" }),
-    parameter: "poolOrHook",
-    }),
-  },
-  lockableUniswapV3Initializer: {
-    startBlock: LOCKABLE_V3_INITIALIZER_START_BLOCKS.baseSepolia,
-    address: baseSepoliaConst.addresses.v3.lockableV3Initializer,
-  }
-};
-
+// TODO: make some proper types
 export const baseSepoliaConfig = {
   chains: {
     baseSepolia: {
-      ...baseSepoliaDopplerChainConfig.chain,
+      id: CHAIN_IDS.baseSepolia,
+      rpc: baseSepoliaConst.rpc,
     },
   },
   blocks: {
     MetricRefresher: {
       chain: {
-        baseSepolia: baseSepoliaDopplerChainConfig.metricRefresher,
+        baseSepolia: {
+          startBlock: baseSepoliaConst.startBlock,
+          interval: BLOCK_INTERVALS.THOUSAND_BLOCKS,
+        }
       }
     },
     V4CheckpointsRefresher: {
       chain: {
-        baseSepolia: baseSepoliaDopplerChainConfig.metricV4CheckpointRefresher,
+        baseSepolia: {
+          startBlock: baseSepoliaConst.v4StartBlock,
+          interval: BLOCK_INTERVALS.FIFTY_BLOCKS,
+        }
       }
     },
   },
@@ -224,74 +87,144 @@ export const baseSepoliaConfig = {
     Airlock: {
       abi: AirlockABI,
       chain: {
-        baseSepolia: baseSepoliaDopplerChainConfig.airlock,
+        baseSepolia: {
+          startBlock: baseSepoliaConst.v4StartBlock,
+          address: baseSepoliaConst.addresses.shared.airlock,
+        }
       }
     },
     UniswapV3Initializer: {
       abi: UniswapV3InitializerABI,
       chain: {
-        baseSepolia: baseSepoliaDopplerChainConfig.uniswapV3Initializer,
+        baseSepolia: {
+          startBlock: baseSepoliaConst.startBlock,
+          address: baseSepoliaConst.addresses.v3.v3Initializer,
+        }
       }
     },
     UniswapV4Initializer: {
       abi: UniswapV4InitializerABI,
       chain: {
-        baseSepolia: baseSepoliaDopplerChainConfig.uniswapV4Initializer,
+        baseSepolia: {
+          startBlock: baseSepoliaConst.v4StartBlock,
+          address: [
+            baseSepoliaConst.addresses.v4.v4Initializer,
+            baseSepoliaConst.addresses.v4.v4Initializer2,
+            baseSepoliaConst.addresses.v4.v4InitializerSelfCorrecting,
+          ],
+        }
       }
     },
     DERC20: {
       abi: DERC20ABI,
       chain: {
-        baseSepolia: baseSepoliaDopplerChainConfig.derc20,
-      }
-    },
-    UniswapV3MigrationPool: {
-      abi: UniswapV3PoolABI,
-      chain: {
-        baseSepolia: baseSepoliaDopplerChainConfig.uniswapV3Migrator,
+        baseSepolia: {
+          startBlock: baseSepoliaConst.startBlock,
+          address: factory({
+            address: baseSepoliaConst.addresses.shared.airlock,
+            event: getAbiItem({ abi: AirlockABI, name: "Create" }),
+            parameter: "asset",
+          }),
+        }
       }
     },
     UniswapV3Migrator: {
       abi: UniswapV3MigratorAbi,
       chain: {
-        baseSepolia: baseSepoliaDopplerChainConfig.uniswapV3Migrator,
+        baseSepolia: {
+          // TODO: validate
+          startBlock: 28245945,
+          address: baseSepoliaConst.addresses.v3.v3Migrator,
+        }
+      }
+    },
+    UniswapV3MigrationPool: {
+      abi: UniswapV3PoolABI,
+      chain: {
+        baseSepolia: {
+          // TODO: validate
+          startBlock: 28245945,
+          address: factory({
+            address: baseSepoliaConst.addresses.v3.v3Migrator,
+            event: getAbiItem({ abi: UniswapV3MigratorAbi, name: "Migrate" }),
+            parameter: "pool",
+          }),
+        }
       }
     },
     UniswapV3Pool: {
       abi: UniswapV3PoolABI,
       chain: {
-        baseSepolia: baseSepoliaDopplerChainConfig.uniswapV3Pool,
+        baseSepolia: {
+          startBlock: baseSepoliaConst.startBlock,
+          address: factory({
+            address: baseSepoliaConst.addresses.v3.v3Initializer,
+            event: getAbiItem({ abi: UniswapV3InitializerABI, name: "Create" }),
+            parameter: "poolOrHook",
+          }),
+        }
       }
     },
     LockableUniswapV3Pool: {
       abi: UniswapV3PoolABI,
       chain: {
-        baseSepolia: baseSepoliaDopplerChainConfig.lockableUniswapV3Pool,
+        baseSepolia: {
+          startBlock: LOCKABLE_V3_INITIALIZER_START_BLOCKS.baseSepolia,
+          address: factory({
+            address: baseSepoliaConst.addresses.v3.lockableV3Initializer,
+            event: getAbiItem({ abi: LockableUniswapV3InitializerABI, name: "Create" }),
+            parameter: "poolOrHook",
+          }),
+        }
       }
     },
     UniswapV2Pair: {
       abi: UniswapV2PairABI,
       chain: {
-        baseSepolia: baseSepoliaDopplerChainConfig.uniswapV2Pair,
+        baseSepolia: {
+          startBlock: baseSepoliaConst.startBlock,
+          address: factory({
+            address: baseSepoliaConst.addresses.shared.airlock,
+            event: getAbiItem({ abi: AirlockABI, name: "Migrate" }),
+            parameter: "pool",
+          }),
+        }
       }
     },
     PoolManager: {
       abi: PoolManagerABI,
       chain: {
-        baseSepolia: baseSepoliaDopplerChainConfig.poolManager,
+        baseSepolia: {
+          startBlock: baseSepoliaConst.v4StartBlock,
+          address: baseSepoliaConst.addresses.v4.poolManager,
+        }
       }
     },
     UniswapV4Pool: {
       abi: DopplerABI,
       chain: {
-        baseSepolia: baseSepoliaDopplerChainConfig.uniswapV4Pool,
+        baseSepolia: {
+          startBlock: baseSepoliaConst.v4StartBlock,
+          address: factory({
+            address: [
+              baseSepoliaConst.addresses.v4.v4Initializer,
+              baseSepoliaConst.addresses.v4.v4Initializer2,
+              baseSepoliaConst.addresses.v4.v4InitializerSelfCorrecting,
+            ],
+            event: getAbiItem({ abi: UniswapV4InitializerABI, name: "Create" }),
+            parameter: "poolOrHook",
+          }),
+        }
       }
     },
     LockableUniswapV3Initializer: {
       abi: LockableUniswapV3InitializerABI,
       chain: {
-        baseSepolia: baseSepoliaDopplerChainConfig.lockableUniswapV3Initializer,
+        baseSepolia: {
+          startBlock: baseSepoliaConst.startBlock,
+          address: baseSepoliaConst.addresses.v3.lockableV3Initializer,
+        }
       }
     },
   }
-} as const;
+};
