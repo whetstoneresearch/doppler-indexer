@@ -1,5 +1,5 @@
 import { ContractConfigMap } from "./types";
-import { chainConfigs } from "../chains";
+import { chainConfigs, COMMON_ADDRESSES } from "../chains";
 import {
   UniswapV4InitializerABI,
   DERC20ABI,
@@ -16,14 +16,14 @@ export const generateV4Contracts = (): ContractConfigMap => {
   const v4Chains = Object.entries(chainConfigs).filter(
     ([_, config]) =>
       config.v4StartBlock &&
-      config.addresses.v4.poolManager !== "0x0000000000000000000000000000000000000000"
+      config.addresses.v4.poolManager !== COMMON_ADDRESSES.ZERO_ADDRESS
   );
 
   if (v4Chains.length === 0) return contracts;
 
   // UniswapV4Initializer contract
   const v4InitializerChains = v4Chains.filter(
-    ([_, config]) => config.addresses.v4.v4Initializer !== "0x0000000000000000000000000000000000000000"
+    ([_, config]) => config.addresses.v4.v4Initializer !== COMMON_ADDRESSES.ZERO_ADDRESS
   );
 
   if (v4InitializerChains.length > 0) {
@@ -84,7 +84,7 @@ export const generateV4Contracts = (): ContractConfigMap => {
 
   // V4 Initializer2 contracts (for chains that have them)
   const v4Initializer2Chains = v4Chains.filter(
-    ([_, config]) => config.addresses.v4.v4Initializer2 !== "0x0000000000000000000000000000000000000000"
+    ([_, config]) => config.addresses.v4.v4Initializer2 !== COMMON_ADDRESSES.ZERO_ADDRESS
   );
 
   if (v4Initializer2Chains.length > 0) {
@@ -146,7 +146,7 @@ export const generateV4Contracts = (): ContractConfigMap => {
 
   // V4 Migrator contract
   const v4MigratorChains = v4Chains.filter(
-    ([_, config]) => config.addresses.v4.v4Migrator !== "0x0000000000000000000000000000000000000000"
+    ([_, config]) => config.addresses.v4.v4Migrator !== COMMON_ADDRESSES.ZERO_ADDRESS
   );
 
   if (v4MigratorChains.length > 0) {

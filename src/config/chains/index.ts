@@ -4,6 +4,7 @@ import { baseConfig } from "./base";
 import { inkConfig } from "./ink";
 import { baseSepoliaConst } from "./baseSepolia";
 import { mainnetConfig } from "./mainnet";
+import { COMMON_ADDRESSES } from "./constants";
 
 export * from "./types";
 export * from "./constants";
@@ -28,5 +29,5 @@ export const getAllChainIds = () =>
 
 export const getActiveChains = () =>
   Object.values(chainConfigs).filter(config =>
-    config.addresses.shared.airlock !== "0x0000000000000000000000000000000000000000"
+    config.addresses.shared.airlock !== COMMON_ADDRESSES.ZERO_ADDRESS
   );

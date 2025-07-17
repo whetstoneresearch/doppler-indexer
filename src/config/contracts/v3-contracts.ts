@@ -1,5 +1,5 @@
 import { ContractConfigMap } from "./types";
-import { chainConfigs } from "../chains";
+import { chainConfigs, COMMON_ADDRESSES } from "../chains";
 import { UniswapV3InitializerABI, DERC20ABI, UniswapV3PoolABI } from "../../abis";
 import { createV3AssetFactory, createV3PoolFactory } from "./factories";
 
@@ -8,7 +8,7 @@ export const generateV3Contracts = (): ContractConfigMap => {
 
   // Get chains with V3 initializers
   const v3Chains = Object.entries(chainConfigs).filter(
-    ([_, config]) => config.addresses.v3.v3Initializer !== "0x0000000000000000000000000000000000000000"
+    ([_, config]) => config.addresses.v3.v3Initializer !== COMMON_ADDRESSES.ZERO_ADDRESS
   );
 
   if (v3Chains.length === 0) return contracts;
