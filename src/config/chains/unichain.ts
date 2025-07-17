@@ -42,7 +42,10 @@ export const unichainConfig: IChainConfig = {
       tokenFactory: "0x43d0D97EC9241A8F05A264f94B82A1d2E600f2B3" as Address,
       universalRouter: "0xef740bf23acae26f6492b10de645d6b98dc8eaf3" as Address,
       governanceFactory: "0x99C94B9Df930E1E21a4E4a2c105dBff21bF5c5aE" as Address,
+      // TODO: validate
       weth: COMMON_ADDRESSES.WETH_BASE,
+      // TODO: fix
+      migrator: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
     },
     oracle: ORACLE_ADDRESSES,
   },

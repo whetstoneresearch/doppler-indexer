@@ -48,6 +48,8 @@ export interface SharedAddresses {
   tokenFactory: Address;
   universalRouter: Address;
   governanceFactory: Address;
+  // TODO: make required?
+  migrator: Address;
   weth: Address;
 }
 

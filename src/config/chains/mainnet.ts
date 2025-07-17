@@ -36,6 +36,8 @@ export const mainnetConfig: IChainConfig = {
       universalRouter: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
       governanceFactory: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
       weth: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
+      // TODO: fix
+      migrator: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
     },
     oracle: ORACLE_ADDRESSES,
   },
