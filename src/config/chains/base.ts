@@ -10,7 +10,7 @@ import {
 import { IChainConfig } from "@app/types/config";
 import { BLOCK_INTERVALS } from "../blocks";
 import { UniswapV3InitializerABI } from "@app/abis";
-import { BlockConfig, ChainConfig, ContractConfig } from "ponder";
+import { ChainConfig, ContractConfig } from "ponder";
 
 export const baseConst: IChainConfig = {
   id: CHAIN_IDS.base,
@@ -65,24 +65,36 @@ export const baseConfig = {
   },
   blocks: {
     PendingTokenImages: {
-      chain: "base",
-      startBlock: START_BLOCKS.base,
-      interval: BLOCK_INTERVALS.THOUSAND_BLOCKS * 3, // Check every 3000 blocks
+      chain: {
+        base: {
+          startBlock: START_BLOCKS.base,
+          interval: BLOCK_INTERVALS.THOUSAND_BLOCKS * 3, // Check every 3000 blocks
+        },
+      }
     },
     BaseV4PoolCheckpoints: {
-      chain: "base",
-      startBlock: baseConst.v4StartBlock,
-      interval: BLOCK_INTERVALS.FIFTY_BLOCKS, // every 50 blocks
+      chain: {
+        base: {
+          startBlock: baseConst.v4StartBlock,
+          interval: BLOCK_INTERVALS.FIFTY_BLOCKS, // every 50 blocks
+        },
+      }
     },
-    MetricRefresherBase: {
-      chain: "base",
-      startBlock: baseConst.startBlock,
-      interval: BLOCK_INTERVALS.THOUSAND_BLOCKS, // every 1000 blocks
+    MetricRefresher: {
+      chain: {
+        base: {
+          startBlock: baseConst.startBlock,
+          interval: BLOCK_INTERVALS.THOUSAND_BLOCKS, // every 1000 blocks
+        },
+      }
     },
     PendingTokenImagesBase: {
-      chain: "base",
-      startBlock: baseConst.startBlock,
-      interval: BLOCK_INTERVALS.THOUSAND_BLOCKS * 3, // Check every 3000 blocks
+      chain: {
+        base: {
+          startBlock: baseConst.startBlock,
+          interval: BLOCK_INTERVALS.THOUSAND_BLOCKS * 3, // Check every 3000 blocks
+        },
+      }
     },
   } as const,
   contracts: {
