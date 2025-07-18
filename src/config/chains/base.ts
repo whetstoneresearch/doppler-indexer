@@ -3,21 +3,22 @@ import {
   CHAIN_IDS,
   START_BLOCKS,
   V4_START_BLOCKS,
+  ORACLE_ADDRESSES,
   COMMON_ADDRESSES,
   RPC_ENV_VARS,
 } from "./constants";
 import { IChainConfig } from "@app/types/config";
 import { BLOCK_INTERVALS } from "../blocks";
 import { UniswapV3InitializerABI } from "@app/abis";
-import { ChainConfig, ContractConfig } from "ponder";
+import { BlockConfig, ChainConfig, ContractConfig } from "ponder";
 
 export const baseConst: IChainConfig = {
   id: CHAIN_IDS.base,
-  rpc: http(process.env.PONDER_RPC_URL_8453),
   name: "base",
   startBlock: START_BLOCKS.base,
   v4StartBlock: V4_START_BLOCKS.base,
   oracleStartBlock: START_BLOCKS.mainnet,
+  rpcEnvVar: RPC_ENV_VARS.base,
   addresses: {
     v2: {
       factory: "0x8909Dc15e40173Ff4699343b6eB8132c65e18eC6" as Address,
@@ -48,7 +49,10 @@ export const baseConst: IChainConfig = {
       governanceFactory:
         "0xb4deE32EB70A5E55f3D2d861F49Fb3D79f7a14d9" as Address,
       weth: COMMON_ADDRESSES.WETH_BASE,
+      // TODO: fix
+      migrator: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
     },
+    oracle: ORACLE_ADDRESSES,
   },
 };
 
