@@ -1,4 +1,4 @@
-import { Address } from "viem";
+import { Address, http } from "viem";
 import {
   CHAIN_IDS,
   START_BLOCKS,
@@ -8,8 +8,11 @@ import {
   RPC_ENV_VARS,
 } from "./constants";
 import { IChainConfig } from "@app/types/config";
+import { BLOCK_INTERVALS } from "../blocks";
+import { UniswapV3InitializerABI } from "@app/abis";
+import { ChainConfig, ContractConfig } from "ponder";
 
-export const baseConfig: IChainConfig = {
+export const baseConst: IChainConfig = {
   id: CHAIN_IDS.base,
   name: "base",
   startBlock: START_BLOCKS.base,
@@ -46,7 +49,63 @@ export const baseConfig: IChainConfig = {
       governanceFactory:
         "0xb4deE32EB70A5E55f3D2d861F49Fb3D79f7a14d9" as Address,
       weth: COMMON_ADDRESSES.WETH_BASE,
+      // TODO: fix
+      migrator: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
     },
     oracle: ORACLE_ADDRESSES,
+  },
+};
+
+export const baseConfig = {
+  chains: {
+    base: {
+      id: CHAIN_IDS.base,
+      rpc: http(process.env.PONDER_RPC_URL_8453),
+    } as const satisfies ChainConfig,
+  },
+  blocks: {
+    PendingTokenImages: {
+      chain: {
+        base: {
+          startBlock: START_BLOCKS.base,
+          interval: BLOCK_INTERVALS.THOUSAND_BLOCKS * 3, // Check every 3000 blocks
+        },
+      }
+    },
+    BaseV4PoolCheckpoints: {
+      chain: {
+        base: {
+          startBlock: baseConst.v4StartBlock,
+          interval: BLOCK_INTERVALS.FIFTY_BLOCKS, // every 50 blocks
+        },
+      }
+    },
+    MetricRefresher: {
+      chain: {
+        base: {
+          startBlock: baseConst.startBlock,
+          interval: BLOCK_INTERVALS.THOUSAND_BLOCKS, // every 1000 blocks
+        },
+      }
+    },
+    PendingTokenImagesBase: {
+      chain: {
+        base: {
+          startBlock: baseConst.startBlock,
+          interval: BLOCK_INTERVALS.THOUSAND_BLOCKS * 3, // Check every 3000 blocks
+        },
+      }
+    },
+  } as const,
+  contracts: {
+    base: {
+      abi: UniswapV3InitializerABI,
+      chain: {
+        base: {
+          startBlock: baseConst.startBlock,
+          address: baseConst.addresses.v3.v3Initializer,
+        },
+      },
+    } as const satisfies ContractConfig,
   },
 };

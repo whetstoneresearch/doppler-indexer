@@ -1,5 +1,5 @@
 import { ContractConfigMap } from "./types";
-import { chainConfigs } from "../chains";
+import { chainConfigs, COMMON_ADDRESSES } from "../chains";
 import { AirlockABI } from "../../abis";
 
 export const generateSharedContracts = (): ContractConfigMap => {
@@ -7,7 +7,7 @@ export const generateSharedContracts = (): ContractConfigMap => {
 
   // Airlock contract - available on most chains
   const airlockChains = Object.entries(chainConfigs).filter(
-    ([_, config]) => config.addresses.shared.airlock !== "0x0000000000000000000000000000000000000000"
+    ([_, config]) => config.addresses.shared.airlock !== COMMON_ADDRESSES.ZERO_ADDRESS
   );
 
   if (airlockChains.length > 0) {

@@ -10,6 +10,7 @@ import { DERC20ABI } from "@app/abis";
 import { V4PoolData } from "@app/types";
 import { configs } from "@app/types";
 import { getLockableV3PoolData } from "@app/utils/v3-utils/getV3PoolData";
+import { COMMON_ADDRESSES } from "@app/config";
 
 export const fetchExistingPool = async ({
   poolAddress,
@@ -66,7 +67,7 @@ export const insertPoolIfNotExists = async ({
   const assetAddr = poolState.asset.toLowerCase() as `0x${string}`;
   const numeraireAddr = poolState.numeraire.toLowerCase() as `0x${string}`;
 
-  const isQuoteEth = poolState.numeraire.toLowerCase() === "0x0000000000000000000000000000000000000000" || poolState.numeraire.toLowerCase() === configs[chain.name].shared.weth;
+  const isQuoteEth = poolState.numeraire.toLowerCase() === COMMON_ADDRESSES.ZERO_ADDRESS || poolState.numeraire.toLowerCase() === configs[chain.name].shared.weth;
 
   const assetTotalSupply = await client.readContract({
     address: assetAddr,
@@ -163,7 +164,7 @@ export const insertPoolIfNotExistsV4 = async ({
     ? poolKey.currency1
     : poolKey.currency0;
 
-  const isQuoteEth = numeraireAddr.toLowerCase() === "0x0000000000000000000000000000000000000000" || numeraireAddr.toLowerCase() === configs[chain.name].shared.weth;
+  const isQuoteEth = numeraireAddr.toLowerCase() === COMMON_ADDRESSES.ZERO_ADDRESS || numeraireAddr.toLowerCase() === configs[chain.name].shared.weth;
 
 
   const [reserves, totalSupply] = await Promise.all([
@@ -269,7 +270,7 @@ export const insertLockableV3PoolIfNotExists = async ({
   const assetAddr = poolState.asset.toLowerCase() as `0x${string}`;
   const numeraireAddr = poolState.numeraire.toLowerCase() as `0x${string}`;
 
-  const isQuoteEth = poolState.numeraire.toLowerCase() === "0x0000000000000000000000000000000000000000" || poolState.numeraire.toLowerCase() === configs[chain.name].shared.weth;
+  const isQuoteEth = poolState.numeraire.toLowerCase() === COMMON_ADDRESSES.ZERO_ADDRESS || poolState.numeraire.toLowerCase() === configs[chain.name].shared.weth;
 
   const assetTotalSupply = await client.readContract({
     address: assetAddr,

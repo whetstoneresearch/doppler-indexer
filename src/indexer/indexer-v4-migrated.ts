@@ -1,5 +1,5 @@
 import { ponder } from "ponder:registry";
-import { chainConfigs } from "@app/config/chains";
+import { chainConfigs, COMMON_ADDRESSES } from "@app/config/chains";
 import { insertSwapIfNotExists } from "./shared/entities/swap";
 import { updatePool } from "./shared/entities/pool";
 import { updateAsset } from "./shared/entities/asset";
@@ -23,7 +23,7 @@ import { insertPositionIfNotExists, updatePosition } from "./shared/entities/pos
 // Helper to get V4MigratorHook address for a chain
 const getV4MigratorHook = (chainName: string): Address | null => {
   const config = chainConfigs[chainName as keyof typeof chainConfigs];
-  if (!config || config.addresses.v4.v4MigratorHook === "0x0000000000000000000000000000000000000000") {
+  if (!config || config.addresses.v4.v4MigratorHook === COMMON_ADDRESSES.ZERO_ADDRESS) {
     return null;
   }
   return config.addresses.v4.v4MigratorHook;

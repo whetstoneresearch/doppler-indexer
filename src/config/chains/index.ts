@@ -1,18 +1,21 @@
 import { IndexerConfigs } from "./types";
-import { unichainConfig } from "./unichain";
-import { baseConfig } from "./base";
-import { inkConfig } from "./ink";
-import { baseSepoliaConfig } from "./baseSepolia";
+import { unichainConst } from "./unichain";
+import { baseConst } from "./base";
+// import { inkConfig } from "./ink";
+import { baseSepoliaConst } from "./baseSepolia";
+import { mainnetConfig } from "./mainnet";
+import { COMMON_ADDRESSES } from "./constants";
 
 export * from "./types";
 export * from "./constants";
 
 // Combined configuration object
 export const chainConfigs: IndexerConfigs = {
-  unichain: unichainConfig,
-  baseSepolia: baseSepoliaConfig,
-  base: baseConfig,
-  ink: inkConfig,
+  mainnet: mainnetConfig,
+  unichain: unichainConst,
+  base: baseConst,
+  // ink: inkConfig,
+  baseSepolia: baseSepoliaConst, // TODO: whack naming
 };
 
 // Utility functions
@@ -26,5 +29,5 @@ export const getAllChainIds = () =>
 
 export const getActiveChains = () =>
   Object.values(chainConfigs).filter(config =>
-    config.addresses.shared.airlock !== "0x0000000000000000000000000000000000000000"
+    config.addresses.shared.airlock !== COMMON_ADDRESSES.ZERO_ADDRESS
   );
