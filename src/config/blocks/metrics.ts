@@ -10,7 +10,7 @@ export const METRIC_CONFIGS: MetricRefresherConfig[] = [
       "baseSepolia",
       // "unichain",
       // "ink",
-      // "base",
+      "base",
     ],
     interval: BLOCK_INTERVALS.THOUSAND_BLOCKS,
     getStartBlock: (chainConfig) => chainConfig.startBlock,

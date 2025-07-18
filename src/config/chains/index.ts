@@ -1,6 +1,6 @@
 import { IndexerConfigs } from "./types";
 // import { unichainConfig } from "./unichain";
-// import { baseConfig } from "./base";
+import { baseConfig, baseConst } from "./base";
 // import { inkConfig } from "./ink";
 import { baseSepoliaConst } from "./baseSepolia";
 import { mainnetConfig } from "./mainnet";
@@ -13,7 +13,7 @@ export * from "./constants";
 export const chainConfigs: IndexerConfigs = {
   mainnet: mainnetConfig,
   // unichain: unichainConfig,
-  // base: baseConfig,
+  base: baseConst,
   // ink: inkConfig,
   baseSepolia: baseSepoliaConst, // TODO: whack naming
 };

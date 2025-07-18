@@ -8,7 +8,7 @@ export const CHECKPOINT_CONFIGS: CheckpointConfig[] = [
     name: "V4PoolCheckpoints",
     chains: [
       "baseSepolia",
-      // "base",
+      "base",
       // "unichain",
       // "ink"
     ],

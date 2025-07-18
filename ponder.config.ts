@@ -1,13 +1,13 @@
-import { BlockConfig, ChainConfig, createConfig } from "ponder";
+import { createConfig } from "ponder";
 import { http } from "viem";
 import { BLOCK_INTERVALS } from "@app/config/blocks/intervals";
 import {
   CHAIN_IDS,
-  IDopplerPonderConfig,
   START_BLOCKS,
 } from "./src/config/chains";
-import settings, { Network } from "./settings";
-import { BaseSepoliaConfig, baseSepoliaConfig } from "./src/config/chains/baseSepolia";
+import settings, { DopplerEnv } from "./settings";
+import { baseSepoliaConfig } from "./src/config/chains/baseSepolia";
+import { baseConfig } from "@app/config/chains/base";
 
 const { dbSettings } = settings;
 
@@ -28,14 +28,8 @@ const mainnetConfig = {
   contracts: {},
 } as const;
 
-// const enabledChains = settings.enabledChains;
-// const configOptions: Record<Network, typeof mainnetConfig | BaseSepoliaConfig> = {
-//   mainnet: mainnetConfig,
-//   baseSepolia: baseSepoliaConfig,
-// }
-
-export const buildConfig = () => {
-  const config = {
+export const buildConfig = (env: DopplerEnv) => {
+  const devConfig = {
     database: dbSettings,
     ordering: "multichain" as const,
     chains: Object.assign({}, mainnetConfig.chains, baseSepoliaConfig.chains),
@@ -43,9 +37,20 @@ export const buildConfig = () => {
     contracts: Object.assign({}, mainnetConfig.contracts, baseSepoliaConfig.contracts),
   }
 
-  return config;
+  const stageConfig = {
+    database: dbSettings,
+    ordering: "multichain" as const,
+    chains: Object.assign({}, mainnetConfig.chains, baseSepoliaConfig.chains, baseConfig.chains),
+    blocks: Object.assign({}, mainnetConfig.blocks, baseSepoliaConfig.blocks, baseConfig.blocks),
+    contracts: Object.assign({}, mainnetConfig.contracts, baseSepoliaConfig.contracts, baseConfig.contracts),
+  }
+
+  return env === "dev" ? devConfig : stageConfig;
 };
 
-const config = buildConfig();
+const config = buildConfig(settings.dopplerEnv);
+
+// console.log(JSON.stringify({ settings }, null, 2));
+// console.log(JSON.stringify(config, null, 2));
 
 export default createConfig(config);

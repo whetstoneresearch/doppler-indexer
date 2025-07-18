@@ -5,16 +5,16 @@ import { ORACLE_ADDRESSES, START_BLOCKS, V4_START_BLOCKS } from "@app/config/cha
 export type Network =
   | "mainnet"
   // | "unichain"
-  | "baseSepolia";
+  | "baseSepolia"
   // | "ink"
-  // | "base";
+  | "base";
 
 export const CHAIN_IDS = {
   // unichain: 130,
   mainnet: 1,
   baseSepolia: 84532,
   // ink: 57073,
-  // base: 8453,
+  base: 8453,
 } as const;
 
 // const unichainStartBlock = 8536880;
@@ -172,35 +172,35 @@ export const configs: IndexerConfigs = {
   //   oracleStartBlock: mainnetStartBlock,
   //   v4StartBlock: v4InkStartBlock,
   // },
-  // base: {
-  //   v2: {
-  //     factory: "0x8909Dc15e40173Ff4699343b6eB8132c65e18eC6" as Address,
-  //   },
-  //   v3: {
-  //     // TODO: Probably wrong, just satisfying types
-  //     lockableV3Initializer: zeroAddress as Address,
-  //     v3Initializer: "0xaA47D2977d622DBdFD33eeF6a8276727c52EB4e5" as Address,
-  //   },
-  //   v4: {
-  //     poolManager: "0x498581ff718922c3f8e6a244956af099b2652b2b" as Address,
-  //     dopplerDeployer: "0x014E1c0bd34f3B10546E554CB33B3293fECDD056" as Address,
-  //     v4Initializer: "0x8AF018e28c273826e6b2d5a99e81c8fB63729b07" as Address,
-  //     v4Initializer2: "0x77EbfBAE15AD200758E9E2E61597c0B07d731254" as Address,
-  //     stateView: "0xa3c0c9b65bad0b08107aa264b0f3db444b867a71" as Address,
-  //     dopplerLens: "0x094d926a969b3024ca46d2186bf13fd5cdba9ce2" as Address,
-  //   },
-  //   shared: {
-  //     airlock: "0x660eAaEdEBc968f8f3694354FA8EC0b4c5Ba8D12" as Address,
-  //     tokenFactory: "0xFAafdE6a5b658684cC5eb0C5c2c755B00A246F45" as Address,
-  //     universalRouter: "0x6ff5693b99212da76ad316178a184ab56d299b43" as Address,
-  //     governanceFactory:
-  //       "0xb4deE32EB70A5E55f3D2d861F49Fb3D79f7a14d9" as Address,
-  //     migrator: "0x5F3bA43D44375286296Cb85F1EA2EBfa25dde731" as Address,
-  //     weth: "0x4200000000000000000000000000000000000006" as Address,
-  //   },
-  //   oracle: oracleAddresses,
-  //   startBlock: baseStartBlock,
-  //   v4StartBlock: v4BaseStartBlock,
-  //   oracleStartBlock: mainnetStartBlock,
-  // },
+  base: {
+    v2: {
+      factory: "0x8909Dc15e40173Ff4699343b6eB8132c65e18eC6" as Address,
+    },
+    v3: {
+      // TODO: Probably wrong, just satisfying types
+      lockableV3Initializer: zeroAddress as Address,
+      v3Initializer: "0xaA47D2977d622DBdFD33eeF6a8276727c52EB4e5" as Address,
+    },
+    v4: {
+      poolManager: "0x498581ff718922c3f8e6a244956af099b2652b2b" as Address,
+      dopplerDeployer: "0x014E1c0bd34f3B10546E554CB33B3293fECDD056" as Address,
+      v4Initializer: "0x8AF018e28c273826e6b2d5a99e81c8fB63729b07" as Address,
+      v4Initializer2: "0x77EbfBAE15AD200758E9E2E61597c0B07d731254" as Address,
+      stateView: "0xa3c0c9b65bad0b08107aa264b0f3db444b867a71" as Address,
+      dopplerLens: "0x094d926a969b3024ca46d2186bf13fd5cdba9ce2" as Address,
+    },
+    shared: {
+      airlock: "0x660eAaEdEBc968f8f3694354FA8EC0b4c5Ba8D12" as Address,
+      tokenFactory: "0xFAafdE6a5b658684cC5eb0C5c2c755B00A246F45" as Address,
+      universalRouter: "0x6ff5693b99212da76ad316178a184ab56d299b43" as Address,
+      governanceFactory:
+        "0xb4deE32EB70A5E55f3D2d861F49Fb3D79f7a14d9" as Address,
+      migrator: "0x5F3bA43D44375286296Cb85F1EA2EBfa25dde731" as Address,
+      weth: "0x4200000000000000000000000000000000000006" as Address,
+    },
+    oracle: ORACLE_ADDRESSES,
+    startBlock: START_BLOCKS.base,
+    v4StartBlock: V4_START_BLOCKS.base,
+    oracleStartBlock: START_BLOCKS.mainnet,
+  },
 };

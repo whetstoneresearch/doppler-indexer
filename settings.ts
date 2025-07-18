@@ -1,14 +1,16 @@
 import { DatabaseConfig } from "ponder";
 
+export type DopplerEnv = "dev" | "stage" | "prod";
+
 export type Network =
     "baseSepolia" |
     // "unichain" |
     // "ink" |
-    // "base" |
+    "base" |
     "mainnet";
 interface ISettings {
     dbSettings: DatabaseConfig;
-    enabledChains: Network[]
+    dopplerEnv: DopplerEnv;
 }
 
 export default {
@@ -19,5 +21,5 @@ export default {
             max: process.env.DATABASE_POOL_MAX ? parseInt(process.env.DATABASE_POOL_MAX) : 100,
         },
     },
-    enabledChains: process.env.ENABLED_CHAINS?.split(",") as Network[],
+    dopplerEnv: process.env.DOPPLER_ENV as DopplerEnv,
 } satisfies ISettings;
