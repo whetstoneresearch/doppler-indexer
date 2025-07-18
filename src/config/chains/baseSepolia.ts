@@ -231,4 +231,7 @@ export const baseSepoliaConfig = {
       }
     },
   }
-};
+} as const;
+
+// TBD: jank?
+export type BaseSepoliaConfig = typeof baseSepoliaConfig;

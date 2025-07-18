@@ -8,8 +8,9 @@ export const generatePendingImageBlocks = (): BlockConfigMap => {
   
   // Only add for Base chain as requested
   configs["PendingTokenImagesBase"] = {
-    chain: "base",
-    startBlock: chainConfigs.base.startBlock,
+    // TODO: REVERT
+    chain: "baseSepolia",
+    startBlock: chainConfigs.baseSepolia.startBlock,
     interval: BLOCK_INTERVALS.FIFTY_BLOCKS, // Check every 50 blocks
   };
 

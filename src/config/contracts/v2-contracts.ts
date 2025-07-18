@@ -29,19 +29,20 @@ export const generateV2Contracts = (): ContractConfigMap => {
     };
   }
 
-  // Unichain has its own V2 factory setup
-  const unichainConfig = chainConfigs.unichain;
-  if (unichainConfig.addresses.v2.factory !== COMMON_ADDRESSES.ZERO_ADDRESS) {
-    contracts.UniswapV2PairUnichain = {
-      abi: UniswapV2PairABI,
-      chain: {
-        unichain: {
-          startBlock: unichainConfig.startBlock,
-          address: createV2PairFactory(unichainConfig.addresses.v2.factory),
-        },
-      },
-    };
-  }
+  // TODO: REVERT
+  // // Unichain has its own V2 factory setup
+  // const unichainConfig = chainConfigs.unichain;
+  // if (unichainConfig.addresses.v2.factory !== COMMON_ADDRESSES.ZERO_ADDRESS) {
+  //   contracts.UniswapV2PairUnichain = {
+  //     abi: UniswapV2PairABI,
+  //     chain: {
+  //       unichain: {
+  //         startBlock: unichainConfig.startBlock,
+  //         address: createV2PairFactory(unichainConfig.addresses.v2.factory),
+  //       },
+  //     },
+  //   };
+  // }
 
   return contracts;
 };

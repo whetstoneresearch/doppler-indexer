@@ -2,16 +2,8 @@ import { Address, HttpTransport } from "viem";
 import { V2Addresses } from "../v2-types";
 import { V3Addresses } from "../v3-types";
 import { V4Addresses } from "../v4-types";
-
-/**
- * Network identifiers
- */
-export type Network =
-  | "mainnet"
-  | "unichain"
-  | "baseSepolia"
-  | "ink"
-  | "base";
+import { ChainConfig as PonderChainConfig, BlockConfig as PonderBlockConfig, ContractConfig as PonderContractConfig } from "ponder";
+import { Network } from "settings";
 
 /**
  * Chain configuration
@@ -126,6 +118,12 @@ export interface FactoryConfig {
 }
 
 export type ContractConfigMap = Record<string, ContractConfig>;
+
+export interface IDopplerPonderConfig {
+  chains: Record<Network, PonderChainConfig>;
+  blocks: Record<Network, PonderBlockConfig>;
+  contracts: Record<Network, PonderContractConfig>;
+}
 
 // Re-export protocol-specific addresses from their respective modules
 export type { V2Addresses } from "../v2-types";

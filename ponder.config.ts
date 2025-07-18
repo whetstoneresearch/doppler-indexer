@@ -1,12 +1,13 @@
-import { createConfig } from "ponder";
+import { BlockConfig, ChainConfig, createConfig } from "ponder";
 import { http } from "viem";
 import { BLOCK_INTERVALS } from "@app/config/blocks/intervals";
 import {
   CHAIN_IDS,
+  IDopplerPonderConfig,
   START_BLOCKS,
 } from "./src/config/chains";
-import settings from "./settings";
-import { baseSepoliaConfig } from "./src/config/chains/baseSepolia";
+import settings, { Network } from "./settings";
+import { BaseSepoliaConfig, baseSepoliaConfig } from "./src/config/chains/baseSepolia";
 
 const { dbSettings } = settings;
 
@@ -26,6 +27,12 @@ const mainnetConfig = {
   },
   contracts: {},
 } as const;
+
+// const enabledChains = settings.enabledChains;
+// const configOptions: Record<Network, typeof mainnetConfig | BaseSepoliaConfig> = {
+//   mainnet: mainnetConfig,
+//   baseSepolia: baseSepoliaConfig,
+// }
 
 export const buildConfig = () => {
   const config = {

@@ -6,7 +6,12 @@ import { BLOCK_INTERVALS } from "./intervals";
 export const CHECKPOINT_CONFIGS: CheckpointConfig[] = [
   {
     name: "V4PoolCheckpoints",
-    chains: ["baseSepolia", "base", "unichain", "ink"],
+    chains: [
+      "baseSepolia",
+      // "base",
+      // "unichain",
+      // "ink"
+    ],
     interval: BLOCK_INTERVALS.FIFTY_BLOCKS,
     getStartBlock: (chainConfig) => chainConfig.v4StartBlock || chainConfig.startBlock,
   },

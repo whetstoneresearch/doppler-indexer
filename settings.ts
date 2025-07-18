@@ -1,8 +1,14 @@
 import { DatabaseConfig } from "ponder";
 
+export type Network =
+    "baseSepolia" |
+    // "unichain" |
+    // "ink" |
+    // "base" |
+    "mainnet";
 interface ISettings {
     dbSettings: DatabaseConfig;
-    enabledChains: ("baseSepolia" |  "unichain" | "ink" | "base")[]
+    enabledChains: Network[]
 }
 
 export default {
@@ -13,5 +19,5 @@ export default {
             max: process.env.DATABASE_POOL_MAX ? parseInt(process.env.DATABASE_POOL_MAX) : 100,
         },
     },
-    enabledChains: ["baseSepolia"] as const,
+    enabledChains: process.env.ENABLED_CHAINS?.split(",") as Network[],
 } satisfies ISettings;

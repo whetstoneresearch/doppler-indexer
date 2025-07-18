@@ -6,7 +6,12 @@ import { BLOCK_INTERVALS } from "./intervals";
 export const METRIC_CONFIGS: MetricRefresherConfig[] = [
   {
     name: "MetricRefresher",
-    chains: ["unichain", "ink", "base", "baseSepolia"],
+    chains: [
+      "baseSepolia",
+      // "unichain",
+      // "ink",
+      // "base",
+    ],
     interval: BLOCK_INTERVALS.THOUSAND_BLOCKS,
     getStartBlock: (chainConfig) => chainConfig.startBlock,
   },

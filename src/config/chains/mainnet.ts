@@ -1,5 +1,5 @@
 import { Address, zeroAddress } from "viem";
-import { Network } from "@app/types/config";
+import { Network } from "settings";
 import { IChainConfig } from "./types";
 import { CHAIN_IDS, START_BLOCKS, ORACLE_ADDRESSES, COMMON_ADDRESSES, RPC_ENV_VARS } from "./constants";
 
