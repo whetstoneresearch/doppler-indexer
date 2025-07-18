@@ -5,7 +5,7 @@ import {
  CHAIN_IDS,
  START_BLOCKS,
 } from "./src/config/chains";
-import settings, { DopplerEnv } from "./settings";
+import settings from "./settings";
 import { baseSepoliaConfig } from "./src/config/chains/baseSepolia";
 import { baseConfig } from "@app/config/chains/base";
 
@@ -36,7 +36,7 @@ const devConfig = {
  contracts: Object.assign({}, mainnetConfig.contracts, baseSepoliaConfig.contracts),
 } as const;
 
-const stageConfig = {
+const prodConfig = {
  database: dbSettings,
  ordering: "multichain" as const,
  chains: Object.assign({}, mainnetConfig.chains, baseSepoliaConfig.chains, baseConfig.chains),
@@ -44,9 +44,6 @@ const stageConfig = {
  contracts: Object.assign({}, mainnetConfig.contracts, baseSepoliaConfig.contracts, baseConfig.contracts),
 } as const;
 
-const cfg = settings.dopplerEnv === "stage" ? createConfig(stageConfig) : createConfig(devConfig);
-
-console.log(JSON.stringify({ chains: cfg.chains, blocks: cfg.blocks }, null, 2));
-console.log(settings.dopplerEnv);
+const cfg = settings.dopplerEnv === "prod" ? createConfig(prodConfig) : createConfig(devConfig);
 
 export default cfg;

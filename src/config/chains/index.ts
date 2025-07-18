@@ -1,6 +1,6 @@
 import { IndexerConfigs } from "./types";
-// import { unichainConfig } from "./unichain";
-import { baseConfig, baseConst } from "./base";
+import { unichainConst } from "./unichain";
+import { baseConst } from "./base";
 // import { inkConfig } from "./ink";
 import { baseSepoliaConst } from "./baseSepolia";
 import { mainnetConfig } from "./mainnet";
@@ -12,7 +12,7 @@ export * from "./constants";
 // Combined configuration object
 export const chainConfigs: IndexerConfigs = {
   mainnet: mainnetConfig,
-  // unichain: unichainConfig,
+  unichain: unichainConst,
   base: baseConst,
   // ink: inkConfig,
   baseSepolia: baseSepoliaConst, // TODO: whack naming

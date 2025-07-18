@@ -4,7 +4,7 @@ export type DopplerEnv = "dev" | "stage" | "prod";
 
 export type Network =
     "baseSepolia" |
-    // "unichain" |
+    "unichain" |
     // "ink" |
     "base" |
     "mainnet";

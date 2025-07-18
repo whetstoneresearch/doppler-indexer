@@ -1,16 +1,17 @@
 import { baseSepoliaConst } from "@app/config/chains/baseSepolia";
 import { Address, zeroAddress } from "viem";
 import { ORACLE_ADDRESSES, START_BLOCKS, V4_START_BLOCKS } from "@app/config/chains/constants";
+import { unichainConst } from "@app/config/chains/unichain";
 
 export type Network =
   | "mainnet"
-  // | "unichain"
+  | "unichain"
   | "baseSepolia"
   // | "ink"
   | "base";
 
 export const CHAIN_IDS = {
-  // unichain: 130,
+  unichain: 130,
   mainnet: 1,
   baseSepolia: 84532,
   // ink: 57073,
@@ -103,37 +104,13 @@ export const configs: IndexerConfigs = {
     startBlock: START_BLOCKS.mainnet,
     oracleStartBlock: START_BLOCKS.mainnet,
   },
-  // unichain: {
-  //   v2: {
-  //     factory: "0x1f98400000000000000000000000000000000002" as Address,
-  //   },
-  //   v3: {
-  //     // TODO: Probably wrong, just satisfying types
-  //     lockableV3Initializer: zeroAddress as Address,
-  //     v3Initializer: "0x9F4e56be80f08ba1A2445645EFa6d231E27b43ec" as Address,
-  //   },
-  //   v4: {
-  //     poolManager: "0x1F98400000000000000000000000000000000004" as Address,
-  //     dopplerDeployer: "0xBEd386a1Fc62B6598c9b8d2BF634471B6Fe75EB7" as Address,
-  //     v4Initializer: "0xA7A28cB18F73CDd591fa81ead6ffadf749c0d0a2" as Address,
-  //     stateView: "0x86e8631a016f9068c3f085faf484ee3f5fdee8f2" as Address,
-  //     dopplerLens: "0x166109C4EE7fE69164631Caa937dAA5F5cEbFef0" as Address,
-  //     v4Initializer2: zeroAddress,
-  //   },
-  //   shared: {
-  //     airlock: "0x77EbfBAE15AD200758E9E2E61597c0B07d731254" as Address,
-  //     tokenFactory: "0x43d0D97EC9241A8F05A264f94B82A1d2E600f2B3" as Address,
-  //     universalRouter: "0xef740bf23acae26f6492b10de645d6b98dc8eaf3" as Address,
-  //     governanceFactory:
-  //       "0x99C94B9Df930E1E21a4E4a2c105dBff21bF5c5aE" as Address,
-  //     migrator: "0xf6023127f6E937091D5B605680056A6D27524bad" as Address,
-  //     weth: "0x4200000000000000000000000000000000000006" as Address,
-  //   },
-  //   oracle: oracleAddresses,
-  //   startBlock: unichainStartBlock,
-  //   oracleStartBlock: mainnetStartBlock,
-  //   v4StartBlock: v4UnichainStartBlock,
-  // },
+  unichain: {
+    ...unichainConst.addresses,
+    oracle: ORACLE_ADDRESSES,
+    startBlock: START_BLOCKS.unichain,
+    oracleStartBlock: START_BLOCKS.mainnet,
+    v4StartBlock: V4_START_BLOCKS.unichain,
+  },
   baseSepolia: {
     ...baseSepoliaConst.addresses,
     oracle: ORACLE_ADDRESSES,
