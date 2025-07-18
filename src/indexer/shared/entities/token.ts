@@ -23,11 +23,11 @@ export const insertTokenIfNotExists = async ({
 
   let multiCallAddress = {};
   // TODO: add back when types are sorted
-  // if (chain.name == "ink") {
-  //   multiCallAddress = {
-  //     multicallAddress: "0xcA11bde05977b3631167028862bE2a173976CA11",
-  //   };
-  // }
+  if (chain.name == "ink") {
+    multiCallAddress = {
+      multicallAddress: "0xcA11bde05977b3631167028862bE2a173976CA11",
+    };
+  }
   const address = tokenAddress.toLowerCase() as `0x${string}`;
 
   const existingToken = await db.find(token, {

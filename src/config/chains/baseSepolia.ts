@@ -3,19 +3,13 @@ import {
   CHAIN_IDS,
   START_BLOCKS,
   V4_START_BLOCKS,
-  ORACLE_ADDRESSES,
   COMMON_ADDRESSES,
-  RPC_ENV_VARS,
   LOCKABLE_V3_INITIALIZER_START_BLOCKS,
 } from "./constants";
 import { factory } from "ponder";
 import { BLOCK_INTERVALS } from "../blocks";
-import { AirlockABI, DERC20ABI, DopplerABI, LockableUniswapV3InitializerABI, PoolManagerABI, UniswapV2PairABI, UniswapV3InitializerABI, UniswapV3PoolABI, UniswapV4InitializerABI } from "@app/abis";
-import { UniswapV3MigratorAbi } from "@app/abis/v3-abis/UniswapV3Migrator";
+import { AirlockABI, DERC20ABI, DopplerABI, LockableUniswapV3InitializerABI, PoolManagerABI, UniswapV2PairABI, UniswapV3InitializerABI, UniswapV3MigratorABI, UniswapV3PoolABI, UniswapV4InitializerABI } from "@app/abis";
 import { IChainConfig } from "@app/types/config";
-
-// TODO: tmp while i sort out dupes
-const v2Migrator = "0xb2ec6559704467306d04322a5dc082b2af4562dd" as Address;
 
 export const baseSepoliaConst: IChainConfig = {
   id: CHAIN_IDS.baseSepolia,
@@ -24,11 +18,10 @@ export const baseSepoliaConst: IChainConfig = {
   startBlock: START_BLOCKS.baseSepolia,
   v4StartBlock: V4_START_BLOCKS.baseSepolia,
   oracleStartBlock: START_BLOCKS.mainnet,
-  rpcEnvVar: RPC_ENV_VARS.baseSepolia,
   addresses: {
     v2: {
       factory: "0x7Ae58f10f7849cA6F5fB71b7f45CB416c9204b1e" as Address,
-      v2Migrator,
+      v2Migrator: "0x04a898f3722c38f9def707bd17dc78920efa977c" as Address,
     },
     v3: {
       v3Initializer: "0x4c3062b9ccfdbcb10353f57c1b59a29d4c5cfa47" as Address,
@@ -54,10 +47,8 @@ export const baseSepoliaConst: IChainConfig = {
       universalRouter: "0x492e6456d9528771018deb9e87ef7750ef184104" as Address,
       governanceFactory:
         "0x9dbfaadc8c0cb2c34ba698dd9426555336992e20" as Address,
-      migrator: v2Migrator,
       weth: COMMON_ADDRESSES.WETH_BASE,
     },
-    oracle: ORACLE_ADDRESSES,
   },
 };
 
@@ -133,7 +124,7 @@ export const baseSepoliaConfig = {
       }
     },
     UniswapV3Migrator: {
-      abi: UniswapV3MigratorAbi,
+      abi: UniswapV3MigratorABI,
       chain: {
         baseSepolia: {
           // TODO: validate
@@ -150,7 +141,7 @@ export const baseSepoliaConfig = {
           startBlock: 28245945,
           address: factory({
             address: baseSepoliaConst.addresses.v3.v3Migrator,
-            event: getAbiItem({ abi: UniswapV3MigratorAbi, name: "Migrate" }),
+            event: getAbiItem({ abi: UniswapV3MigratorABI, name: "Migrate" }),
             parameter: "pool",
           }),
         }

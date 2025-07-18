@@ -8,8 +8,10 @@ import {
 import settings, { DopplerEnv } from "./settings";
 import { baseSepoliaConfig } from "./src/config/chains/baseSepolia";
 import { baseConfig } from "@app/config/chains/base";
+import { unichainConfig } from "@app/config/chains/unichain";
+import { inkConfig } from "@app/config/chains/ink";
 
-const { dbSettings } = settings;
+const { dbSettings, dopplerEnv } = settings;
 
 const mainnetConfig = {
   chains: {
@@ -45,12 +47,17 @@ export const buildConfig = (env: DopplerEnv) => {
     contracts: Object.assign({}, mainnetConfig.contracts, baseSepoliaConfig.contracts, baseConfig.contracts),
   }
 
+  const prodConfig = {
+    database: dbSettings,
+    ordering: "multichain" as const,
+    chains: Object.assign({}, mainnetConfig.chains, baseSepoliaConfig.chains, baseConfig.chains, unichainConfig.chains, inkConfig.chains),
+    blocks: Object.assign({}, mainnetConfig.blocks, baseSepoliaConfig.blocks, baseConfig.blocks, unichainConfig.blocks, inkConfig.blocks),
+    contracts: Object.assign({}, mainnetConfig.contracts, baseSepoliaConfig.contracts, baseConfig.contracts, unichainConfig.contracts, inkConfig.contracts),
+  }
+
   return env === "dev" ? devConfig : stageConfig;
 };
 
-const config = buildConfig(settings.dopplerEnv);
-
-// console.log(JSON.stringify({ settings }, null, 2));
-// console.log(JSON.stringify(config, null, 2));
+const config = buildConfig(dopplerEnv);
 
 export default createConfig(config);

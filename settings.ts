@@ -4,10 +4,10 @@ export type DopplerEnv = "dev" | "stage" | "prod";
 
 export type Network =
     "baseSepolia" |
-    // "unichain" |
-    // "ink" |
-    "base" |
-    "mainnet";
+    "unichain" |
+    "ink" |
+    "base";
+
 interface ISettings {
     dbSettings: DatabaseConfig;
     dopplerEnv: DopplerEnv;

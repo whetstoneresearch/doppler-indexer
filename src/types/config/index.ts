@@ -10,14 +10,12 @@ import { Network } from "settings";
  */
 export interface IChainConfig {
   id: number;
-  // TODO: make required once other configs are updated
-  rpc?: HttpTransport;
+  rpc: HttpTransport;
   name: Network;
   startBlock: number;
   v4StartBlock?: number;
   v4MigratorStartBlock?: number;
   oracleStartBlock: number;
-  rpcEnvVar: string;
   addresses: ChainAddresses;
 }
 
@@ -29,7 +27,6 @@ export interface ChainAddresses {
   v3: V3Addresses;
   v4: V4Addresses;
   shared: SharedAddresses;
-  oracle: OracleAddresses;
 }
 
 /**
@@ -40,8 +37,6 @@ export interface SharedAddresses {
   tokenFactory: Address;
   universalRouter: Address;
   governanceFactory: Address;
-  // TODO: make required?
-  migrator: Address;
   weth: Address;
 }
 
