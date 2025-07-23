@@ -22,7 +22,7 @@ export const insertV4PoolPriceHistoryIfNotExists = async ({
 
   return await db.insert(v4PoolPriceHistory).values({
     pool,
-    chainId: BigInt(chain.id),
+    chainId: BigInt(chain!.id),
     history: {},
   });
 };

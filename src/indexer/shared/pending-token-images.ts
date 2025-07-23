@@ -1,5 +1,5 @@
 import type { Address } from "viem";
-import { pendingTokenImages } from "ponder.schema";
+import { pendingTokenImages } from "ponder:schema";
 import { Context } from "ponder:registry";
 
 interface PendingTokenInfo {
@@ -61,7 +61,7 @@ export async function removePendingTokenImage({
   chainId,
   tokenAddress,
 }: {
-  context: Context;
+  context: Context<"PendingTokenImages:block">;
   chainId: bigint;
   tokenAddress: Address;
 }) {
@@ -85,7 +85,7 @@ export async function processPendingTokenImages({
   chainId,
   timestamp,
 }: {
-  context: Context;
+  context: Context<"PendingTokenImages:block">;
   chainId: bigint;
   timestamp: number;
 }) {

@@ -1,15 +1,10 @@
 import { Address, formatEther, zeroAddress } from "viem";
-import { hourBucketUsd, dailyVolume } from "ponder.schema";
+import { hourBucketUsd, dailyVolume } from "ponder:schema";
 import { Context } from "ponder:registry";
-import {
-  secondsInDay,
-  secondsInHour,
-  CHAINLINK_ETH_DECIMALS,
-} from "@app/utils/constants";
-import { configs } from "addresses";
 import { updatePool } from "./entities/pool";
 import { updateToken } from "./entities/token";
 import { insertAssetIfNotExists, updateAsset } from "./entities/asset";
+import { CHAINLINK_ETH_DECIMALS, secondsInDay, secondsInHour, SHARED_ADDRESSES } from "../../config/const";
 
 export interface DayMetrics {
   volumeUsd: bigint;
@@ -74,7 +69,7 @@ const insertOrUpdateHourBucketUsd = async ({
         high: usdPrice,
         average: usdPrice,
         count: 1,
-        chainId: BigInt(chain.id),
+        chainId: BigInt(chain!.id),
       })
       .onConflictDoUpdate((row) => ({
         close: usdPrice,
@@ -119,7 +114,7 @@ export const compute24HourPriceChange = async ({
       : undefined;
 
   const oldestMarketCapUsd = oldestCheckpointTime
-    ? BigInt(checkpoints[oldestCheckpointTime!.toString()]?.marketCapUsd || "0")
+    ? BigInt(checkpoints[oldestCheckpointTime.toString()]?.marketCapUsd || "0")
     : 0n;
 
   const priceChangePercent =
@@ -163,8 +158,7 @@ export const insertOrUpdateDailyVolume = async ({
 
   const isTokenInEth =
     tokenIn.toLowerCase() === zeroAddress ||
-    tokenIn.toLowerCase() ===
-    (configs[chain.name].shared.weth.toLowerCase() as `0x${string}`);
+    tokenIn.toLowerCase() === SHARED_ADDRESSES.weth.toLowerCase();
 
   if (isTokenInEth) {
     volumeUsd = (amountIn * ethPrice) / CHAINLINK_ETH_DECIMALS;
@@ -187,7 +181,7 @@ export const insertOrUpdateDailyVolume = async ({
     .values({
       pool: poolAddress.toLowerCase() as `0x${string}`,
       volumeUsd: volumeUsd,
-      chainId: BigInt(chain.id),
+      chainId: BigInt(chain!.id),
       lastUpdated: timestamp,
       checkpoints: {},
       earliestCheckpoint: 0n,

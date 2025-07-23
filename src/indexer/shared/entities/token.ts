@@ -1,8 +1,8 @@
 import { Context } from "ponder:registry";
-import { token } from "ponder.schema";
+import { token } from "ponder:schema";
 import { Address, zeroAddress } from "viem";
-import { DERC20ABI } from "@app/abis";
-import { addPendingTokenImage } from "../pending-token-images";
+import { DERC20ABI } from "../../../../abis";
+// Token entity management
 
 export const insertTokenIfNotExists = async ({
   tokenAddress,
@@ -21,7 +21,7 @@ export const insertTokenIfNotExists = async ({
 }): Promise<typeof token.$inferSelect> => {
   const { db, chain } = context;
 
-  let multiCallAddress = {};
+  const multiCallAddress = {};
   // TODO: add back when types are sorted
   // if (chain.name == "ink") {
   //   multiCallAddress = {
@@ -42,7 +42,7 @@ export const insertTokenIfNotExists = async ({
     return existingToken;
   }
 
-  const chainId = BigInt(chain.id);
+  const chainId = BigInt(chain!.id);
 
   // ignore pool field for native tokens
   if (address == zeroAddress) {
@@ -99,85 +99,85 @@ export const insertTokenIfNotExists = async ({
     const tokenURI = tokenURIResult?.result;
     let tokenUriData;
     let image: string | undefined;
-    if (tokenURI?.startsWith("ipfs://")) {
-      try {
-        if (
-          !tokenURI.startsWith("ipfs://") &&
-          !tokenURI.startsWith("http://") &&
-          !tokenURI.startsWith("https://")
-        ) {
-          console.error(`Invalid tokenURI for token ${address}: ${tokenURI}`);
-        }
-        const cid = tokenURI.replace("ipfs://", "");
-        const url = `https://${process.env.PINATA_GATEWAY_URL}/ipfs/${cid}?pinataGatewayToken=${process.env.PINATA_GATEWAY_KEY}`;
-        const response = await fetch(url);
-        tokenUriData = await response.json();
+    // if (tokenURI?.startsWith("ipfs://")) {
+    //   try {
+    //     if (
+    //       !tokenURI.startsWith("ipfs://") &&
+    //       !tokenURI.startsWith("http://") &&
+    //       !tokenURI.startsWith("https://")
+    //     ) {
+    //       console.error(`Invalid tokenURI for token ${address}: ${tokenURI}`);
+    //     }
+    //     const cid = tokenURI.replace("ipfs://", "");
+    //     const url = `https://${process.env.PINATA_GATEWAY_URL}/ipfs/${cid}?pinataGatewayToken=${process.env.PINATA_GATEWAY_KEY}`;
+    //     const response = await fetch(url);
+    //     tokenUriData = await response.json();
 
-        if (
-          tokenUriData &&
-          typeof tokenUriData === "object" &&
-          "image" in tokenUriData &&
-          typeof tokenUriData.image === "string"
-        ) {
-          if (tokenUriData.image.startsWith("ipfs://")) {
-            image = tokenUriData.image;
-          }
-        } else if (
-          tokenUriData &&
-          typeof tokenUriData === "object" &&
-          "image_hash" in tokenUriData &&
-          typeof tokenUriData.image_hash === "string"
-        ) {
-          if (tokenUriData.image_hash.startsWith("ipfs://")) {
-            image = tokenUriData.image_hash;
-          }
-        }
-      } catch (error) {
-        console.error(
-          `Failed to fetch IPFS metadata for token ${address}:`,
-          error
-        );
-      }
-    } else if (tokenURI?.includes("ohara")) {
-      try {
-        const url = tokenURI;
-        const response = await fetch(url);
-        tokenUriData = await response.json();
+    //     if (
+    //       tokenUriData &&
+    //       typeof tokenUriData === "object" &&
+    //       "image" in tokenUriData &&
+    //       typeof tokenUriData.image === "string"
+    //     ) {
+    //       if (tokenUriData.image.startsWith("ipfs://")) {
+    //         image = tokenUriData.image;
+    //       }
+    //     } else if (
+    //       tokenUriData &&
+    //       typeof tokenUriData === "object" &&
+    //       "image_hash" in tokenUriData &&
+    //       typeof tokenUriData.image_hash === "string"
+    //     ) {
+    //       if (tokenUriData.image_hash.startsWith("ipfs://")) {
+    //         image = tokenUriData.image_hash;
+    //       }
+    //     }
+    //   } catch (error) {
+    //     console.error(
+    //       `Failed to fetch IPFS metadata for token ${address}:`,
+    //       error
+    //     );
+    //   }
+    // } else if (tokenURI?.includes("ohara")) {
+    //   try {
+    //     const url = tokenURI;
+    //     const response = await fetch(url);
+    //     tokenUriData = await response.json();
 
-        if (
-          tokenUriData &&
-          typeof tokenUriData === "object" &&
-          "image" in tokenUriData &&
-          typeof tokenUriData.image === "string"
-        ) {
-          if (tokenUriData.image.startsWith("https://")) {
-            image = tokenUriData.image;
-          }
-        } else {
-          // Add to pending list for retry
-          await addPendingTokenImage({
-            context,
-            chainId,
-            tokenAddress: address,
-            tokenURI,
-            timestamp: Number(timestamp),
-          });
-        }
-      } catch (error) {
-        console.error(
-          `Failed to fetch ohara metadata for token ${address}:`,
-          error
-        );
-        // Add to pending list for retry
-        await addPendingTokenImage({
-          context,
-          chainId,
-          tokenAddress: address,
-          tokenURI,
-          timestamp: Number(timestamp),
-        });
-      }
-    }
+    //     if (
+    //       tokenUriData &&
+    //       typeof tokenUriData === "object" &&
+    //       "image" in tokenUriData &&
+    //       typeof tokenUriData.image === "string"
+    //     ) {
+    //       if (tokenUriData.image.startsWith("https://")) {
+    //         image = tokenUriData.image;
+    //       }
+    //     } else {
+    //       // Add to pending list for retry
+    //       await addPendingTokenImage({
+    //         context,
+    //         chainId,
+    //         tokenAddress: address,
+    //         tokenURI,
+    //         timestamp: Number(timestamp),
+    //       });
+    //     }
+    //   } catch (error) {
+    //     console.error(
+    //       `Failed to fetch ohara metadata for token ${address}:`,
+    //       error
+    //     );
+    //     // Add to pending list for retry
+    //     await addPendingTokenImage({
+    //       context,
+    //       chainId,
+    //       tokenAddress: address,
+    //       tokenURI,
+    //       timestamp: Number(timestamp),
+    //     });
+    //   }
+    // }
 
     return await context.db
       .insert(token)

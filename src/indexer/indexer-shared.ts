@@ -1,15 +1,12 @@
 import { ponder } from "ponder:registry";
-import { asset, pool, v4pools } from "ponder:schema";
+import { asset, pool } from "ponder:schema";
 import { insertAssetIfNotExists, updateAsset } from "./shared/entities/asset";
-import { insertTokenIfNotExists, updateToken } from "./shared/entities/token";
 import { insertV2MigrationPoolIfNotExists } from "./shared/entities/v2Pool";
-import { updateUserAsset } from "./shared/entities/userAsset";
-import { insertUserAssetIfNotExists } from "./shared/entities/userAsset";
-import { insertUserIfNotExists, updateUser } from "./shared/entities/user";
 import { updatePool } from "./shared/entities/pool";
-import { chainConfigs } from "../config/chains";
-import { insertV3MigrationPoolIfNotExists } from "./shared/entities/migrationPool";
-import { zeroAddress } from "viem";
+import { addresses as allAddresses } from "../config/addresses";
+import { insertTokenIfNotExists, updateToken } from "./shared/entities/token";
+import { insertUserIfNotExists, updateUser } from "./shared/entities/user";
+import { insertUserAssetIfNotExists, updateUserAsset } from "./shared/entities/userAsset";
 
 ponder.on("Airlock:Migrate", async ({ event, context }) => {
   const { chain } = context;
@@ -21,11 +18,9 @@ ponder.on("Airlock:Migrate", async ({ event, context }) => {
     address: assetId,
   });
 
-  const v2Migrator = chainConfigs[chain.name].addresses.v2.v2Migrator;
+  const v2Migrator = allAddresses[chain!.name].v2Migrator;
 
-  if (
-    assetEntity!.liquidityMigrator.toLowerCase() == v2Migrator.toLowerCase()
-  ) {
+  if (assetEntity?.liquidityMigrator == v2Migrator) {
     const v2Pool = await insertV2MigrationPoolIfNotExists({
       assetAddress: assetId,
       timestamp,
@@ -54,67 +49,67 @@ ponder.on("Airlock:Migrate", async ({ event, context }) => {
   }
 });
 
-ponder.on("UniswapV3Migrator:Migrate", async ({ event, context }) => {
-  const { chain } = context;
-  const { timestamp } = event.block;
-  const { pool, token0, token1 } = event.args;
+// ponder.on("UniswapV3Migrator:Migrate", async ({ event, context }) => {
+//   const { chain } = context;
+//   const { timestamp } = event.block;
+//   const { pool, token0, token1 } = event.args;
 
-  const poolAddress = pool.toLowerCase() as `0x${string}`;
-  const token0Address = token0.toLowerCase() as `0x${string}`;
-  const token1Address = token1.toLowerCase() as `0x${string}`;
+//   const poolAddress = pool.toLowerCase() as `0x${string}`;
+//   const token0Address = token0.toLowerCase() as `0x${string}`;
+//   const token1Address = token1.toLowerCase() as `0x${string}`;
 
-  let isToken0 = false;
+//   let isToken0 = false;
 
-  if (
-    token0Address.toLowerCase() == zeroAddress ||
-    token0Address.toLowerCase() ==
-      chainConfigs[chain.name].addresses.shared.weth
-  ) {
-    isToken0 = false;
-  } else {
-    const assetEntityCheck = await context.db.find(asset, {
-      address: token0Address,
-    });
-    if (assetEntityCheck) {
-      isToken0 = true;
-    } else {
-      isToken0 = false;
-    }
-  }
+//   if (
+//     token0Address.toLowerCase() == zeroAddress ||
+//     token0Address.toLowerCase() ==
+//       chainConfigs[chain.name].addresses.shared.weth
+//   ) {
+//     isToken0 = false;
+//   } else {
+//     const assetEntityCheck = await context.db.find(asset, {
+//       address: token0Address,
+//     });
+//     if (assetEntityCheck) {
+//       isToken0 = true;
+//     } else {
+//       isToken0 = false;
+//     }
+//   }
 
-  const assetEntity = await context.db.find(asset, {
-    address: isToken0 ? token0Address : token1Address,
-  });
+//   const assetEntity = await context.db.find(asset, {
+//     address: isToken0 ? token0Address : token1Address,
+//   });
 
-  await insertV3MigrationPoolIfNotExists({
-    poolAddress,
-    parentPool: assetEntity!.poolAddress,
-    timestamp,
-    context,
-  });
+//   await insertV3MigrationPoolIfNotExists({
+//     poolAddress,
+//     parentPool: assetEntity!.poolAddress,
+//     timestamp,
+//     context,
+//   });
 
-  await Promise.all([
-    updatePool({
-      poolAddress: assetEntity!.poolAddress,
-      context,
-      update: {
-        migratedAt: timestamp,
-        migrated: true,
-        migratedToPool: poolAddress,
-        migrationType: "v3",
-      },
-    }),
-    updateAsset({
-      assetAddress: isToken0 ? token0Address : token1Address,
-      context,
-      update: {
-        migratedAt: timestamp,
-        migrated: true,
-        migrationType: "v3",
-      },
-    }),
-  ]);
-});
+//   await Promise.all([
+//     updatePool({
+//       poolAddress: assetEntity!.poolAddress,
+//       context,
+//       update: {
+//         migratedAt: timestamp,
+//         migrated: true,
+//         migratedToPool: poolAddress,
+//         migrationType: "v3",
+//       },
+//     }),
+//     updateAsset({
+//       assetAddress: isToken0 ? token0Address : token1Address,
+//       context,
+//       update: {
+//         migratedAt: timestamp,
+//         migrated: true,
+//         migrationType: "v3",
+//       },
+//     }),
+//   ]);
+// });
 
 ponder.on("DERC20:Transfer", async ({ event, context }) => {
   const { address } = event.log;
@@ -188,7 +183,7 @@ ponder.on("DERC20:Transfer", async ({ event, context }) => {
   const [poolEntity] = await Promise.all([
     db.find(pool, {
       address: assetData.poolAddress,
-      chainId: BigInt(chain.id),
+      chainId: BigInt(chain!.id),
     }),
     updateToken({
       tokenAddress: assetId,

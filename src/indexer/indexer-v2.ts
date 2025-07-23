@@ -1,26 +1,17 @@
 import { ponder } from "ponder:registry";
-import { v2Pool } from "ponder.schema";
-import {
-  insertOrUpdateBuckets,
-  insertOrUpdateDailyVolume,
-  compute24HourPriceChange,
-} from "./shared/timeseries";
-import { getPairData } from "@app/utils/v2-utils/getPairData";
-import { computeMarketCap, fetchEthPrice } from "./shared/oracle";
-import {
-  insertPoolIfNotExists,
-  insertTokenIfNotExists,
-  updateAsset,
-  updatePool,
-  updateV2Pool,
-} from "./shared/entities";
-import { CHAINLINK_ETH_DECIMALS } from "@app/utils/constants";
-import { tryAddActivePool } from "./shared/scheduledJobs";
+import { v2Pool } from "ponder:schema";
 import { zeroAddress } from "viem";
-import { configs } from "@app/types";
+import { CHAINLINK_ETH_DECIMALS, SHARED_ADDRESSES } from "../config/const";
+import { SwapService, PriceService, SwapOrchestrator } from "../core";
+import { updateAsset } from "./shared/entities/asset";
+import { insertPoolIfNotExists, updatePool } from "./shared/entities/pool";
+import { insertTokenIfNotExists } from "./shared/entities/token";
+import { updateV2Pool } from "./shared/entities/v2Pool";
+import { fetchEthPrice } from "./shared/oracle";
+import { tryAddActivePool } from "./shared/scheduledJobs";
+import { compute24HourPriceChange, insertOrUpdateBuckets, insertOrUpdateDailyVolume } from "./shared/timeseries";
+import { getPairData } from "./utils";
 import { insertSwapIfNotExists } from "./shared/entities/swap";
-import { SwapService, SwapOrchestrator, PriceService } from "@app/core";
-import { computeDollarLiquidity } from "@app/utils/computeDollarLiquidity";
 
 ponder.on("UniswapV2Pair:Swap", async ({ event, context }) => {
   const { db, chain } = context;
@@ -31,7 +22,12 @@ ponder.on("UniswapV2Pair:Swap", async ({ event, context }) => {
 
   const v2PoolData = await db.find(v2Pool, { address });
 
-  const parentPool = v2PoolData!.parentPool.toLowerCase() as `0x${string}`;
+  const parentPool = v2PoolData?.parentPool.toLowerCase();
+
+  if (!parentPool) {
+    // TODO: find proper way to handle this
+    return;
+  }
 
   const [reserves, ethPrice] = await Promise.all([
     getPairData({ address, context }),
@@ -41,7 +37,7 @@ ponder.on("UniswapV2Pair:Swap", async ({ event, context }) => {
   const { reserve0, reserve1 } = reserves;
 
   const { isToken0, baseToken, quoteToken } = await insertPoolIfNotExists({
-    poolAddress: parentPool,
+    poolAddress: parentPool as `0x${string}`,
     timestamp,
     context,
     ethPrice,
@@ -49,8 +45,7 @@ ponder.on("UniswapV2Pair:Swap", async ({ event, context }) => {
 
   let v2isToken0 = isToken0;
   if (quoteToken.toLowerCase() == zeroAddress) {
-    const weth = configs[chain.name].shared.weth.toLowerCase() as `0x${string}`;
-    v2isToken0 = baseToken.toLowerCase() < weth.toLowerCase();
+    v2isToken0 = baseToken.toLowerCase() < SHARED_ADDRESSES.weth.toLowerCase();
   }
 
   const assetBalance = v2isToken0 ? reserve0 : reserve1;
@@ -114,7 +109,7 @@ ponder.on("UniswapV2Pair:Swap", async ({ event, context }) => {
 
   // Create swap data
   const swapData = SwapOrchestrator.createSwapData({
-    poolAddress: parentPool,
+    poolAddress: parentPool as `0x${string}`,
     sender: event.transaction.from,
     transactionHash: event.transaction.hash,
     transactionFrom: event.transaction.from,
@@ -155,10 +150,10 @@ ponder.on("UniswapV2Pair:Swap", async ({ event, context }) => {
         swapType: type,
         metrics: marketMetrics,
         poolData: {
-          parentPoolAddress: parentPool,
+          parentPoolAddress: parentPool as `0x${string}`,
           price,
         },
-        chainId: BigInt(chain.id),
+        chainId: BigInt(chain!.id),
         context,
       },
       entityUpdaters

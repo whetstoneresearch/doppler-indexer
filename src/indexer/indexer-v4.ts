@@ -1,29 +1,21 @@
-import { ponder } from "ponder:registry";
-import { getV4PoolData } from "@app/utils/v4-utils";
-import { insertTokenIfNotExists } from "./shared/entities/token";
-import { computeMarketCap, fetchEthPrice } from "./shared/oracle";
-import { insertPoolIfNotExistsV4, updatePool } from "./shared/entities/pool";
-import { insertOrUpdateDailyVolume } from "./shared/timeseries";
-import { insertAssetIfNotExists, updateAsset } from "./shared/entities/asset";
-import { insertOrUpdateBuckets } from "./shared/timeseries";
-import { computeDollarLiquidity } from "@app/utils/computeDollarLiquidity";
-import { insertV4ConfigIfNotExists } from "./shared/entities/v4-entities/v4Config";
-import { getReservesV4 } from "@app/utils/v4-utils/getV4PoolData";
-import {
-  addCheckpoint,
-  insertCheckpointBlobIfNotExist,
-} from "./shared/entities/v4-entities/v4CheckpointBlob";
-import {
-  addAndUpdateV4PoolPriceHistory,
-  insertV4PoolPriceHistoryIfNotExists,
-} from "./shared/entities/v4-entities/v4PoolPriceHistory";
-import { insertActivePoolsBlobIfNotExists } from "./shared/scheduledJobs";
-import { insertSwapIfNotExists } from "./shared/entities/swap";
-import { CHAINLINK_ETH_DECIMALS } from "@app/utils/constants";
-import { SwapService, SwapOrchestrator, PriceService } from "@app/core";
-import { tryAddActivePool } from "./shared/scheduledJobs";
 import { TickMath } from "@uniswap/v3-sdk";
-import { computeGraduationPercentage } from "@app/utils/v4-utils";
+import { ponder } from "ponder:registry";
+import { CHAINLINK_ETH_DECIMALS } from "../config/const";
+import { SwapService, PriceService, SwapOrchestrator } from "../core";
+import { computeDollarLiquidity } from "../utils/computeDollarLiquidity";
+import { computeGraduationPercentage } from "../utils/v4-utils";
+import { getReservesV4, getV4PoolData } from "../utils/v4-utils/getV4PoolData";
+import { insertAssetIfNotExists, updateAsset } from "./shared/entities/asset";
+import { insertPoolIfNotExistsV4, updatePool } from "./shared/entities/pool";
+import { insertSwapIfNotExists } from "./shared/entities/swap";
+import { insertTokenIfNotExists } from "./shared/entities/token";
+import { fetchEthPrice, computeMarketCap } from "./shared/oracle";
+import { insertActivePoolsBlobIfNotExists, tryAddActivePool } from "./shared/scheduledJobs";
+import { insertOrUpdateBuckets, insertOrUpdateDailyVolume } from "./shared/timeseries";
+import { insertCheckpointBlobIfNotExist, addCheckpoint } from "./shared/entities/v4-entities";
+import { insertV4ConfigIfNotExists } from "./shared/entities/v4-entities/v4Config";
+import { insertV4PoolPriceHistoryIfNotExists, addAndUpdateV4PoolPriceHistory } from "./shared/entities/v4-entities/v4PoolPriceHistory";
+
 
 ponder.on("UniswapV4Initializer:Create", async ({ event, context }) => {
   const { poolOrHook, asset: assetId, numeraire } = event.args;
@@ -261,7 +253,7 @@ ponder.on("UniswapV4Pool:Swap", async ({ event, context }) => {
         parentPoolAddress: address,
         price,
       },
-      chainId: BigInt(chain.id),
+      chainId: BigInt(chain!.id),
       context,
     },
     entityUpdaters

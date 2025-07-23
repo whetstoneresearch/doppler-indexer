@@ -1,5 +1,6 @@
-import { WAD, CHAINLINK_ETH_DECIMALS } from "@app/utils/constants";
-import { PriceService } from "@app/core/pricing";
+import { CHAINLINK_ETH_DECIMALS, WAD } from "../../config/const";
+import { PriceService } from "../pricing";
+
 
 /**
  * Market metrics interface

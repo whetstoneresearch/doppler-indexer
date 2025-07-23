@@ -1,7 +1,7 @@
-import { UniswapV2PairABI, UniswapV3PoolABI, DERC20ABI } from "@app/abis";
 import { Context } from "ponder:registry";
 import { Hex } from "viem";
-import { getMulticallOptions } from "@app/core/utils";
+import { getMulticallOptions } from "../../core/utils";
+import { UniswapV2PairABI, UniswapV3PoolABI, DERC20ABI } from "../../../abis";
 
 export const getPoolDataSafe = async ({
   address,
@@ -76,7 +76,7 @@ export const getPoolDataSafe = async ({
         };
       }
     }
-  } catch (e) {
+  } catch {
     // If V3 call fails, try V2
   }
 

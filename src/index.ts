@@ -1,1 +1,1 @@
-export * from "./indexer";
+// Entry point for the indexer
