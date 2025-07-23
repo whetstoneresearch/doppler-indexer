@@ -4,7 +4,7 @@ import { BlockName, ContractName } from "./src/config/types";
 import fs from "fs";
 import stringify from "json-stable-stringify";
 import { START_BLOCKS } from "./src/config/const";
-import { AirlockABI, DERC20ABI, DopplerABI, PoolManagerABI, UniswapV2PairABI, UniswapV3InitializerABI, UniswapV3PoolABI, UniswapV4InitializerABI, V4MigratorABI } from "./abis";
+import { AirlockABI, DERC20ABI, DopplerABI, PoolManagerABI, UniswapV2PairABI, UniswapV3InitializerABI, UniswapV3PoolABI, UniswapV4InitializerABI, V4MigratorABI } from "./src/abis";
 import { generateBlocks, generateContractChains } from "./src/utils";
 
 const cfg = {

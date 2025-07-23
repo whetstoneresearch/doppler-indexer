@@ -3,7 +3,7 @@ import { Context } from "ponder:registry";
 import { computeV3Price } from "./computeV3Price";
 import { getMulticallOptions } from "../../core/utils";
 import { LockablePoolState, LockableV3PoolData, PoolState, V3PoolData } from "../../types/v3-types";
-import { UniswapV3PoolABI, DERC20ABI, UniswapV3InitializerABI, LockableUniswapV3InitializerABI } from "../../../abis";
+import { UniswapV3PoolABI, DERC20ABI, UniswapV3InitializerABI, LockableUniswapV3InitializerABI } from "../../abis";
 import { L2Network } from "../../settings";
 import { addresses } from "../../config/addresses";
 

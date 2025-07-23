@@ -3,7 +3,7 @@ import {
   AirlockABI,
   UniswapV3InitializerABI,
   UniswapV4InitializerABI,
-} from "../../../abis";
+} from "../../abis";
 import { getAbiItem } from "viem";
 import { ContractName, ContractInfo } from "../types";
 

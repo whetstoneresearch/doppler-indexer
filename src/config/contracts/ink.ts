@@ -1,6 +1,6 @@
-import { factory, AddressConfig as PonderAddressConfig } from "ponder";
+import { factory } from "ponder";
 import { getAbiItem } from "viem";
-import { AirlockABI, UniswapV3InitializerABI, UniswapV4InitializerABI } from "../../../abis";
+import { AirlockABI, UniswapV3InitializerABI, UniswapV4InitializerABI } from "../../abis";
 import { ContractName, ContractInfo } from "../types";
 
 const inkContracts = {

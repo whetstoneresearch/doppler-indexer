@@ -8,7 +8,7 @@ import {
   getAmount1Delta,
 } from "../v3-utils/computeGraduationThreshold";
 import { getMulticallOptions } from "../../core/utils";
-import { DopplerABI, StateViewABI, DERC20ABI, DopplerLensQuoterABI } from "../../../abis";
+import { DopplerABI, StateViewABI, DERC20ABI, DopplerLensQuoterABI } from "../../abis";
 import { V4PoolData, PoolKey, Slot0Data, V4PoolConfig, PositionData, QuoteExactSingleParams } from "../../types";
 import { addresses } from "../../config/addresses";
 import { L2Network } from "../../settings";

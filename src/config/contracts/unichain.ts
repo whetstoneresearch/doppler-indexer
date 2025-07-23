@@ -1,7 +1,7 @@
 import { factory } from "ponder";
 import { getAbiItem } from "viem";
-import { UniswapV3InitializerABI, UniswapV4InitializerABI } from "../../../abis";
-import { UniswapV2FactoryABI } from "../../../abis/UniswapV2Factory";
+import { UniswapV3InitializerABI, UniswapV4InitializerABI } from "../../abis";
+import { UniswapV2FactoryABI } from "../../abis/UniswapV2Factory";
 import { ContractName } from "../types";
 import { ContractInfo } from "../types";
 

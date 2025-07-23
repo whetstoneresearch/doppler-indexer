@@ -1,7 +1,7 @@
 import { Address } from "viem";
 import { pool } from "ponder:schema";
 import { Context } from "ponder:registry";
-import { DERC20ABI } from "../../../../abis";
+import { DERC20ABI } from "../../../abis";
 import { COMMON_ADDRESSES, SHARED_ADDRESSES } from "../../../config/const";
 import { computeMarketCap } from "../oracle";
 import { V4PoolData } from "../../../types/v4-types";
