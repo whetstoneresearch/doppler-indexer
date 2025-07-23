@@ -2,6 +2,7 @@ import { factory } from "ponder";
 import {
   AirlockABI,
   UniswapV3InitializerABI,
+  UniswapV3MigratorABI,
   UniswapV4InitializerABI,
 } from "../../abis";
 import { getAbiItem } from "viem";
@@ -73,6 +74,16 @@ const baseContracts = {
     address: "0x82Cc0DAAea3c9Ee022bC61dbC7Bf6dB6460b6000",
     startBlock: 30822164,
   },
+  [ContractName.UniswapV3Migrator]: {
+    address: "0x0000000000000000000000000000000000000000",
+    startBlock: 30822164,
+  },
+  [ContractName.UniswapV3MigrationPool]: factory({
+    address: "0x0000000000000000000000000000000000000000",
+    event: getAbiItem({ abi: UniswapV3MigratorABI, name: "Migrate" }),
+    parameter: "pool",
+    startBlock: 30822164,
+  }),
 } as const satisfies Partial<Record<keyof typeof ContractName, ContractInfo>>;
 
 export default baseContracts;

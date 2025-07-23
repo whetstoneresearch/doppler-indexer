@@ -4,7 +4,7 @@ import { BlockName, ContractName } from "./src/config/types";
 import fs from "fs";
 import stringify from "json-stable-stringify";
 import { START_BLOCKS } from "./src/config/const";
-import { AirlockABI, DERC20ABI, DopplerABI, PoolManagerABI, UniswapV2PairABI, UniswapV3InitializerABI, UniswapV3PoolABI, UniswapV4InitializerABI, V4MigratorABI } from "./src/abis";
+import { AirlockABI, DERC20ABI, DopplerABI, PoolManagerABI, UniswapV2PairABI, UniswapV3InitializerABI, UniswapV3MigratorABI, UniswapV3PoolABI, UniswapV4InitializerABI, V4MigratorABI } from "./src/abis";
 import { generateBlocks, generateContractChains } from "./src/utils";
 
 const cfg = {
@@ -71,12 +71,21 @@ const cfg = {
       }),
     },
 
-    // [ContractName.UniswapV3MigrationPool]: {
-    //   abi: UniswapV3PoolABI,
-    //   chain: generateContractChains({
-    //     contractName: ContractName.UniswapV3MigrationPool,
-    //   }),
-    // },
+    [ContractName.UniswapV3Migrator]: {
+      abi: UniswapV3MigratorABI,
+      chain: generateContractChains({
+        contractName: ContractName.UniswapV3Migrator,
+        networks: [NetworkEnum.base],
+      }),
+    },
+
+    [ContractName.UniswapV3MigrationPool]: {
+      abi: UniswapV3PoolABI,
+      chain: generateContractChains({
+        contractName: ContractName.UniswapV3MigrationPool,
+        networks: [NetworkEnum.base],
+      }),
+    },
 
     [ContractName.DERC20]: {
       abi: DERC20ABI,

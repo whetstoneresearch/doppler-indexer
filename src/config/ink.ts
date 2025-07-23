@@ -16,6 +16,7 @@ export const addresses: NetworkAddresses  = {
   v4DopplerLens: "0xCe3099B2F07029b086E5e92a1573C5f5A3071783",
   v4Migrator: COMMON_ADDRESSES.ZERO_ADDRESS,
   v4MigratorHook: COMMON_ADDRESSES.ZERO_ADDRESS,
+  v3Migrator: COMMON_ADDRESSES.ZERO_ADDRESS,
 } as const;
 
 export const networkConfig: NetworkConfig = {

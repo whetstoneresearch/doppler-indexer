@@ -1,88 +1,88 @@
 import { ponder } from "ponder:registry";
-// import { CHAINLINK_ETH_DECIMALS } from "../config/const";
-// import { PriceService, SwapService, SwapOrchestrator } from "../core";
-// import { computeDollarLiquidity } from "../utils/computeDollarLiquidity";
-// import { computeGraduationThresholdDelta } from "../utils/v3-utils/computeGraduationThreshold";
-// import { insertAssetIfNotExists, updateAsset } from "./shared/entities/asset";
-// import { insertPoolIfNotExists, updatePool } from "./shared/entities/pool";
-// import { fetchEthPrice, computeMarketCap } from "./shared/oracle";
-// import { insertSwapIfNotExists } from "./shared/entities/swap";
-// import { insertTokenIfNotExists } from "./shared/entities/token";
-// import { insertActivePoolsBlobIfNotExists, tryAddActivePool } from "./shared/scheduledJobs";
-// import { insertOrUpdateBuckets, insertOrUpdateDailyVolume, compute24HourPriceChange } from "./shared/timeseries";
-// import { insertPositionIfNotExists, updatePosition } from "./shared/entities/position";
+import { CHAINLINK_ETH_DECIMALS } from "../config/const";
+import { PriceService, SwapService, SwapOrchestrator } from "../core";
+import { computeDollarLiquidity } from "../utils/computeDollarLiquidity";
+import { computeGraduationThresholdDelta } from "../utils/v3-utils/computeGraduationThreshold";
+import { insertAssetIfNotExists, updateAsset } from "./shared/entities/asset";
+import { insertPoolIfNotExists, updatePool } from "./shared/entities/pool";
+import { fetchEthPrice, computeMarketCap } from "./shared/oracle";
+import { insertSwapIfNotExists } from "./shared/entities/swap";
+import { insertTokenIfNotExists } from "./shared/entities/token";
+import { insertActivePoolsBlobIfNotExists, tryAddActivePool } from "./shared/scheduledJobs";
+import { insertOrUpdateBuckets, insertOrUpdateDailyVolume, compute24HourPriceChange } from "./shared/timeseries";
+import { insertPositionIfNotExists, updatePosition } from "./shared/entities/position";
 
 // TODO: this causes a freeze
 ponder.on("UniswapV3Initializer:Create", async ({ event, context }) => {
-//   const { poolOrHook, asset, numeraire } = event.args;
-//   const timestamp = event.block.timestamp;
+   const { poolOrHook, asset, numeraire } = event.args;
+   const timestamp = event.block.timestamp;
 
-//   const creatorId = event.transaction.from.toLowerCase() as `0x${string}`;
-//   const numeraireId = numeraire.toLowerCase() as `0x${string}`;
-//   const assetId = asset.toLowerCase() as `0x${string}`;
-//   const poolOrHookId = poolOrHook.toLowerCase() as `0x${string}`;
+   const creatorId = event.transaction.from.toLowerCase() as `0x${string}`;
+   const numeraireId = numeraire.toLowerCase() as `0x${string}`;
+   const assetId = asset.toLowerCase() as `0x${string}`;
+   const poolOrHookId = poolOrHook.toLowerCase() as `0x${string}`;
 
-//   const ethPrice = await fetchEthPrice(timestamp, context);
+  //  const ethPrice = await fetchEthPrice(timestamp, context);
 
-//   const [poolEntity, assetTokenEntity] = await Promise.all([
-//     insertPoolIfNotExists({
-//       poolAddress: poolOrHookId,
-//       context,
-//       timestamp,
-//       ethPrice,
-//     }),
-//     insertTokenIfNotExists({
-//       tokenAddress: assetId,
-//       creatorAddress: creatorId,
-//       timestamp,
-//       context,
-//     }),
-//     insertTokenIfNotExists({
-//       tokenAddress: numeraireId,
-//       creatorAddress: creatorId,
-//       timestamp,
-//       context,
-//       isDerc20: false,
-//     }),
-//   ]);
+//    const [poolEntity, assetTokenEntity] = await Promise.all([
+//      insertPoolIfNotExists({
+//        poolAddress: poolOrHookId,
+//        context,
+//        timestamp,
+//        ethPrice,
+//      }),
+//      insertTokenIfNotExists({
+//        tokenAddress: assetId,
+//        creatorAddress: creatorId,
+//        timestamp,
+//        context,
+//      }),
+//      insertTokenIfNotExists({
+//        tokenAddress: numeraireId,
+//        creatorAddress: creatorId,
+//        timestamp,
+//        context,
+//        isDerc20: false,
+//      }),
+//    ]);
 
-//   const { price } = poolEntity;
-//   const { totalSupply } = assetTokenEntity;
-//   const marketCapUsd = computeMarketCap({
-//     price,
-//     ethPrice,
-//     totalSupply,
-//   });
+//    const { price } = poolEntity;
+//    const { totalSupply } = assetTokenEntity;
+//    const marketCapUsd = computeMarketCap({
+//      price,
+//      ethPrice,
+//      totalSupply,
+//    });
 
-  // benchmark time
-//   await Promise.all([
-//     insertActivePoolsBlobIfNotExists({
-//       context,
-//     }),
-//     insertAssetIfNotExists({
-//       assetAddress: assetId,
-//       timestamp,
-//       context,
-//     }),
-//     insertOrUpdateBuckets({
-//       poolAddress: poolOrHookId,
-//       price,
-//       timestamp,
-//       ethPrice,
-//       context,
-//     }),
-//     insertOrUpdateDailyVolume({
-//       poolAddress: poolOrHookId,
-//       amountIn: 0n,
-//       amountOut: 0n,
-//       timestamp,
-//       context,
-//       tokenIn: assetId,
-//       tokenOut: numeraireId,
-//       ethPrice,
-//       marketCapUsd,
-//     }),
-//   ]);
+// // benchmark time
+//    await Promise.all([
+//      insertActivePoolsBlobIfNotExists({
+//        context,
+//      }),
+//      insertAssetIfNotExists({
+//        assetAddress: assetId,
+//        timestamp,
+//        context,
+//      }),
+//      insertOrUpdateBuckets({
+//        poolAddress: poolOrHookId,
+//        price,
+//        timestamp,
+//        ethPrice,
+//        context,
+//      }),
+//      insertOrUpdateDailyVolume({
+//        poolAddress: poolOrHookId,
+//        amountIn: 0n,
+//        amountOut: 0n,
+//        timestamp,
+//        context,
+//        tokenIn: assetId,
+//        tokenOut: numeraireId,
+//        ethPrice,
+//        marketCapUsd,
+//      }),
+//    ]);
 });
 
 // ponder.on("LockableUniswapV3Initializer:Create", async ({ event, context }) => {

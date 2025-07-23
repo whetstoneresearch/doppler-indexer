@@ -5,7 +5,7 @@ import { DERC20ABI } from "../../../abis";
 import { COMMON_ADDRESSES, SHARED_ADDRESSES } from "../../../config/const";
 import { computeMarketCap } from "../oracle";
 import { V4PoolData } from "../../../types/v4-types";
-import { getV3PoolData } from "../../../utils/v3-utils/getV3PoolData";
+import { getV3PoolData, getLockableV3PoolData } from "../../../utils/v3-utils/getV3PoolData";
 import { getReservesV4 } from "../../../utils/v4-utils/getV4PoolData";
 import { computeDollarLiquidity } from "../../../utils/computeDollarLiquidity";
 import { computeGraduationPercentage } from "../../../utils/v4-utils";
@@ -237,82 +237,82 @@ export const insertPoolIfNotExistsV4 = async ({
   });
 };
 
-// export const insertLockableV3PoolIfNotExists = async ({
-//   poolAddress,
-//   timestamp,
-//   context,
-//   ethPrice,
-// }: {
-//   poolAddress: Address;
-//   timestamp: bigint;
-//   context: Context;
-//   ethPrice: bigint;
-// }): Promise<typeof pool.$inferSelect> => {
-//   const { db, chain, client } = context;
-//   const address = poolAddress.toLowerCase() as `0x${string}`;
+export const insertLockableV3PoolIfNotExists = async ({
+  poolAddress,
+  timestamp,
+  context,
+  ethPrice,
+}: {
+  poolAddress: Address;
+  timestamp: bigint;
+  context: Context;
+  ethPrice: bigint;
+}): Promise<typeof pool.$inferSelect> => {
+  const { db, chain, client } = context;
+  const address = poolAddress.toLowerCase() as `0x${string}`;
 
-//   const existingPool = await db.find(pool, {
-//     address,
-//     chainId: BigInt(chain!.id),
-//   });
+  const existingPool = await db.find(pool, {
+    address,
+    chainId: BigInt(chain!.id),
+  });
 
-//   if (existingPool) {
-//     return existingPool;
-//   }
+  if (existingPool) {
+    return existingPool;
+  }
 
-//   const poolData = await getLockableV3PoolData({
-//     address,
-//     context,
-//   });
+  const poolData = await getLockableV3PoolData({
+    address,
+    context,
+  });
 
-//   const { slot0Data, liquidity, price, fee, token0, poolState } = poolData;
+  const { slot0Data, liquidity, price, fee, token0, poolState } = poolData;
 
-//   const isToken0 = token0.toLowerCase() === poolState.asset.toLowerCase();
+  const isToken0 = token0.toLowerCase() === poolState.asset.toLowerCase();
 
-//   const assetAddr = poolState.asset.toLowerCase() as `0x${string}`;
-//   const numeraireAddr = poolState.numeraire.toLowerCase() as `0x${string}`;
+  const assetAddr = poolState.asset.toLowerCase() as `0x${string}`;
+  const numeraireAddr = poolState.numeraire.toLowerCase() as `0x${string}`;
 
-//   const isQuoteEth =
-//     poolState.numeraire.toLowerCase() === COMMON_ADDRESSES.ZERO_ADDRESS
-//     || poolState.numeraire.toLowerCase() === SHARED_ADDRESSES.weth;
+  const isQuoteEth =
+    poolState.numeraire.toLowerCase() === COMMON_ADDRESSES.ZERO_ADDRESS
+    || poolState.numeraire.toLowerCase() === SHARED_ADDRESSES.weth;
 
-//   const assetTotalSupply = await client.readContract({
-//     address: assetAddr,
-//     abi: DERC20ABI,
-//     functionName: "totalSupply",
-//   });
+  const assetTotalSupply = await client.readContract({
+    address: assetAddr,
+    abi: DERC20ABI,
+    functionName: "totalSupply",
+  });
 
-//   const marketCapUsd = computeMarketCap({
-//     price,
-//     ethPrice,
-//     totalSupply: assetTotalSupply,
-//   });
+  const marketCapUsd = computeMarketCap({
+    price,
+    ethPrice,
+    totalSupply: assetTotalSupply,
+  });
 
-//   return await db.insert(pool).values({
-//     ...poolData,
-//     ...slot0Data,
-//     address,
-//     liquidity: liquidity,
-//     createdAt: timestamp,
-//     asset: assetAddr,
-//     baseToken: assetAddr,
-//     quoteToken: numeraireAddr,
-//     price,
-//     type: "v3",
-//     chainId: BigInt(chain!.id),
-//     fee,
-//     dollarLiquidity: 0n,
-//     dailyVolume: address,
-//     maxThreshold: 0n,
-//     graduationBalance: 0n,
-//     totalFee0: 0n,
-//     totalFee1: 0n,
-//     volumeUsd: 0n,
-//     reserves0: 0n,
-//     reserves1: 0n,
-//     percentDayChange: 0,
-//     isToken0,
-//     marketCapUsd,
-//     isQuoteEth
-//   });
-// };
+  return await db.insert(pool).values({
+    ...poolData,
+    ...slot0Data,
+    address,
+    liquidity: liquidity,
+    createdAt: timestamp,
+    asset: assetAddr,
+    baseToken: assetAddr,
+    quoteToken: numeraireAddr,
+    price,
+    type: "v3",
+    chainId: BigInt(chain!.id),
+    fee,
+    dollarLiquidity: 0n,
+    dailyVolume: address,
+    maxThreshold: 0n,
+    graduationBalance: 0n,
+    totalFee0: 0n,
+    totalFee1: 0n,
+    volumeUsd: 0n,
+    reserves0: 0n,
+    reserves1: 0n,
+    percentDayChange: 0,
+    isToken0,
+    marketCapUsd,
+    isQuoteEth
+  });
+};

@@ -17,6 +17,7 @@ export const addresses: NetworkAddresses = {
   v4Initializer2: COMMON_ADDRESSES.ZERO_ADDRESS,
   v4Migrator: COMMON_ADDRESSES.ZERO_ADDRESS,
   v4MigratorHook: COMMON_ADDRESSES.ZERO_ADDRESS,
+  v3Migrator: COMMON_ADDRESSES.ZERO_ADDRESS,
 } as const;
 
 export const networkConfig: NetworkConfig = {
