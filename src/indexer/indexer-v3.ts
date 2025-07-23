@@ -13,7 +13,7 @@ import { ponder } from "ponder:registry";
 // import { insertPositionIfNotExists, updatePosition } from "./shared/entities/position";
 
 // TODO: this causes a freeze
-ponder.on("UniswapV3Initializer:Create", async ({ event: _event, context: _context }) => {
+ponder.on("UniswapV3Initializer:Create", async ({ event, context }) => {
 //   const { poolOrHook, asset, numeraire } = event.args;
 //   const timestamp = event.block.timestamp;
 

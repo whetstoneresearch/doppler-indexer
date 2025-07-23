@@ -52,12 +52,10 @@ ponder.on("UniswapV2Pair:Swap", async ({ event, context }) => {
   const quoteBalance = v2isToken0 ? reserve1 : reserve0;
 
   const amount0 = amount0In > 0 ? amount0In : -amount0Out;
-  const amount1 = amount0Out > 0 ? amount0Out : -amount1Out;
 
   const type = SwapService.determineSwapType({
     isToken0: v2isToken0,
     amount0,
-    amount1,
   });
 
   const price = PriceService.computePriceFromReserves({

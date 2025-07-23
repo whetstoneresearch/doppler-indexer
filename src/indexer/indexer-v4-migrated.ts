@@ -113,7 +113,6 @@ ponder.on("PoolManager:Swap", async ({ event, context }) => {
   const type = SwapService.determineSwapType({
     isToken0: v4pool.isToken0,
     amount0: amount0 > 0n ? amount0 : -amount0,
-    amount1: amount1 > 0n ? amount1 : -amount1,
   });
 
   // Get token total supply for market cap calculation
