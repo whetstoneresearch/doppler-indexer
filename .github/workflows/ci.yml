@@ -10,24 +10,29 @@ jobs:
     runs-on: blacksmith-2vcpu-ubuntu-2204
     steps:
       - uses: actions/checkout@v4
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
         with:
-          bun-version: latest
+          version: 10
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
       - name: Install dependencies
-        run: bun install
+        run: pnpm install
       - name: Typecheck
-        run: bun typecheck
+        run: pnpm typecheck
       - name: Start pg
         run: docker-compose -f docker-compose.yml up -d
       - name: Run indexer
         env:
           PONDER_RPC_URL_1: https://eth-mainnet.g.alchemy.com/v2/${{ secrets.ALCHEMY_API_KEY }}
           PONDER_RPC_URL_84532: https://base-sepolia.g.alchemy.com/v2/${{ secrets.ALCHEMY_API_KEY }}
-        run: bun dev &
+        run: pnpm dev &
 
       - name: Wait for healthy status
-        run: bunx wait-on http://localhost:42069/health
+        run: pnpx wait-on http://localhost:42069/health
 
       - name: Can codegen
-        run: bun codegen
+        run: pnpm codegen
