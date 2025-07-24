@@ -1,19 +1,5 @@
 import { Address, Hex, numberToHex, zeroAddress } from "viem";
 import { Context } from "ponder:registry";
-import {
-  DERC20ABI,
-  DopplerABI,
-  DopplerLensQuoterABI,
-  StateViewABI,
-} from "@app/abis";
-import {
-  PoolKey,
-  V4PoolConfig,
-  PositionData,
-  Slot0Data,
-  V4PoolData,
-  QuoteExactSingleParams
-} from "@app/types/v4-types";
 import { getPoolId } from "./getPoolId";
 import { computeV4Price } from "./computeV4Price";
 import { getAssetData } from "../getAssetData";
@@ -21,8 +7,11 @@ import {
   getAmount0Delta,
   getAmount1Delta,
 } from "../v3-utils/computeGraduationThreshold";
-import { configs } from "addresses";
-import { getMulticallOptions } from "@app/core/utils";
+import { getMulticallOptions } from "../../core/utils";
+import { DopplerABI, StateViewABI, DERC20ABI, DopplerLensQuoterABI } from "../../abis";
+import { V4PoolData, PoolKey, Slot0Data, V4PoolConfig, PositionData, QuoteExactSingleParams } from "../../types";
+import { addresses } from "../../config/addresses";
+import { L2Network } from "../../settings";
 
 export const getV4PoolData = async ({
   hook,
@@ -31,7 +20,8 @@ export const getV4PoolData = async ({
   hook: Address;
   context: Context;
 }): Promise<V4PoolData> => {
-  const { stateView } = configs[context.chain.name].v4;
+  const network = context.chain!.name as L2Network;
+  const stateView = addresses[network].v4StateView;
   const { client, chain } = context;
 
   const poolConfig = await getV4PoolConfig({ hook, context });
@@ -58,13 +48,13 @@ export const getV4PoolData = async ({
     contracts: [
       {
         abi: StateViewABI,
-        address: stateView,
+        address: stateView as Address,
         functionName: "getSlot0",
         args: [poolId],
       },
       {
         abi: StateViewABI,
-        address: stateView,
+        address: stateView as Address,
         functionName: "getLiquidity",
         args: [poolId],
       },
@@ -107,7 +97,7 @@ export const getV4PoolData = async ({
     slot0Data,
     liquidity: liquidityResult,
     price,
-    poolConfig: poolConfig!,
+    poolConfig: poolConfig,
   };
 };
 
@@ -223,7 +213,8 @@ export const getReservesV4 = async ({
   context: Context;
 }) => {
   const { client } = context;
-  const { stateView } = configs[context.chain.name].v4;
+  const network = context.chain!.name as L2Network;
+  const stateView = addresses[network].v4StateView;
 
   const poolKey = await client.readContract({
     abi: DopplerABI,
@@ -250,7 +241,7 @@ export const getReservesV4 = async ({
 
   const [, tick] = await client.readContract({
     abi: StateViewABI,
-    address: stateView,
+    address: stateView as Address,
     functionName: "getSlot0",
     args: [poolId],
   });
@@ -375,8 +366,9 @@ export const getLatestSqrtPrice = async ({
   amount0: bigint;
   amount1: bigint;
 }> => {
-  const { client, chain } = context;
-  const lensQuoter = configs[chain.name].v4.dopplerLens;
+  const { client } = context;
+  const network = context.chain!.name as L2Network;
+  const lensQuoter = addresses[network].v4DopplerLens;
 
   const input: QuoteExactSingleParams = {
     poolKey,
@@ -387,7 +379,7 @@ export const getLatestSqrtPrice = async ({
 
   const lensQuote = await client.simulateContract({
     abi: DopplerLensQuoterABI,
-    address: lensQuoter,
+    address: lensQuoter as Address,
     functionName: "quoteDopplerLensData",
     args: [input],
   });

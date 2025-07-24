@@ -1,15 +1,11 @@
 import { Address } from "viem";
 import { Context } from "ponder:registry";
-import {
-  DERC20ABI,
-  UniswapV3InitializerABI,
-  UniswapV3PoolABI,
-} from "@app/abis";
 import { computeV3Price } from "./computeV3Price";
-import { getMulticallOptions } from "@app/core/utils";
-import { LockablePoolState, LockableV3PoolData, PoolState, V3PoolData } from "@app/types/v3-types";
-import { LockableUniswapV3InitializerABI } from "@app/abis";
-import { chainConfigs } from "@app/config";
+import { getMulticallOptions } from "../../core/utils";
+import { LockablePoolState, LockableV3PoolData, PoolState, V3PoolData } from "../../types/v3-types";
+import { UniswapV3PoolABI, DERC20ABI, UniswapV3InitializerABI, LockableUniswapV3InitializerABI } from "../../abis";
+import { L2Network } from "../../settings";
+import { addresses } from "../../config/addresses";
 
 export const getSlot0Data = async ({
   address,
@@ -254,11 +250,12 @@ const getPoolState = async ({
   context: Context;
 }) => {
   const { client } = context;
-  const v3Initializer = chainConfigs[context.chain.name].addresses.v3.v3Initializer;
+  const network = context.chain!.name as L2Network;
+  const v3Initializer = addresses[network].v3Initializer;
 
   const poolData = await client.readContract({
     abi: UniswapV3InitializerABI,
-    address: v3Initializer,
+    address: v3Initializer as Address,
     functionName: "getState",
     args: [poolAddress],
   });
@@ -273,7 +270,7 @@ const getPoolState = async ({
     isExited: poolData[6],
     maxShareToBeSold: poolData[7],
     maxShareToBond: poolData[8],
-    initializer: v3Initializer,
+    initializer: v3Initializer as Address,
   };
 
   return poolState;
@@ -287,11 +284,12 @@ const getLockablePoolState = async ({
   context: Context;
 }) => {
   const { client } = context;
-  const lockableV3Initializer = chainConfigs[context.chain.name].addresses.v3.lockableV3Initializer;
+  const network = context.chain!.name as L2Network;
+  const lockableV3Initializer = addresses[network].v3Initializer;
 
   const poolData = await client.readContract({
     abi: LockableUniswapV3InitializerABI,
-    address: lockableV3Initializer,
+    address: lockableV3Initializer as Address,
     functionName: "getState",
     args: [poolAddress],
   });

@@ -1,6 +1,5 @@
 {
   "compilerOptions": {
-    "baseUrl": ".",
     // Type checking
     "strict": true,
     "noUncheckedIndexedAccess": true,
@@ -20,12 +19,7 @@
     "target": "ES2022",
 
     // Skip type checking for node modules
-    "skipLibCheck": true,
-
-    "paths": {
-      "@app": ["src"],
-      "@app/*": ["src/*"]
-    }
+    "skipLibCheck": true
   },
   "include": ["./**/*.ts"],
   "exclude": ["node_modules"]

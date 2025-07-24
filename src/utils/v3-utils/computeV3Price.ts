@@ -1,4 +1,4 @@
-import { PriceService } from "@app/core/pricing";
+import { PriceService } from "../../core/pricing";
 
 export const computeV3Price = ({
   sqrtPriceX96,

@@ -1,4 +1,4 @@
-import { UniswapV2PairABI } from "@app/abis";
+import { UniswapV2PairABI } from "../../abis";
 import { Context } from "ponder:registry";
 import { Hex } from "viem";
 

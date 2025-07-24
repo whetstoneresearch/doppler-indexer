@@ -1,10 +1,9 @@
 import { ponder } from "ponder:registry";
+import { ethPrice } from "ponder:schema";
+import { ChainlinkOracleABI } from "../abis/ChainlinkOracleABI";
+import { ORACLE_ADDRESSES } from "../config/const";
 import { refreshActivePoolsBlob } from "./shared/scheduledJobs";
-import { configs } from "addresses";
-import { ChainlinkOracleABI } from "@app/abis/ChainlinkOracleABI";
-import { ethPrice } from "ponder.schema";
 import { handlePendingTokenImages } from "./shared/process-pending-images";
-import { refreshCheckpointBlob } from "./shared/entities/v4-entities/v4CheckpointBlob";
 
 /**
 * Block handlers that run periodically to ensure volume data and metrics are up-to-date
@@ -22,20 +21,22 @@ ponder.on("MetricRefresher:block", async ({ event, context }) => {
   }
 });
 
-ponder.on("V4CheckpointsRefresher:block", async ({ event, context }) => {
-  await refreshCheckpointBlob({
-    context,
-    timestamp: Number(event.block.timestamp),
-  });
-});
+// TODO: add back when sepolia is setup
+// ponder.on("V4CheckpointsRefresher:block", async ({ event, context }) => {
+//   await refreshCheckpointBlob({
+//     context,
+//     timestamp: Number(event.block.timestamp),
+//   });
+// });
 
 ponder.on("ChainlinkEthPriceFeed:block", async ({ event, context }) => {
-  const { db, client, chain } = context;
+  const { db, client } = context;
   const { timestamp } = event.block;
 
+  const chainlinkEth = ORACLE_ADDRESSES.chainlinkEth;
   const latestAnswer = await client.readContract({
     abi: ChainlinkOracleABI,
-    address: configs[chain.name].oracle.chainlinkEth,
+    address: chainlinkEth,
     functionName: "latestAnswer",
   });
 

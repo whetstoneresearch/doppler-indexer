@@ -1,210 +1,177 @@
-import { createConfig, factory } from "ponder";
-import { getAbiItem, http } from "viem";
-import {
-  UniswapV3InitializerABI,
-  UniswapV4InitializerABI,
-  UniswapV3PoolABI,
-  AirlockABI,
-  DERC20ABI,
-  DopplerABI,
-  PoolManagerABI,
-  UniswapV2PairABI,
-} from "./src/abis";
-import { BLOCK_INTERVALS } from "@app/config/blocks/intervals";
-import {
-  chainConfigs,
-  CHAIN_IDS,
-  V4_START_BLOCKS,
-  START_BLOCKS,
-} from "./src/config/chains";
-import { LockableUniswapV3InitializerABI } from "@app/abis/v3-abis/LockableUniswapV3InitializerABI";
-import { UniswapV3MigratorAbi } from "@app/abis/v3-abis/UniswapV3Migrator";
-import settings from "./settings";
-import { baseSepoliaDopplerChainConfig } from "./src/config/chains/baseSepolia";
+import { createConfig } from "ponder";
+import settings, { NetworkEnum } from "./src/settings";
+import { BlockName, ContractName } from "./src/config/types";
+import fs from "fs";
+import stringify from "json-stable-stringify";
+import { START_BLOCKS } from "./src/config/const";
+import { AirlockABI, DERC20ABI, DopplerABI, PoolManagerABI, UniswapV2PairABI, UniswapV3InitializerABI, UniswapV3PoolABI, UniswapV4InitializerABI, V4MigratorABI } from "./src/abis";
+import { generateBlocks, generateContractChains } from "./src/utils";
 
-const { unichain, baseSepolia, ink, base } = chainConfigs;
-
-const { enabledChains, dbSettings } = settings;
-
-export default createConfig({
-  database: dbSettings,
-  ordering: "multichain",
+const cfg = {
   chains: {
     mainnet: {
-      id: CHAIN_IDS.mainnet,
-      rpc: http(process.env.PONDER_RPC_URL_1),
-    },
-    unichain: {
-      id: CHAIN_IDS.unichain,
-      rpc: http(process.env.PONDER_RPC_URL_130),
-    },
-    ...(enabledChains.includes("baseSepolia")
-      ? { baseSepolia: baseSepoliaDopplerChainConfig.chain }
-      : {}),
-    ink: {
-      id: CHAIN_IDS.ink,
-      rpc: http(process.env.PONDER_RPC_URL_57073),
+      id: settings.mainnet.chainId,
+      rpc: settings.mainnet.rpc,
     },
     base: {
-      id: CHAIN_IDS.base,
-      rpc: http(process.env.PONDER_RPC_URL_8453),
+      id: settings.base.chainId,
+      rpc: settings.base.rpc,
+    },
+    unichain: {
+      id: settings.unichain.chainId,
+      rpc: settings.unichain.rpc,
+    },
+    ink: {
+      id: settings.ink.chainId,
+      rpc: settings.ink.rpc,
     },
   },
   blocks: {
-    ChainlinkEthPriceFeed: {
-      chain: "mainnet",
-      startBlock: START_BLOCKS.mainnet,
-      interval: BLOCK_INTERVALS.FIVE_MINUTES, // every 5 minutes
-    },
-    MetricRefresher: {
+    // mainnet required
+    [BlockName.ChainlinkEthPriceFeed]: {
       chain: {
-        ...(enabledChains.includes("baseSepolia")
-          ? {
-              baseSepolia: baseSepoliaDopplerChainConfig.metricRefresher,
-            }
-          : {}),
+        mainnet: {
+          startBlock: START_BLOCKS.mainnet,
+          interval: settings.interval,
+        },
       },
     },
-    V4CheckpointsRefresher: {
-      chain: {
-        ...(enabledChains.includes("baseSepolia")
-          ? {
-              baseSepolia: baseSepoliaDopplerChainConfig.metricV4CheckpointRefresher,
-            }
-          : {}),
-      },
-    },
-    PendingTokenImages: {
-      chain: {
-        // base: {
-        //   startBlock: base.startBlock,
-        //   interval: BLOCK_INTERVALS.THOUSAND_BLOCKS * 3, // Check every 3000 blocks
-        // },
-      },
-    },
+    [BlockName.MetricRefresher]: generateBlocks({
+      blockName: BlockName.MetricRefresher,
+      networks: [NetworkEnum.base, NetworkEnum.ink, NetworkEnum.unichain],
+    }),
+
+    [BlockName.PendingTokenImages]: generateBlocks({
+      blockName: BlockName.PendingTokenImages,
+      networks: [NetworkEnum.base],
+    }),
   },
   contracts: {
-    Airlock: {
+    [ContractName.Airlock]: {
       abi: AirlockABI,
-      chain: {
-        ...(enabledChains.includes("baseSepolia")
-          ? {
-              baseSepolia: baseSepoliaDopplerChainConfig.airlock,
-            }
-          : {}),
-      },
+      chain: generateContractChains({
+        contractName: ContractName.Airlock,
+        networks: [NetworkEnum.base, NetworkEnum.ink, NetworkEnum.unichain],
+      }),
     },
-    UniswapV3Initializer: {
+
+    [ContractName.UniswapV2Pair]: {
+      abi: UniswapV2PairABI,
+      chain: generateContractChains({
+        contractName: ContractName.UniswapV2Pair,
+        networks: [NetworkEnum.base, NetworkEnum.ink],
+      }),
+    },
+
+    [ContractName.UniswapV3Initializer]: {
       abi: UniswapV3InitializerABI,
-      chain: {
-        ...(enabledChains.includes("baseSepolia")
-          ? {
-              baseSepolia: baseSepoliaDopplerChainConfig.uniswapV3Initializer,
-            }
-          : {}),
-      },
+      chain: generateContractChains({
+        contractName: ContractName.UniswapV3Initializer,
+        networks: [NetworkEnum.base, NetworkEnum.ink, NetworkEnum.unichain],
+      }),
     },
-    UniswapV4Initializer: {
-      abi: UniswapV4InitializerABI,
-      chain: {
-        ...(enabledChains.includes("baseSepolia")
-          ? {
-              baseSepolia: baseSepoliaDopplerChainConfig.uniswapV4Initializer,
-            }
-          : {}),
-      },
-    },
-    DERC20: {
+
+    // [ContractName.UniswapV3MigrationPool]: {
+    //   abi: UniswapV3PoolABI,
+    //   chain: generateContractChains({
+    //     contractName: ContractName.UniswapV3MigrationPool,
+    //   }),
+    // },
+
+    [ContractName.DERC20]: {
       abi: DERC20ABI,
-      chain: {
-        ...(enabledChains.includes("baseSepolia")
-          ? { baseSepolia: baseSepoliaDopplerChainConfig.derc20 }
-          : {}),
-      },
+      chain: generateContractChains({
+        contractName: ContractName.DERC20,
+        networks: [NetworkEnum.base, NetworkEnum.ink, NetworkEnum.unichain],
+      }),
     },
-    UniswapV3MigrationPool: {
-      abi: UniswapV3PoolABI,
-      chain: {
-        ...(enabledChains.includes("baseSepolia")
-          ? {
-              baseSepolia: baseSepoliaDopplerChainConfig.uniswapV3Migrator,
-            }
-          : {}),
-      },
-    },
-    UniswapV3Migrator: {
-      abi: UniswapV3MigratorAbi,
-      chain: {
-        ...(enabledChains.includes("baseSepolia")
-          ? {
-              baseSepolia: baseSepoliaDopplerChainConfig.uniswapV3Migrator,
-            }
-          : {}),
-      },
-    },
-    UniswapV3Pool: {
-      abi: UniswapV3PoolABI,
-      chain: {
-        ...(enabledChains.includes("baseSepolia")
-          ? {
-              baseSepolia: baseSepoliaDopplerChainConfig.uniswapV3Pool,
-            }
-          : {}),
-      },
-    },
-    LockableUniswapV3Pool: {
-      abi: UniswapV3PoolABI,
-      chain: {
-        ...(enabledChains.includes("baseSepolia")
-          ? {
-              baseSepolia: baseSepoliaDopplerChainConfig.lockableUniswapV3Pool,
-            }
-          : {}),
-      },
-    },
-    UniswapV2Pair: {
-      abi: UniswapV2PairABI,
-      chain: {
-        ...(enabledChains.includes("baseSepolia")
-          ? {
-              baseSepolia: baseSepoliaDopplerChainConfig.uniswapV2Pair,
-            }
-          : {}),
-      },
-    },
-    UniswapV2PairUnichain: {
-      abi: UniswapV2PairABI,
-      chain: {},
-    },
-    PoolManager: {
+
+    [ContractName.PoolManager]: {
       abi: PoolManagerABI,
-      chain: {
-        ...(enabledChains.includes("baseSepolia")
-          ? {
-              baseSepolia: baseSepoliaDopplerChainConfig.poolManager,
-            }
-          : {}),
-      },
+      chain: generateContractChains({
+        contractName: ContractName.PoolManager,
+        networks: [NetworkEnum.base, NetworkEnum.ink, NetworkEnum.unichain],
+      }),
     },
-    UniswapV4Pool: {
+
+    [ContractName.UniswapV2PairUnichain]: {
+      abi: UniswapV2PairABI,
+      chain: generateContractChains({
+        contractName: ContractName.UniswapV2PairUnichain,
+        networks: [NetworkEnum.unichain],
+      }),
+    },
+    
+    [ContractName.UniswapV3Pool]: {
+      abi: UniswapV3PoolABI,
+      chain: generateContractChains({
+        contractName: ContractName.UniswapV3Pool,
+        networks: [NetworkEnum.base, NetworkEnum.ink, NetworkEnum.unichain],
+      }),
+    },
+    
+    [ContractName.UniswapV4Initializer]: {
+      abi: UniswapV4InitializerABI,
+      chain: generateContractChains({
+        contractName: ContractName.UniswapV4Initializer,
+        networks: [NetworkEnum.base, NetworkEnum.ink, NetworkEnum.unichain],
+      }),
+    },
+    
+    [ContractName.UniswapV4Pool]: {
       abi: DopplerABI,
-      chain: {
-        ...(enabledChains.includes("baseSepolia")
-          ? {
-              baseSepolia: baseSepoliaDopplerChainConfig.uniswapV4Pool,
-            }
-          : {}),
-      },
+      chain: generateContractChains({
+        contractName: ContractName.UniswapV4Pool,
+        networks: [NetworkEnum.base, NetworkEnum.ink, NetworkEnum.unichain],
+      }),
     },
-    LockableUniswapV3Initializer: {
-      abi: LockableUniswapV3InitializerABI,
-      chain: {
-        ...(enabledChains.includes("baseSepolia")
-          ? {
-              baseSepolia: baseSepoliaDopplerChainConfig.lockableUniswapV3Initializer,
-            }
-          : {}),
-      },
+
+    [ContractName.UniswapV4Initializer2]: {
+      abi: UniswapV4InitializerABI,
+      chain: generateContractChains({
+        contractName: ContractName.UniswapV4Initializer2,
+        networks: [NetworkEnum.base, NetworkEnum.ink],
+      }),
+    },
+
+    [ContractName.UniswapV4Pool2]: {
+      abi: DopplerABI,
+      chain: generateContractChains({
+        contractName: ContractName.UniswapV4Pool2,
+        networks: [NetworkEnum.base, NetworkEnum.ink],
+      }),
+    },
+
+    [ContractName.V4DERC20]: {
+      abi: DERC20ABI,
+      chain: generateContractChains({
+        contractName: ContractName.V4DERC20,
+        networks: [NetworkEnum.base, NetworkEnum.ink, NetworkEnum.unichain],
+      }),
+    },
+
+    [ContractName.V4DERC20_2]: {
+      abi: DERC20ABI,
+      chain: generateContractChains({
+        contractName: ContractName.V4DERC20_2,
+        networks: [NetworkEnum.base, NetworkEnum.ink],
+      }),
+    },
+
+    [ContractName.V4Migrator]: {
+      abi: V4MigratorABI,
+      chain: generateContractChains({
+        contractName: ContractName.V4Migrator,
+        networks: [NetworkEnum.base],
+      }),
     },
   },
-});
+};
+
+const cleanedCfg = JSON.parse(JSON.stringify(cfg, (key, value) => {
+  if (key === 'rpc') return undefined;
+  return value;
+}));
+fs.writeFileSync("ponder.config.json", stringify(cleanedCfg, { space: 2 }) as string);
+
+export default createConfig(cfg);

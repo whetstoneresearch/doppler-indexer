@@ -1,15 +1,13 @@
 import { Context } from "ponder:registry";
 import { activePoolsBlob, dailyVolume } from "ponder:schema";
-import { Address, formatEther } from "viem";
-import {
-  updateAsset,
-  updatePool,
-  updateToken,
-} from "@app/indexer/shared/entities";
+import { Address } from "viem";
 import { pool } from "ponder:schema";
-import { secondsInDay } from "@app/utils/constants";
-import { compute24HourPriceChange, updateDailyVolume } from "./timeseries";
-import { DayMetrics } from "./timeseries";
+import { secondsInDay } from "../../config/const";
+import { compute24HourPriceChange, DayMetrics, updateDailyVolume } from "./timeseries";
+import { updateAsset } from "./entities/asset";
+import { updatePool } from "./entities/pool";
+import { updateToken } from "./entities/token";
+
 interface ActivePools {
   [poolAddress: Address]: number;
 }
@@ -20,7 +18,7 @@ export const insertActivePoolsBlobIfNotExists = async ({
   context: Context;
 }) => {
   const { db, chain } = context;
-  const chainId = chain.id;
+  const chainId = chain!.id;
 
   const existingConfig = await db.find(activePoolsBlob, {
     chainId: BigInt(chainId),
@@ -44,7 +42,7 @@ export const updateActivePoolsBlob = async ({
   update?: Partial<typeof activePoolsBlob.$inferInsert>;
 }) => {
   const { db, chain } = context;
-  const chainId = chain.id;
+  const chainId = chain!.id;
 
   await db
     .update(activePoolsBlob, {
@@ -65,7 +63,7 @@ export const tryAddActivePool = async ({
   context: Context;
 }) => {
   const { db, chain } = context;
-  const chainId = chain.id;
+  const chainId = chain!.id;
 
   let existingData = await db.find(activePoolsBlob, {
     chainId: BigInt(chainId),
@@ -112,7 +110,7 @@ export const refreshActivePoolsBlob = async ({
   timestamp: number;
 }) => {
   const { db, chain } = context;
-  const chainId = chain.id;
+  const chainId = chain!.id;
 
   const existingBlob = await db.find(activePoolsBlob, {
     chainId: BigInt(chainId),
@@ -184,7 +182,7 @@ export const refreshActivePoolsBlob = async ({
 
       const newestMarketCapUsd = newestCheckpointTime
         ? BigInt(
-          volumeCheckpoints[newestCheckpointTime!.toString()]?.marketCapUsd ||
+          volumeCheckpoints[newestCheckpointTime.toString()]?.marketCapUsd ||
           "0"
         )
         : 0n;
