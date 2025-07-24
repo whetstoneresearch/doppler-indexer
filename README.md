@@ -17,8 +17,10 @@ MAINNET_RPC=""
 BASE_RPC=""
 INK_RPC=""
 UNICHAIN_RPC=""
-DATABASE_URL="" # postgres or sqlite db
 ENABLED_NETWORKS="base,ink,unichain"
+
+# postgres or sqlite db
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/default"
 ```
 
 ---
