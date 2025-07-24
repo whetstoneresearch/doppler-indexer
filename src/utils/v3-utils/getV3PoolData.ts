@@ -1,11 +1,11 @@
 import { Address } from "viem";
 import { Context } from "ponder:registry";
-import { computeV3Price } from "./computeV3Price";
-import { getMulticallOptions } from "../../core/utils";
-import { LockablePoolState, LockableV3PoolData, PoolState, V3PoolData } from "../../types/v3-types";
-import { UniswapV3PoolABI, DERC20ABI, UniswapV3InitializerABI, LockableUniswapV3InitializerABI } from "../../abis";
-import { L2Network } from "../../settings";
-import { addresses } from "../../config/addresses";
+import { computeV3Price } from "@app/utils/v3-utils/computeV3Price";
+import { getMulticallOptions } from "@app/core/utils";
+import { LockablePoolState, LockableV3PoolData, PoolState, V3PoolData } from "@app/types/v3-types";
+import { UniswapV3PoolABI, DERC20ABI, UniswapV3InitializerABI, LockableUniswapV3InitializerABI } from "@app/abis";
+import { L2Network } from "@app/settings";
+import { addresses } from "@app/config/addresses";
 
 export const getSlot0Data = async ({
   address,

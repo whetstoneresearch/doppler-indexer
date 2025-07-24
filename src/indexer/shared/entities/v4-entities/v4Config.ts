@@ -1,7 +1,7 @@
 import { Context } from "ponder:registry";
 import { v4PoolConfig } from "ponder:schema";
 import { Address } from "viem";
-import { getV4PoolConfig } from "../../../../utils/v4-utils/getV4PoolData";
+import { getV4PoolConfig } from "@app/utils/v4-utils/getV4PoolData";
 
 export const insertV4ConfigIfNotExists = async ({
   hookAddress,

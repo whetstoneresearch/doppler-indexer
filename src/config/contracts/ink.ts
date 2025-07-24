@@ -1,7 +1,7 @@
 import { factory } from "ponder";
 import { getAbiItem } from "viem";
-import { AirlockABI, UniswapV3InitializerABI, UniswapV4InitializerABI } from "../../abis";
-import { ContractName, ContractInfo } from "../types";
+import { AirlockABI, UniswapV3InitializerABI, UniswapV4InitializerABI } from "@app/abis";
+import { ContractName, ContractInfo } from "@app/config/types";
 
 const inkContracts = {
   [ContractName.Airlock]: {

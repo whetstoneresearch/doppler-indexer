@@ -2,7 +2,7 @@ import {
   COMMON_ADDRESSES,
 } from "./const";
 import { NetworkAddresses, NetworkConfig } from "./types";
-import settings from "../settings";
+import settings from "@app/settings";
 
 export const addresses: NetworkAddresses  = {
   v2Factory: "0xfe57A6BA1951F69aE2Ed4abe23e0f095DF500C04",

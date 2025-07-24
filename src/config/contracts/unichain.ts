@@ -1,9 +1,9 @@
 import { factory } from "ponder";
 import { getAbiItem } from "viem";
-import { UniswapV3InitializerABI, UniswapV4InitializerABI } from "../../abis";
-import { UniswapV2FactoryABI } from "../../abis/UniswapV2Factory";
-import { ContractName } from "../types";
-import { ContractInfo } from "../types";
+import { UniswapV3InitializerABI, UniswapV4InitializerABI } from "@app/abis";
+import { UniswapV2FactoryABI } from "@app/abis/UniswapV2Factory";
+import { ContractName } from "@app/config/types";
+import { ContractInfo } from "@app/config/types";
 
 const unichainContracts = {
   [ContractName.Airlock]: {

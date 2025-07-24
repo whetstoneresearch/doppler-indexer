@@ -1,12 +1,12 @@
 import { v2Pool } from "ponder:schema";
 import { Address } from "viem";
 import { Context } from "ponder:registry";
-import { getPairData } from "../../utils";
+import { getPairData } from "@app/indexer/utils";
 import { insertAssetIfNotExists } from "./asset";
 import { insertPoolIfNotExists } from "./pool";
-import { CHAINLINK_ETH_DECIMALS } from "../../../config/const";
-import { PriceService } from "../../../core/pricing/PriceService";
-import { fetchEthPrice } from "../oracle";
+import { CHAINLINK_ETH_DECIMALS } from "@app/config/const";
+import { PriceService } from "@app/core/pricing/PriceService";
+import { fetchEthPrice } from "@app/indexer/shared/oracle";
 
 export const insertV2PoolIfNotExists = async ({
   assetAddress,

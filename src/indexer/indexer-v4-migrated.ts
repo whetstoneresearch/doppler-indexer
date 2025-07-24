@@ -1,10 +1,10 @@
 import { Address } from "viem";
 import { ponder } from "ponder:registry";
 import { position } from "ponder:schema";
-import { CHAINLINK_ETH_DECIMALS } from "../config/const";
-import { SwapService, SwapOrchestrator } from "../core";
-import { computeDollarLiquidity } from "../utils/computeDollarLiquidity";
-import { computeV4Price } from "../utils/v4-utils/computeV4Price";
+import { CHAINLINK_ETH_DECIMALS } from "@app/config/const";
+import { SwapService, SwapOrchestrator } from "@app/core";
+import { computeDollarLiquidity } from "@app/utils/computeDollarLiquidity";
+import { computeV4Price } from "@app/utils/v4-utils/computeV4Price";
 import { updateAsset } from "./shared/entities/asset";
 import { updatePool } from "./shared/entities/pool";
 import { updatePosition, insertPositionIfNotExists } from "./shared/entities/position";
@@ -13,7 +13,7 @@ import { insertTokenIfNotExists } from "./shared/entities/token";
 import { fetchEthPrice } from "./shared/oracle";
 import { tryAddActivePool } from "./shared/scheduledJobs";
 import { compute24HourPriceChange, insertOrUpdateBuckets, insertOrUpdateDailyVolume } from "./shared/timeseries";
-import { addresses } from "../config/addresses";
+import { addresses } from "@app/config/addresses";
 import { fetchExistingV4Pool, updateV4Pool } from "./shared/entities/v4pools";
 
 // Track PoolManager Initialize events for pools created via V4Migrator

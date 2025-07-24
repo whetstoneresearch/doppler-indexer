@@ -4,7 +4,7 @@ import { Context } from "ponder:registry";
 import { updatePool } from "./entities/pool";
 import { updateToken } from "./entities/token";
 import { insertAssetIfNotExists, updateAsset } from "./entities/asset";
-import { CHAINLINK_ETH_DECIMALS, secondsInDay, secondsInHour, SHARED_ADDRESSES } from "../../config/const";
+import { CHAINLINK_ETH_DECIMALS, secondsInDay, secondsInHour, SHARED_ADDRESSES } from "@app/config/const";
 
 export interface DayMetrics {
   volumeUsd: bigint;

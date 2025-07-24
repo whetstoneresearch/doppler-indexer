@@ -1,7 +1,7 @@
 import { Context } from "ponder:registry";
 import { Address, Hex } from "viem";
-import { AirlockABI, UniswapV2PairABI } from "../abis";
-import { SHARED_ADDRESSES } from "../config/const";
+import { AirlockABI, UniswapV2PairABI } from "@app/abis";
+import { SHARED_ADDRESSES } from "@app/config/const";
 
 export const getPairData = async ({
   address,

@@ -1,7 +1,7 @@
 import { ponder } from "ponder:registry";
 import { ethPrice } from "ponder:schema";
-import { ChainlinkOracleABI } from "../abis/ChainlinkOracleABI";
-import { ORACLE_ADDRESSES } from "../config/const";
+import { ChainlinkOracleABI } from "@app/abis/ChainlinkOracleABI";
+import { ORACLE_ADDRESSES } from "@app/config/const";
 import { refreshActivePoolsBlob } from "./shared/scheduledJobs";
 import { handlePendingTokenImages } from "./shared/process-pending-images";
 

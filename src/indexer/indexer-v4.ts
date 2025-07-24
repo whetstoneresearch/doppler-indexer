@@ -1,10 +1,10 @@
 import { TickMath } from "@uniswap/v3-sdk";
 import { ponder } from "ponder:registry";
-import { CHAINLINK_ETH_DECIMALS } from "../config/const";
-import { SwapService, PriceService, SwapOrchestrator } from "../core";
-import { computeDollarLiquidity } from "../utils/computeDollarLiquidity";
-import { computeGraduationPercentage } from "../utils/v4-utils";
-import { getReservesV4, getV4PoolData } from "../utils/v4-utils/getV4PoolData";
+import { CHAINLINK_ETH_DECIMALS } from "@app/config/const";
+import { SwapService, PriceService, SwapOrchestrator } from "@app/core";
+import { computeDollarLiquidity } from "@app/utils/computeDollarLiquidity";
+import { computeGraduationPercentage } from "@app/utils/v4-utils";
+import { getReservesV4, getV4PoolData } from "@app/utils/v4-utils/getV4PoolData";
 import { insertAssetIfNotExists, updateAsset } from "./shared/entities/asset";
 import { insertPoolIfNotExistsV4, updatePool } from "./shared/entities/pool";
 import { insertSwapIfNotExists } from "./shared/entities/swap";

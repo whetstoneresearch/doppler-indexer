@@ -1,4 +1,4 @@
-import { BlockName } from "../types";
+import { BlockName } from "@app/config/types";
 import { BlockConfig as PonderBlockConfig } from "ponder";
 
 const baseBlocks: Partial<

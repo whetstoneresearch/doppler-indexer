@@ -3,7 +3,7 @@ import { asset, pool } from "ponder:schema";
 import { insertAssetIfNotExists, updateAsset } from "./shared/entities/asset";
 import { insertV2MigrationPoolIfNotExists } from "./shared/entities/v2Pool";
 import { updatePool } from "./shared/entities/pool";
-import { addresses as allAddresses } from "../config/addresses";
+import { addresses as allAddresses } from "@app/config/addresses";
 import { insertTokenIfNotExists, updateToken } from "./shared/entities/token";
 import { insertUserIfNotExists, updateUser } from "./shared/entities/user";
 import { insertUserAssetIfNotExists, updateUserAsset } from "./shared/entities/userAsset";

@@ -1,5 +1,5 @@
 import { Abi } from "viem";
-import { Network } from "../settings";
+import { Network } from "@app/settings";
 import { factory, ContractConfig as PonderContractConfig } from "ponder";
 
 // YOU MUST USE THESE TYPES

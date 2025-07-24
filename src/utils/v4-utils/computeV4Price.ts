@@ -1,4 +1,4 @@
-import { PriceService } from "../../core/pricing";
+import { PriceService } from "@app/core/pricing";
 import { TickMath } from "@uniswap/v3-sdk";
 
 export const computeV4Price = ({

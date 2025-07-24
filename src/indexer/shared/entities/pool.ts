@@ -1,14 +1,14 @@
 import { Address } from "viem";
 import { pool } from "ponder:schema";
 import { Context } from "ponder:registry";
-import { DERC20ABI } from "../../../abis";
-import { COMMON_ADDRESSES, SHARED_ADDRESSES } from "../../../config/const";
-import { computeMarketCap } from "../oracle";
-import { V4PoolData } from "../../../types/v4-types";
-import { getV3PoolData } from "../../../utils/v3-utils/getV3PoolData";
-import { getReservesV4 } from "../../../utils/v4-utils/getV4PoolData";
-import { computeDollarLiquidity } from "../../../utils/computeDollarLiquidity";
-import { computeGraduationPercentage } from "../../../utils/v4-utils";
+import { DERC20ABI } from "@app/abis";
+import { COMMON_ADDRESSES, SHARED_ADDRESSES } from "@app/config/const";
+import { computeMarketCap } from "@app/indexer/shared/oracle";
+import { V4PoolData } from "@app/types/v4-types";
+import { getV3PoolData } from "@app/utils/v3-utils/getV3PoolData";
+import { getReservesV4 } from "@app/utils/v4-utils/getV4PoolData";
+import { computeDollarLiquidity } from "@app/utils/computeDollarLiquidity";
+import { computeGraduationPercentage } from "@app/utils/v4-utils";
 
 // export const fetchExistingPool = async ({
 //   poolAddress,

@@ -2,7 +2,7 @@ import {
   COMMON_ADDRESSES,
 } from "./const";
 import { NetworkAddresses, NetworkConfig } from "./types";
-import settings from "../settings";
+import settings from "@app/settings";
 import { Address } from "viem";
 
 export const addresses: NetworkAddresses = {

@@ -3,9 +3,9 @@ import {
   AirlockABI,
   UniswapV3InitializerABI,
   UniswapV4InitializerABI,
-} from "../../abis";
+} from "@app/abis";
 import { getAbiItem } from "viem";
-import { ContractName, ContractInfo } from "../types";
+import { ContractName, ContractInfo } from "@app/config/types";
 
 const baseContracts = {
   [ContractName.Airlock]: {

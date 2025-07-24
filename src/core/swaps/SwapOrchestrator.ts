@@ -1,7 +1,7 @@
 import { Address } from "viem";
 import { Context } from "ponder:registry";
 import { SwapService, SwapData, MarketMetrics } from "./SwapService";
-import { SwapType } from "../../types/shared";
+import { SwapType } from "@app/types/shared";
 
 /**
  * Orchestrates all entity updates required after a swap

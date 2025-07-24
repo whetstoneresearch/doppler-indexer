@@ -1,4 +1,4 @@
-import settings from "../settings";
+import settings from "@app/settings";
 import {
   BLOCK_INTERVALS,
   START_BLOCKS,

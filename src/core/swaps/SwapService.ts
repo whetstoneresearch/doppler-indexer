@@ -1,6 +1,6 @@
 import { Address } from "viem";
-import { SwapType } from "../../types/shared";
-import { MarketDataService } from "../market";
+import { SwapType } from "@app/types/shared";
+import { MarketDataService } from "@app/core/market";
 
 /**
  * Common swap data structure across all protocols

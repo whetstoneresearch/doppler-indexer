@@ -1,8 +1,8 @@
 import { Hex } from "viem";
 import { Context } from "ponder:registry";
-import { AssetData } from "../types/shared";
-import { AirlockABI } from "../abis/AirlockABI";
-import { SHARED_ADDRESSES } from "../config/const";
+import { AssetData } from "@app/types/shared";
+import { AirlockABI } from "@app/abis/AirlockABI";
+import { SHARED_ADDRESSES } from "@app/config/const";
 
 export const getAssetData = async (
   assetTokenAddr: Hex,

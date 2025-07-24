@@ -1,8 +1,8 @@
 import { ponder } from "ponder:registry";
 import { v2Pool } from "ponder:schema";
 import { zeroAddress } from "viem";
-import { CHAINLINK_ETH_DECIMALS, SHARED_ADDRESSES } from "../config/const";
-import { SwapService, PriceService, SwapOrchestrator } from "../core";
+import { CHAINLINK_ETH_DECIMALS, SHARED_ADDRESSES } from "@app/config/const";
+import { SwapService, PriceService, SwapOrchestrator } from "@app/core";
 import { updateAsset } from "./shared/entities/asset";
 import { insertPoolIfNotExists, updatePool } from "./shared/entities/pool";
 import { insertTokenIfNotExists } from "./shared/entities/token";

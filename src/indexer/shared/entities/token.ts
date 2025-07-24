@@ -1,7 +1,7 @@
 import { Context } from "ponder:registry";
 import { token } from "ponder:schema";
 import { Address, zeroAddress } from "viem";
-import { DERC20ABI } from "../../../abis";
+import { DERC20ABI } from "@app/abis";
 // Token entity management
 
 export const insertTokenIfNotExists = async ({

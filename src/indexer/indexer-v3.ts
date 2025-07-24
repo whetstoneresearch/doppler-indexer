@@ -1,8 +1,8 @@
 import { ponder } from "ponder:registry";
-// import { CHAINLINK_ETH_DECIMALS } from "../config/const";
-// import { PriceService, SwapService, SwapOrchestrator } from "../core";
-// import { computeDollarLiquidity } from "../utils/computeDollarLiquidity";
-// import { computeGraduationThresholdDelta } from "../utils/v3-utils/computeGraduationThreshold";
+// import { CHAINLINK_ETH_DECIMALS } from "@app/config/const";
+// import { PriceService, SwapService, SwapOrchestrator } from "@app/core";
+// import { computeDollarLiquidity } from "@app/utils/computeDollarLiquidity";
+// import { computeGraduationThresholdDelta } from "@app/utils/v3-utils/computeGraduationThreshold";
 // import { insertAssetIfNotExists, updateAsset } from "./shared/entities/asset";
 // import { insertPoolIfNotExists, updatePool } from "./shared/entities/pool";
 // import { fetchEthPrice, computeMarketCap } from "./shared/oracle";

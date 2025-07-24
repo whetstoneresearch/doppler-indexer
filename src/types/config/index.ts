@@ -1,9 +1,9 @@
 import { Address, HttpTransport } from "viem";
-import { V2Addresses } from "../v2-types";
-import { V3Addresses } from "../v3-types";
-import { V4Addresses } from "../v4-types";
+import { V2Addresses } from "@app/types/v2-types";
+import { V3Addresses } from "@app/types/v3-types";
+import { V4Addresses } from "@app/types/v4-types";
 import { ChainConfig as PonderChainConfig, BlockConfig as PonderBlockConfig, ContractConfig as PonderContractConfig } from "ponder";
-import { Network } from "../../settings";
+import { Network } from "@app/settings";
 
 /**
  * Chain configuration

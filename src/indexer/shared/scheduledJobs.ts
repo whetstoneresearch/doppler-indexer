@@ -2,7 +2,7 @@ import { Context } from "ponder:registry";
 import { activePoolsBlob, dailyVolume } from "ponder:schema";
 import { Address } from "viem";
 import { pool } from "ponder:schema";
-import { secondsInDay } from "../../config/const";
+import { secondsInDay } from "@app/config/const";
 import { compute24HourPriceChange, DayMetrics, updateDailyVolume } from "./timeseries";
 import { updateAsset } from "./entities/asset";
 import { updatePool } from "./entities/pool";

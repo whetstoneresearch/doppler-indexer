@@ -1,4 +1,4 @@
-import settings from "../settings";
+import settings from "@app/settings";
 import { START_BLOCKS } from "./const";
 import { Address } from "viem";
 

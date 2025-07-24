@@ -1,5 +1,5 @@
-import { CHAINLINK_ETH_DECIMALS, WAD } from "../../config/const";
-import { PriceService } from "../pricing";
+import { CHAINLINK_ETH_DECIMALS, WAD } from "@app/config/const";
+import { PriceService } from "@app/core/pricing";
 
 
 /**

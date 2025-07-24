@@ -1,4 +1,4 @@
-import { Network } from "../settings";
+import { Network } from "@app/settings";
 
 export const SECONDS_IN_DAY = 86400;
 

@@ -1,13 +1,13 @@
 import { v4CheckpointBlob, pool } from "ponder:schema";
 import { Address } from "viem";
-import { PriceService } from "../../../../core";
-import { PoolKey } from "../../../../types";
-import { computeDollarLiquidity } from "../../../../utils/computeDollarLiquidity";
-import { getLatestSqrtPrice } from "../../../../utils/v4-utils/getV4PoolData";
-import { fetchEthPrice, computeMarketCap } from "../../oracle";
-import { updateAsset } from "../asset";
-import { updatePool } from "../pool";
-import { addAndUpdateV4PoolPriceHistory } from "./v4PoolPriceHistory";
+import { PriceService } from "@app/core";
+import { PoolKey } from "@app/types";
+import { computeDollarLiquidity } from "@app/utils/computeDollarLiquidity";
+import { getLatestSqrtPrice } from "@app/utils/v4-utils/getV4PoolData";
+import { fetchEthPrice, computeMarketCap } from "@app/indexer/shared/oracle";
+import { updateAsset } from "@app/indexer/shared/entities/asset";
+import { updatePool } from "@app/indexer/shared/entities/pool";
+import { addAndUpdateV4PoolPriceHistory } from "@app/indexer/shared/entities/v4-entities/v4PoolPriceHistory";
 import { Context } from "ponder:registry";
 
 interface V4PoolCheckpoint {

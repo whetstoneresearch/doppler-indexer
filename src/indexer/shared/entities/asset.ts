@@ -1,7 +1,7 @@
 import { Context } from "ponder:registry";
 import { asset } from "ponder:schema";
 import { Address } from "viem";
-import { getAssetData } from "../../utils";
+import { getAssetData } from "@app/indexer/utils";
 
 export const insertAssetIfNotExists = async ({
   assetAddress,

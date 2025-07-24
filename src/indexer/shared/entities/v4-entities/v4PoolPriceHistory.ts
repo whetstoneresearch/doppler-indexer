@@ -1,7 +1,7 @@
 import { Context } from "ponder:registry";
 import { v4PoolPriceHistory } from "ponder:schema";
 import { Address, formatEther } from "viem";
-import { updatePool } from "../pool";
+import { updatePool } from "@app/indexer/shared/entities/pool";
 
 export const insertV4PoolPriceHistoryIfNotExists = async ({
   pool,

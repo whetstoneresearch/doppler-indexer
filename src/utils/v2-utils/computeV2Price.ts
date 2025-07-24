@@ -1,4 +1,4 @@
-import { PriceService } from   "../../core/pricing";
+import { PriceService } from "@app/core/pricing";
 
 export const computeV2Price = ({
   assetBalance,

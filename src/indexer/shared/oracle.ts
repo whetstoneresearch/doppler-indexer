@@ -1,6 +1,6 @@
 import { ethPrice } from "ponder:schema";
 import { Context } from "ponder:registry";
-import { MarketDataService } from "../../core/market/MarketDataService";
+import { MarketDataService } from "@app/core/market/MarketDataService";
 
 export const fetchEthPrice = async (
   timestamp: bigint,
