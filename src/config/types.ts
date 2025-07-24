@@ -40,7 +40,6 @@ export enum ContractName {
   V4DERC20 = "V4DERC20",
   V4DERC20_2 = "V4DERC20_2",
   V4Migrator = "V4Migrator",
-  UniswapV3Migrator = "UniswapV3Migrator",
 }
 
 export type DopplerAddresses =
@@ -55,7 +54,6 @@ export type DopplerAddresses =
   | "v4Initializer"
   | "v4Migrator"
   | "v4MigratorHook"
-  | "v3Migrator"
 
 type Address = PonderContractConfig["address"];
 export type NetworkAddresses = Record<DopplerAddresses, Address>;

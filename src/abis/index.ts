@@ -1,5 +1,5 @@
 // v3 abis
-export { UniswapV3InitializerABI, UniswapV3PoolABI, LockableUniswapV3InitializerABI, UniswapV3MigratorABI } from "./v3-abis";
+export { UniswapV3InitializerABI, UniswapV3PoolABI, LockableUniswapV3InitializerABI } from "./v3-abis";
 
 // v4 abis
 export {
