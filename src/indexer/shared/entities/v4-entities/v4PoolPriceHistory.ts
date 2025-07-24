@@ -65,7 +65,6 @@ export const addAndUpdateV4PoolPriceHistory = async ({
   const earliestMarketCap = filteredHistory[earliestTimestamp];
 
   // compute the 24hour price change using marketCap and earliestTimestamp
-
   const dayChangeUsd =
     !earliestMarketCap || earliestMarketCap === 0n
       ? 0

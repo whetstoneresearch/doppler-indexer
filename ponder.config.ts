@@ -8,6 +8,7 @@ import { AirlockABI, DERC20ABI, DopplerABI, PoolManagerABI, UniswapV2PairABI, Un
 import { generateBlocks, generateContractChains } from "./src/utils";
 
 const cfg = {
+  ordering: "multichain" as const,
   chains: {
     mainnet: {
       id: settings.mainnet.chainId,
