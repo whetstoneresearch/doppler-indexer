@@ -26,7 +26,7 @@ DATABASE_URL="postgresql://postgres:postgres@localhost:5432/default"
 ---
 
 ### Database
-Ponder can run with postgres of sqlite db. Start your own local postgres db
+Ponder can run with postgres or sqlite db. Start your own local postgres db
 ```bash
 docker-compose -f docker-compose.yml up -d doppler-indexer-database
 ```
