@@ -1,5 +1,16 @@
 # Doppler Protocol Indexer 🚀
 
+## Disclaimer 
+This repository is under active devlopment and not yet officially supported.
+
+In the meantime, please use the [doppler-indexer](https://github.com/whetstoneresearch/doppler-sdk/tree/main/packages/doppler-v3-indexer) released in the [sdk monorepo](https://github.com/whetstoneresearch/doppler-sdk).
+
+Although it is currently named "doppler-v3-indexer" it supports indexing both Doppler v3 and v4 tokens. 
+
+We will update this README when it is ready for use. 
+
+<hr/>
+
 ### Getting Started
 run:
 ```bash
