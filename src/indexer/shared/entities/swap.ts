@@ -1,5 +1,5 @@
 import { Context } from "ponder:registry";
-import { swap } from "ponder:schema";
+import { swap } from "ponder.schema";
 import { Address } from "viem";
 
 export const insertSwapIfNotExists = async ({

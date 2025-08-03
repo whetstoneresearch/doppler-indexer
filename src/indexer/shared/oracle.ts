@@ -1,6 +1,12 @@
-import { ethPrice } from "ponder:schema";
+import { ethPrice } from "ponder.schema";
 import { Context } from "ponder:registry";
-import { MarketDataService } from "@app/core/market/MarketDataService";
+import { and, gte, lte } from "drizzle-orm";
+import { Address } from "viem";
+import { CHAINLINK_ETH_DECIMALS } from "@app/utils/constants";
+import { updateAsset } from "./entities/asset";
+import { DERC20ABI } from "@app/abis";
+import { updatePool } from "./entities/pool";
+import { MarketDataService } from "@app/core";
 
 export const fetchEthPrice = async (
   timestamp: bigint,

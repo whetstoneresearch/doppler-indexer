@@ -1,4 +1,4 @@
-import { Q192, WAD } from "@app/config/const";
+import { Q192, WAD } from "@app/utils/constants";
 
 /**
  * Core price calculation service that provides protocol-agnostic price computations

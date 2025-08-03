@@ -1,5 +1,5 @@
 import { Context } from "ponder:registry";
-import { user } from "ponder:schema";
+import { user } from "ponder.schema";
 import { Address } from "viem";
 
 export const insertUserIfNotExists = async ({

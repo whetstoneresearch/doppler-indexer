@@ -1,12 +1,12 @@
 import { v2Pool } from "ponder:schema";
 import { Address } from "viem";
 import { Context } from "ponder:registry";
-import { getPairData } from "@app/indexer/utils";
+import { getPairData } from "@app/utils/v2-utils/getPairData";
 import { insertAssetIfNotExists } from "./asset";
+import { PriceService } from "@app/core";
+import { fetchEthPrice } from "../oracle";
+import { CHAINLINK_ETH_DECIMALS } from "@app/utils/constants";
 import { insertPoolIfNotExists } from "./pool";
-import { CHAINLINK_ETH_DECIMALS } from "@app/config/const";
-import { PriceService } from "@app/core/pricing/PriceService";
-import { fetchEthPrice } from "@app/indexer/shared/oracle";
 
 export const insertV2PoolIfNotExists = async ({
   assetAddress,
@@ -67,12 +67,12 @@ export const insertV2PoolIfNotExists = async ({
 
   return await db.insert(v2Pool).values({
     address: migrationPoolAddr,
-    chainId: BigInt(chain!.id),
+    chainId: BigInt(chain.id),
     baseToken: assetId,
     quoteToken: numeraireId,
     reserveBaseToken: isToken0 ? reserve0 : reserve1,
     reserveQuoteToken: isToken0 ? reserve1 : reserve0,
-    price: BigInt(dollarPrice),
+    price: dollarPrice,
     v3Pool: poolAddr,
     parentPool: poolAddr,
     totalFeeBaseToken: 0n,
@@ -162,7 +162,7 @@ export const insertV2MigrationPoolIfNotExists = async ({
 
   return await db.insert(v2Pool).values({
     address: migrationPoolAddr,
-    chainId: BigInt(chain!.id),
+    chainId: BigInt(chain.id),
     baseToken: assetId,
     quoteToken: numeraireId,
     reserveBaseToken: isToken0 ? reserve0 : reserve1,

@@ -1,8 +1,7 @@
-import { Context } from "ponder:registry";
-import { token } from "ponder:schema";
-import { Address, zeroAddress } from "viem";
 import { DERC20ABI } from "@app/abis";
-// Token entity management
+import { token } from "ponder.schema";
+import { Context } from "ponder:registry";
+import { Address, zeroAddress } from "viem";
 
 export const insertTokenIfNotExists = async ({
   tokenAddress,
@@ -21,13 +20,12 @@ export const insertTokenIfNotExists = async ({
 }): Promise<typeof token.$inferSelect> => {
   const { db, chain } = context;
 
-  const multiCallAddress = {};
-  // TODO: add back when types are sorted
-  // if (chain.name == "ink") {
-  //   multiCallAddress = {
-  //     multicallAddress: "0xcA11bde05977b3631167028862bE2a173976CA11",
-  //   };
-  // }
+  let multiCallAddress = {};
+  if (chain.name == "ink") {
+    multiCallAddress = {
+      multicallAddress: "0xcA11bde05977b3631167028862bE2a173976CA11",
+    };
+  }
   const address = tokenAddress.toLowerCase() as `0x${string}`;
 
   const existingToken = await db.find(token, {
@@ -42,7 +40,7 @@ export const insertTokenIfNotExists = async ({
     return existingToken;
   }
 
-  const chainId = BigInt(chain!.id);
+  const chainId = BigInt(chain.id);
 
   // ignore pool field for native tokens
   if (address == zeroAddress) {
@@ -96,89 +94,6 @@ export const insertTokenIfNotExists = async ({
       ...multiCallAddress,
     });
 
-    const tokenURI = tokenURIResult?.result;
-    let tokenUriData;
-    let image: string | undefined;
-    // if (tokenURI?.startsWith("ipfs://")) {
-    //   try {
-    //     if (
-    //       !tokenURI.startsWith("ipfs://") &&
-    //       !tokenURI.startsWith("http://") &&
-    //       !tokenURI.startsWith("https://")
-    //     ) {
-    //       console.error(`Invalid tokenURI for token ${address}: ${tokenURI}`);
-    //     }
-    //     const cid = tokenURI.replace("ipfs://", "");
-    //     const url = `https://${process.env.PINATA_GATEWAY_URL}/ipfs/${cid}?pinataGatewayToken=${process.env.PINATA_GATEWAY_KEY}`;
-    //     const response = await fetch(url);
-    //     tokenUriData = await response.json();
-
-    //     if (
-    //       tokenUriData &&
-    //       typeof tokenUriData === "object" &&
-    //       "image" in tokenUriData &&
-    //       typeof tokenUriData.image === "string"
-    //     ) {
-    //       if (tokenUriData.image.startsWith("ipfs://")) {
-    //         image = tokenUriData.image;
-    //       }
-    //     } else if (
-    //       tokenUriData &&
-    //       typeof tokenUriData === "object" &&
-    //       "image_hash" in tokenUriData &&
-    //       typeof tokenUriData.image_hash === "string"
-    //     ) {
-    //       if (tokenUriData.image_hash.startsWith("ipfs://")) {
-    //         image = tokenUriData.image_hash;
-    //       }
-    //     }
-    //   } catch (error) {
-    //     console.error(
-    //       `Failed to fetch IPFS metadata for token ${address}:`,
-    //       error
-    //     );
-    //   }
-    // } else if (tokenURI?.includes("ohara")) {
-    //   try {
-    //     const url = tokenURI;
-    //     const response = await fetch(url);
-    //     tokenUriData = await response.json();
-
-    //     if (
-    //       tokenUriData &&
-    //       typeof tokenUriData === "object" &&
-    //       "image" in tokenUriData &&
-    //       typeof tokenUriData.image === "string"
-    //     ) {
-    //       if (tokenUriData.image.startsWith("https://")) {
-    //         image = tokenUriData.image;
-    //       }
-    //     } else {
-    //       // Add to pending list for retry
-    //       await addPendingTokenImage({
-    //         context,
-    //         chainId,
-    //         tokenAddress: address,
-    //         tokenURI,
-    //         timestamp: Number(timestamp),
-    //       });
-    //     }
-    //   } catch (error) {
-    //     console.error(
-    //       `Failed to fetch ohara metadata for token ${address}:`,
-    //       error
-    //     );
-    //     // Add to pending list for retry
-    //     await addPendingTokenImage({
-    //       context,
-    //       chainId,
-    //       tokenAddress: address,
-    //       tokenURI,
-    //       timestamp: Number(timestamp),
-    //     });
-    //   }
-    // }
-
     return await context.db
       .insert(token)
       .values({
@@ -192,8 +107,7 @@ export const insertTokenIfNotExists = async ({
         firstSeenAt: timestamp,
         lastSeenAt: timestamp,
         isDerc20,
-        image,
-        tokenUriData,
+        tokenUri: tokenURIResult.result ?? undefined,
         pool: isDerc20 ? poolAddress : undefined,
         derc20Data: isDerc20 ? address : undefined,
       })

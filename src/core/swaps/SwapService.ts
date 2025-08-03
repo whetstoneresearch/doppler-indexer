@@ -42,8 +42,9 @@ export class SwapService {
   static determineSwapType(params: {
     isToken0: boolean;
     amount0: bigint;
+    amount1: bigint;
   }): SwapType {
-    const { isToken0, amount0 } = params;
+    const { isToken0, amount0, amount1 } = params;
 
     // For V2/V3: positive amount means tokens going in (swap input)
     // If asset is token0 and amount0 is positive, user is buying with token0
@@ -53,7 +54,10 @@ export class SwapService {
       return "sell";
     } else if (!isToken0 && amount0 < 0n) {
       return "sell";
+    } else if (!isToken0 && amount0 < 0n) {
+      return "buy";
     }
+
     // Default case (shouldn't happen in practice)
     return "buy";
   }

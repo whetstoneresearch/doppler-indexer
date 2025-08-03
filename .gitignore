@@ -1,16 +1,2 @@
-*.log
-.DS_Store
-.turbo
-node_modules
-dist
-yarn.lock
-.ponder
-generated
-
 .env
-*.env
-*.env.local
-*.env.development
-*.env.production
-*.env.test
-!.env.example
+.env.local

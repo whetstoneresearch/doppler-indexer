@@ -1,7 +1,7 @@
 import { Context } from "ponder:registry";
 import { asset } from "ponder:schema";
 import { Address } from "viem";
-import { getAssetData } from "@app/indexer/utils";
+import { getAssetData } from "@app/utils/getAssetData";
 
 export const insertAssetIfNotExists = async ({
   assetAddress,
@@ -25,7 +25,7 @@ export const insertAssetIfNotExists = async ({
     return existingAsset;
   }
 
-  const chainId = BigInt(chain!.id);
+  const chainId = BigInt(chain.id);
   const assetData = await getAssetData(assetAddress, context);
 
   const poolAddress = assetData.pool.toLowerCase() as `0x${string}`;

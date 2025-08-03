@@ -1,14 +1,14 @@
-import { v4CheckpointBlob, pool } from "ponder:schema";
-import { Address } from "viem";
-import { PriceService } from "@app/core";
-import { PoolKey } from "@app/types";
-import { computeDollarLiquidity } from "@app/utils/computeDollarLiquidity";
-import { getLatestSqrtPrice } from "@app/utils/v4-utils/getV4PoolData";
-import { fetchEthPrice, computeMarketCap } from "@app/indexer/shared/oracle";
-import { updateAsset } from "@app/indexer/shared/entities/asset";
-import { updatePool } from "@app/indexer/shared/entities/pool";
-import { addAndUpdateV4PoolPriceHistory } from "@app/indexer/shared/entities/v4-entities/v4PoolPriceHistory";
 import { Context } from "ponder:registry";
+import { v4CheckpointBlob } from "ponder:schema";
+import { Address, parseEther } from "viem";
+import { getLatestSqrtPrice } from "@app/utils/v4-utils/getV4PoolData";
+import { PoolKey } from "@app/types/v4-types";
+import { PriceService } from "@app/core";
+import { computeMarketCap, fetchEthPrice } from "../../oracle";
+import { insertAssetIfNotExists, updateAsset, updatePool } from "..";
+import { pool } from "ponder:schema";
+import { computeDollarLiquidity } from "@app/utils/computeDollarLiquidity";
+import { addAndUpdateV4PoolPriceHistory } from "./v4PoolPriceHistory";
 
 interface V4PoolCheckpoint {
   [poolAddress: Address]: Checkpoint;
@@ -31,7 +31,7 @@ export const insertCheckpointBlobIfNotExist = async ({
   context: Context;
 }) => {
   const { db, chain } = context;
-  const chainId = chain!.id;
+  const chainId = chain.id;
 
   const existingConfig = await db.find(v4CheckpointBlob, {
     chainId,
@@ -55,7 +55,7 @@ export const updateCheckpointBlob = async ({
   update?: Partial<typeof v4CheckpointBlob.$inferInsert>;
 }) => {
   const { db, chain } = context;
-  const chainId = chain!.id;
+  const chainId = chain.id;
 
   await db
     .update(v4CheckpointBlob, {
@@ -88,7 +88,7 @@ export const addCheckpoint = async ({
   context: Context;
 }) => {
   const { db, chain } = context;
-  const chainId = chain!.id;
+  const chainId = chain.id;
 
   const checkpointWithoutBigInts = {
     poolKey,
@@ -146,7 +146,7 @@ export const refreshCheckpointBlob = async ({
   timestamp: number;
 }) => {
   const { db, chain } = context;
-  const chainId = chain!.id;
+  const chainId = chain.id;
 
   const existingData = await db.find(v4CheckpointBlob, {
     chainId,
@@ -203,7 +203,7 @@ export const refreshCheckpointBlob = async ({
 
   const updates = await Promise.all(
     poolsToRefresh.map(async (poolAddress) => {
-      const checkpoint = checkpoints[poolAddress];
+      const checkpoint = checkpoints[poolAddress as Address];
 
       if (!checkpoint) {
         throw new Error("Checkpoint not found");
@@ -226,7 +226,7 @@ export const refreshCheckpointBlob = async ({
         amount1 = result.amount1;
       } catch (error) {
         // remove it from the list of pools to refresh
-        delete updatedCheckpoints[poolAddress];
+        delete updatedCheckpoints[poolAddress as Address];
         console.info(
           `Error getting latest sqrt price, removing pool ${poolAddress} from refresh list`
         );

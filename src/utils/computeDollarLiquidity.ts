@@ -1,4 +1,4 @@
-import { MarketDataService } from "@app/core/market";
+import { MarketDataService } from "@app/core";
 
 export const computeDollarLiquidity = ({
   assetBalance,

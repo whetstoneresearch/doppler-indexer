@@ -1,14 +1,9 @@
 {
   "compilerOptions": {
+    "baseUrl": ".",
     // Type checking
     "strict": true,
     "noUncheckedIndexedAccess": true,
-
-    "baseUrl": ".",
-    "paths": {
-      "@app": ["./src"],
-      "@app/*": ["./src/*"],
-    },
 
     // Interop constraints
     "verbatimModuleSyntax": false,
@@ -25,7 +20,12 @@
     "target": "ES2022",
 
     // Skip type checking for node modules
-    "skipLibCheck": true
+    "skipLibCheck": true,
+
+    "paths": {
+      "@app": ["src"],
+      "@app/*": ["src/*"]
+    }
   },
   "include": ["./**/*.ts"],
   "exclude": ["node_modules"]

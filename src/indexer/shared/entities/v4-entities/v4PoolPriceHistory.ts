@@ -1,7 +1,7 @@
 import { Context } from "ponder:registry";
 import { v4PoolPriceHistory } from "ponder:schema";
 import { Address, formatEther } from "viem";
-import { updatePool } from "@app/indexer/shared/entities/pool";
+import { updatePool } from "../pool";
 
 export const insertV4PoolPriceHistoryIfNotExists = async ({
   pool,
@@ -22,7 +22,7 @@ export const insertV4PoolPriceHistoryIfNotExists = async ({
 
   return await db.insert(v4PoolPriceHistory).values({
     pool,
-    chainId: BigInt(chain!.id),
+    chainId: BigInt(chain.id),
     history: {},
   });
 };
