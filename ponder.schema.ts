@@ -21,9 +21,8 @@ export const token = onchainTable(
     name: t.text().notNull(),
     symbol: t.text().notNull(),
     decimals: t.integer().notNull(),
-    tokenUriData: t.jsonb().notNull().default("{}"),
+    tokenUri: t.text().notNull(),
     totalSupply: t.bigint().notNull(),
-    image: t.text(),
     isDerc20: t.boolean().notNull(),
     derc20Data: t.hex(),
     firstSeenAt: t.bigint().notNull(),
@@ -348,11 +347,6 @@ export const userAsset = onchainTable(
 export const v4CheckpointBlob = onchainTable("v4_checkpoint_blob", (t) => ({
   chainId: t.integer().notNull().primaryKey(),
   checkpoints: t.jsonb().notNull().default("{}"),
-}));
-
-export const pendingTokenImages = onchainTable("pending_token_images", (t) => ({
-  chainId: t.bigint().notNull().primaryKey(),
-  tokens: t.jsonb().notNull().default("{}"),
 }));
 
 export const activePoolsBlob = onchainTable("active_pools_blob", (t) => ({
