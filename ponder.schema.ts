@@ -21,7 +21,7 @@ export const token = onchainTable(
     name: t.text().notNull(),
     symbol: t.text().notNull(),
     decimals: t.integer().notNull(),
-    tokenUri: t.text().notNull(),
+    tokenUri: t.text(),
     totalSupply: t.bigint().notNull(),
     isDerc20: t.boolean().notNull(),
     derc20Data: t.hex(),
