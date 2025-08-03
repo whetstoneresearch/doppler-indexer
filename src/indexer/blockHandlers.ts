@@ -102,10 +102,3 @@ ponder.on("BaseV4PoolCheckpoints:block", async ({ event, context }) => {
   });
 });
 
-// Handler for processing pending token images on Base
-ponder.on("PendingTokenImagesBase:block", async ({ event, context }) => {
-  await handlePendingTokenImages({
-    context,
-    timestamp: Number(event.block.timestamp),
-  });
-});
