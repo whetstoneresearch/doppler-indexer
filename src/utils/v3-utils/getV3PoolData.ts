@@ -9,8 +9,7 @@ import { computeV3Price } from "./computeV3Price";
 import { getMulticallOptions } from "@app/core/utils";
 import { LockablePoolState, LockableV3PoolData, PoolState, V3PoolData } from "@app/types/v3-types";
 import { LockableUniswapV3InitializerABI } from "@app/abis";
-import { chainConfigs } from "@app/config";
-import { addresses } from "@app/config/addresses";
+import { LOCKABLE_V3_INITIALIZERS, SHARED_ADDRESSES, V3_INITIALIZERS } from "@app/config/const";
 
 export const getSlot0Data = async ({
   address,
@@ -255,7 +254,7 @@ const getPoolState = async ({
   context: Context;
 }) => {
   const { client } = context;
-  const v3Initializer = addresses[context.chain!.name].v3Initializer;
+  const v3Initializer = V3_INITIALIZERS[context.chain!.name] as `0x${string}`;
 
   const poolData = await client.readContract({
     abi: UniswapV3InitializerABI,
@@ -288,7 +287,7 @@ const getLockablePoolState = async ({
   context: Context;
 }) => {
   const { client } = context;
-  const lockableV3Initializer = LOCKABLE_V3_INITIALIZER[context.chain!.name];
+  const lockableV3Initializer = LOCKABLE_V3_INITIALIZERS[context.chain!.name] as `0x${string}`;
 
   const poolData = await client.readContract({
     abi: LockableUniswapV3InitializerABI,

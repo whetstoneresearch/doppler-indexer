@@ -30,7 +30,7 @@ export const insertSwapIfNotExists = async ({
 
     const existingSwap = await db.find(swap, {
         txHash,
-        chainId: chain.id,
+        chainId: chain!.id,
     });
 
     if (existingSwap) {
@@ -43,7 +43,7 @@ export const insertSwapIfNotExists = async ({
         timestamp,
         pool,
         asset,
-        chainId: chain.id,
+        chainId: chain!.id,
         type,
         user,
         amountIn,

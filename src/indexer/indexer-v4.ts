@@ -7,7 +7,7 @@ import { insertAssetIfNotExists, updateAsset } from "./shared/entities/asset";
 import { computeDollarLiquidity } from "@app/utils/computeDollarLiquidity";
 import { insertV4ConfigIfNotExists } from "./shared/entities/v4-entities/v4Config";
 import { getReservesV4 } from "@app/utils/v4-utils/getV4PoolData";
-import { CHAINLINK_ETH_DECIMALS } from "@app/utils/constants";
+import { CHAINLINK_ETH_DECIMALS } from "@app/config/const";
 import { SwapService, SwapOrchestrator, PriceService } from "@app/core";
 import { TickMath } from "@uniswap/v3-sdk";
 import { computeGraduationPercentage } from "@app/utils/v4-utils";

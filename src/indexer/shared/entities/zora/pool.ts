@@ -1,4 +1,5 @@
-import { configs, PoolKey } from "@app/types";
+import { SHARED_ADDRESSES } from "@app/config/const";
+import { PoolKey } from "@app/types";
 import { computeDollarLiquidity } from "@app/utils/computeDollarLiquidity";
 import { computeV3Price } from "@app/utils/v3-utils";
 import { getReservesV4Zora } from "@app/utils/v4-utils/getV4PoolData";
@@ -24,7 +25,7 @@ export const insertZoraPoolIfNotExists = async ({
 
   const existingPool = await db.find(pool, {
     address,
-    chainId: chain.id,
+    chainId: chain!.id,
   });
 
   if (existingPool) {
@@ -49,7 +50,7 @@ export const insertZoraPoolIfNotExists = async ({
     quoteToken: zeroAddress,
     price: 0n, // update in coin created event
     type: "v3",
-    chainId: chain.id,
+    chainId: chain!.id,
     fee: 0,
     dollarLiquidity: 0n,
     dailyVolume: address,
@@ -83,7 +84,7 @@ export const updatePool = async ({
   await db
     .update(pool, {
       address,
-      chainId: chain.id,
+      chainId: chain!.id,
     })
     .set({
       ...update,
@@ -122,7 +123,7 @@ export const insertZoraPoolV4IfNotExists = async ({
 
   const existingPool = await db.find(pool, {
     address,
-    chainId: chain.id,
+    chainId: chain!.id,
   });
 
   if (existingPool) {
@@ -138,7 +139,7 @@ export const insertZoraPoolV4IfNotExists = async ({
     poolKeyHash,
   });
 
-  const isQuoteEth = quoteToken === zeroAddress || quoteToken === configs[chain.name].shared.weth;
+  const isQuoteEth = quoteToken === zeroAddress || quoteToken === SHARED_ADDRESSES.weth;
 
   const { token0Reserve, token1Reserve, liquidity } = reserves;
 
@@ -166,7 +167,7 @@ export const insertZoraPoolV4IfNotExists = async ({
     quoteToken: quoteToken,
     price,
     type: "v4",
-    chainId: chain.id,
+    chainId: chain!.id,
     fee: poolKey.fee,
     dollarLiquidity: liquidityUsd,
     dailyVolume: address,

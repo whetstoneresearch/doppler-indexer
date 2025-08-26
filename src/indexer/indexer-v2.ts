@@ -9,7 +9,7 @@ import {
   updatePool,
   updateV2Pool,
 } from "./shared/entities";
-import { CHAINLINK_ETH_DECIMALS } from "@app/utils/constants";
+import { CHAINLINK_ETH_DECIMALS } from "@app/config/const";
 import { zeroAddress } from "viem";
 import { SwapService, SwapOrchestrator, PriceService } from "@app/core";
 import { computeDollarLiquidity } from "@app/utils/computeDollarLiquidity";

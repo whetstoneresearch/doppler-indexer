@@ -27,7 +27,7 @@ app.get("/search/:query", async (c) => {
     const chainIds = c.req
       .query("chain_ids")
       ?.split(",")
-      .map((id) => BigInt(id));
+      .map((id) => Number(id));
 
     // Normalize address queries to lowercase for case-insensitive matching
     const normalizedQuery = query.startsWith("0x") && query.length === 42 

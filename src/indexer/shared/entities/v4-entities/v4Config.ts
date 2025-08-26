@@ -14,7 +14,7 @@ export const insertV4ConfigIfNotExists = async ({
 
   const existingConfig = await db.find(v4PoolConfig, {
     hookAddress,
-    chainId: chain.id,
+    chainId: chain!.id,
   });
 
   if (existingConfig) {
@@ -26,7 +26,7 @@ export const insertV4ConfigIfNotExists = async ({
   return await db.insert(v4PoolConfig).values({
     ...config,
     hookAddress,
-    chainId: chain.id,
+    chainId: chain!.id,
   });
 };
 
@@ -44,7 +44,7 @@ export const updateV4Config = async ({
   await db
     .update(v4PoolConfig, {
       hookAddress,
-      chainId: chain.id,
+      chainId: chain!.id,
     })
     .set({
       ...update,

@@ -1,6 +1,6 @@
 import { PriceService, SwapOrchestrator, SwapService } from "@app/core";
 import { computeDollarLiquidity } from "@app/utils/computeDollarLiquidity";
-import { CHAINLINK_ETH_DECIMALS } from "@app/utils/constants";
+import { CHAINLINK_ETH_DECIMALS } from "@app/config/const";
 import { computeGraduationThresholdDelta } from "@app/utils/v3-utils/computeGraduationThreshold";
 import { ponder } from "ponder:registry";
 import {

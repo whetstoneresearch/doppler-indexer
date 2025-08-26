@@ -1,4 +1,4 @@
-import { WAD, CHAINLINK_ETH_DECIMALS } from "@app/utils/constants";
+import { WAD } from "@app/config/const";
 import { PriceService } from "@app/core/pricing";
 
 /**

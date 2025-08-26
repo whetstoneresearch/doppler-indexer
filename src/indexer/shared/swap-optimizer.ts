@@ -3,14 +3,15 @@ import { pool, token } from "ponder:schema";
 import { Address } from "viem";
 import { SwapOrchestrator } from "@app/core";
 import { PriceService, SwapService } from "@app/core";
-import { computeV3Price } from "@app/utils";
 import { computeDollarLiquidity } from "@app/utils/computeDollarLiquidity";
 import { computeMarketCap, fetchEthPrice, fetchZoraPrice } from "./oracle";
 import { updatePool, updateAsset } from "./entities";
-import { chainConfigs } from "@app/config";
 import { updateFifteenMinuteBucketUsd } from "@app/utils/time-buckets";
-import { WAD, CHAINLINK_ETH_DECIMALS } from "@app/utils/constants";
+import { WAD, CHAINLINK_ETH_DECIMALS, SHARED_ADDRESSES } from "@app/config/const";
 import { SwapType } from "@app/types";
+import { computeV3Price } from "@app/utils/v3-utils";
+import { zoraAddresses } from "@app/config/base";
+
 
 interface SwapHandlerParams {
   poolAddress: `0x${string}`; // can be 32byte poolid or 20byte pool address
@@ -50,8 +51,8 @@ export async function getPoolUsdPrice(
   context: Context
 ): Promise<bigint | null> {
   const { db, chain } = context;
-  const zoraToken = chainConfigs[chain.name].addresses.zora.zoraToken;
-  const wethToken = chainConfigs[chain.name].addresses.shared.weth;
+  const zoraToken = zoraAddresses.zoraToken;
+  const wethToken = SHARED_ADDRESSES.weth;
   
   const isQuoteZora = poolEntity.quoteToken.toLowerCase() === zoraToken.toLowerCase();
   const isQuoteEth = poolEntity.quoteToken.toLowerCase() === wethToken.toLowerCase();
@@ -75,7 +76,7 @@ export async function getPoolUsdPrice(
   // } else {
     const creatorCoinEntity = await db.find(token, {
       address: poolEntity.quoteToken,
-      chainId: chain.id,
+      chainId: chain!.id,
     });
     isQuoteCreatorCoin = creatorCoinEntity?.isCreatorCoin ?? false;
     creatorCoinPid = isQuoteCreatorCoin ? creatorCoinEntity?.pool : null;
@@ -89,7 +90,7 @@ export async function getPoolUsdPrice(
   // Get creator coin pool price
   const creatorCoinPool = await db.find(pool, {
     address: creatorCoinPid as `0x${string}`,
-    chainId: chain.id,
+    chainId: chain!.id,
   });
   
   if (!creatorCoinPool) {
@@ -154,7 +155,6 @@ export function processSwapCalculations(
   const swapType = SwapService.determineSwapType({
     isToken0,
     amount0,
-    amount1,
   });
   
   // Calculate dollar values
@@ -199,7 +199,7 @@ export async function handleOptimizedSwap(
     fetchEthPrice(timestamp, context),
     db.find(pool, {
       address: poolAddress,
-      chainId: chain.id,
+      chainId: chain!.id,
     }),
   ]);
   
@@ -214,13 +214,13 @@ export async function handleOptimizedSwap(
   }
   
   const isQuoteEth = poolEntity.quoteToken.toLowerCase() === 
-    chainConfigs[chain.name].addresses.shared.weth.toLowerCase();
+    SHARED_ADDRESSES.weth.toLowerCase();
   
   const swapData = processSwapCalculations(poolEntity, params, usdPrice, isQuoteEth);
 
   const tokenEntity = await db.find(token, {
     address: poolEntity.baseToken,
-    chainId: chain.id,
+    chainId: chain!.id,
   });
 
   if (!tokenEntity) {
@@ -276,7 +276,7 @@ export async function handleOptimizedSwap(
           parentPoolAddress: poolAddress,
           price: swapData.price,
         },
-        chainId: chain.id,
+        chainId: chain!.id,
         context,
       },
       entityUpdaters
@@ -296,7 +296,7 @@ export async function handleOptimizedSwap(
     }),
     updateFifteenMinuteBucketUsd(context, {
       poolAddress,
-      chainId: chain.id,
+      chainId: chain!.id,
       timestamp,
       priceUsd: isQuoteEth
         ? (swapData.price * usdPrice) / CHAINLINK_ETH_DECIMALS

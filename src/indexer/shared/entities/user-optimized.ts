@@ -42,7 +42,7 @@ export const batchUpsertUsersAndAssets = async ({
       db.insert(user)
         .values({
           address: senderLower,
-          chainId: chain.id,
+          chainId: chain!.id,
           createdAt: timestamp,
           lastSeenAt: timestamp,
         })
@@ -56,7 +56,7 @@ export const batchUpsertUsersAndAssets = async ({
       db.insert(user)
         .values({
           address: recipientLower,
-          chainId: chain.id,
+          chainId: chain!.id,
           createdAt: timestamp,
           lastSeenAt: timestamp,
         })
@@ -70,34 +70,11 @@ export const batchUpsertUsersAndAssets = async ({
     await Promise.all(userInserts);
   }
 
-  // Batch fetch existing user assets (skip zero address)
-  let existingSenderAsset: typeof userAsset.$inferSelect | null = null;
-  let existingRecipientAsset: typeof userAsset.$inferSelect | null = null;
+  const [existingSenderAsset, existingRecipientAsset] = await Promise.all([
+    isMint ? Promise.resolve(null) : db.find(userAsset, { userId: senderLower, assetId: tokenLower, chainId: chain!.id }),
+    isBurn ? Promise.resolve(null) : db.find(userAsset, { userId: recipientLower, assetId: tokenLower, chainId: chain!.id }),
+  ]) as [typeof userAsset.$inferSelect | null, typeof userAsset.$inferSelect | null];
   
-  const assetFetches: Promise<any>[] = [];
-  if (!isMint) {
-    assetFetches.push(
-      db.find(userAsset, {
-        userId: senderLower,
-        assetId: tokenLower,
-        chainId: chain.id,
-      }).then(result => { existingSenderAsset = result; })
-    );
-  }
-  if (!isBurn) {
-    assetFetches.push(
-      db.find(userAsset, {
-        userId: recipientLower,
-        assetId: tokenLower,
-        chainId: chain.id,
-      }).then(result => { existingRecipientAsset = result; })
-    );
-  }
-  
-  if (assetFetches.length > 0) {
-    await Promise.all(assetFetches);
-  }
-
   // Calculate holder count delta
   let holderCountDelta = 0;
   
@@ -117,8 +94,8 @@ export const batchUpsertUsersAndAssets = async ({
   }
   // Handle regular transfers
   else if (!isMint && !isBurn) {
-    const senderPrevBalance = existingSenderAsset?.balance ?? 0n;
-    const recipientPrevBalance = existingRecipientAsset?.balance ?? 0n;
+    const senderPrevBalance = existingSenderAsset ? existingSenderAsset.balance : 0n;
+    const recipientPrevBalance = existingRecipientAsset ? existingRecipientAsset.balance : 0n;
     
     if (recipientPrevBalance === 0n && recipientBalance > 0n) {
       holderCountDelta += 1;
@@ -140,7 +117,7 @@ export const batchUpsertUsersAndAssets = async ({
         .values({
           userId: senderLower,
           assetId: tokenLower,
-          chainId: chain.id,
+          chainId: chain!.id,
           createdAt: timestamp,
           balance: senderBalance,
           lastInteraction: timestamp,
@@ -159,7 +136,7 @@ export const batchUpsertUsersAndAssets = async ({
         .values({
           userId: recipientLower,
           assetId: tokenLower,
-          chainId: chain.id,
+          chainId: chain!.id,
           balance: recipientBalance,
           createdAt: timestamp,
           lastInteraction: timestamp,
@@ -211,7 +188,7 @@ export const batchUpdateHolderCounts = async ({
   updates.push(
     db.update(token, {
       address: tokenAddress.toLowerCase() as `0x${string}`,
-      chainId: chain.id,
+      chainId: chain!.id,
     }).set({
       holderCount: currentTokenHolderCount + holderCountDelta,
     })
@@ -222,7 +199,7 @@ export const batchUpdateHolderCounts = async ({
     updates.push(
       db.update(pool, {
         address: poolAddress.toLowerCase() as `0x${string}`,
-        chainId: chain.id,
+        chainId: chain!.id,
       }).set({
         holderCount: currentTokenHolderCount + holderCountDelta,
       })

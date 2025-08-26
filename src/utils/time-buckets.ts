@@ -1,8 +1,7 @@
 import { and, desc, eq, gte, lt } from "ponder";
 import { Context } from "ponder:registry";
 import { volumeBucket24h, fifteenMinuteBucketUsd } from "ponder:schema";
-import { formatEther, parseEther } from "viem";
-import { CHAINLINK_ETH_DECIMALS } from "@app/utils/constants";
+import { formatEther } from "viem";
 
 // 24 hours in seconds
 export const DAY_IN_SECONDS = 86400n;

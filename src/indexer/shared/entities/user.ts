@@ -16,7 +16,7 @@ export const insertUserIfNotExists = async ({
 
   const existingUser = await db.find(user, {
     address: userIdAddr,
-    chainId: chain.id,
+    chainId: chain!.id,
   });
 
   if (existingUser) {
@@ -27,7 +27,7 @@ export const insertUserIfNotExists = async ({
     address: userIdAddr,
     lastSeenAt: timestamp,
     createdAt: timestamp,
-    chainId: chain.id,
+    chainId: chain!.id,
   });
 };
 
@@ -46,7 +46,7 @@ export const updateUser = async ({
   await db
     .update(user, {
       address: userIdAddr,
-      chainId: chain.id,
+      chainId: chain!.id,
     })
     .set({
       ...update,

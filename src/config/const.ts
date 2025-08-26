@@ -1,4 +1,5 @@
 import { Network } from "@app/settings";
+import { zeroAddress } from "viem";
 
 export const SECONDS_IN_DAY = 86400;
 
@@ -84,4 +85,16 @@ export const DOPPLER_LENSES = {
   unichain: "0x82ac010c67f70bacf7655cd8948a4ad92a173cac",
   base: "0x43d0d97ec9241a8f05a264f94b82a1d2e600f2b3",
   ink: "0x8af018e28c273826e6b2d5a99e81c8fb63729b07"
+} as const;
+
+export const LOCKABLE_V3_INITIALIZERS = {
+  unichain: "0xa3c847eab58eaa9cbc215c785c9cfbc19cdabd5f",
+  base: "0xe0dc4012ac9c868f09c6e4b20d66ed46d6f258d0",
+  ink: zeroAddress
+} as const;
+
+export const V3_INITIALIZERS = {
+  unichain: "0x9f4e56be80f08ba1a2445645efa6d231e27b43ec",
+  base: "0xaA47D2977d622DBdFD33eeF6a8276727c52EB4e5",
+  ink: "0xaA47D2977d622DBdFD33eeF6a8276727c52EB4e5"
 } as const;

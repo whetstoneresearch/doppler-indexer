@@ -5,7 +5,7 @@ import { getPairData } from "@app/utils/v2-utils/getPairData";
 import { insertAssetIfNotExists } from "./asset";
 import { PriceService } from "@app/core";
 import { fetchEthPrice } from "../oracle";
-import { CHAINLINK_ETH_DECIMALS } from "@app/utils/constants";
+import { CHAINLINK_ETH_DECIMALS } from "@app/config/const";
 import { insertPoolIfNotExists } from "./pool";
 
 export const insertV2PoolIfNotExists = async ({
@@ -32,7 +32,7 @@ export const insertV2PoolIfNotExists = async ({
 
   const existingV2Pool = await db.find(v2Pool, {
     address: migrationPoolAddr,
-    chainId: chain.id,
+    chainId: chain!.id,
   });
 
   if (existingV2Pool) {
@@ -68,7 +68,7 @@ export const insertV2PoolIfNotExists = async ({
 
   return await db.insert(v2Pool).values({
     address: migrationPoolAddr,
-    chainId: chain.id,
+    chainId: chain!.id,
     baseToken: assetId,
     quoteToken: numeraireId,
     reserveBaseToken: isToken0 ? reserve0 : reserve1,
@@ -100,7 +100,7 @@ export const updateV2Pool = async ({
   return await db
     .update(v2Pool, {
       address,
-      chainId: chain.id,
+      chainId: chain!.id,
     })
     .set(update);
 };
@@ -129,7 +129,7 @@ export const insertV2MigrationPoolIfNotExists = async ({
 
   const existingV2Pool = await db.find(v2Pool, {
     address: migrationPoolAddr,
-    chainId: chain.id,
+    chainId: chain!.id,
   });
 
   if (existingV2Pool) {
@@ -164,7 +164,7 @@ export const insertV2MigrationPoolIfNotExists = async ({
 
   return await db.insert(v2Pool).values({
     address: migrationPoolAddr,
-    chainId: chain.id,
+    chainId: chain!.id,
     baseToken: assetId,
     quoteToken: numeraireId,
     reserveBaseToken: isToken0 ? reserve0 : reserve1,
