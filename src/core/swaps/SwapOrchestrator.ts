@@ -2,6 +2,7 @@ import { Address } from "viem";
 import { Context } from "ponder:registry";
 import { SwapService, SwapData, MarketMetrics } from "./SwapService";
 import { SwapType } from "@app/types/shared";
+import { updateDayBucket, BucketUpdateParams } from "@app/utils/time-buckets";
 
 /**
  * Orchestrates all entity updates required after a swap
@@ -15,7 +16,7 @@ export interface SwapUpdateParams {
     price: bigint;
     volume24h?: bigint;
   };
-  chainId: bigint;
+  chainId: number;
   context: Context;
 }
 
@@ -24,11 +25,6 @@ export interface SwapUpdateParams {
  */
 export interface EntityUpdaters {
   updatePool: (params: any) => Promise<any>;
-  updateAsset: (params: any) => Promise<any>;
-  insertSwap: (params: any) => Promise<any>;
-  insertOrUpdateBuckets: (params: any) => Promise<any>;
-  insertOrUpdateDailyVolume: (params: any) => Promise<any>;
-  tryAddActivePool: (params: any) => Promise<any>;
 }
 
 /**
@@ -46,14 +42,26 @@ export class SwapOrchestrator {
     const { swapData, swapType, metrics, poolData, chainId, context } = params;
     const {
       updatePool,
-      updateAsset,
-      insertSwap,
-      insertOrUpdateBuckets,
-      insertOrUpdateDailyVolume,
-      tryAddActivePool,
     } = updaters;
 
-    // Prepare all update operations
+    // Update the 24-hour bucket with this swap data
+    const bucketParams: BucketUpdateParams = {
+      poolAddress: poolData.parentPoolAddress,
+      assetAddress: swapData.assetAddress,
+      chainId,
+      timestamp: swapData.timestamp,
+      volumeUsd: metrics.swapValueUsd,
+      volumeToken0: swapData.isToken0 ? swapData.amountIn : swapData.amountOut,
+      volumeToken1: swapData.isToken0 ? swapData.amountOut : swapData.amountIn,
+      price: poolData.price,
+      liquidityUsd: metrics.liquidityUsd,
+      marketCapUsd: metrics.marketCapUsd,
+      isBuy: swapType === "buy",
+      userAddress: swapData.sender,
+    };
+
+    // Update the bucket first to get the new volume
+    await updateDayBucket(context, bucketParams);
     const updates = [
       // Update pool entity
       updatePool({
@@ -65,54 +73,8 @@ export class SwapOrchestrator {
           marketCapUsd: metrics.marketCapUsd,
           volume24h: poolData.volume24h ?? 0n,
           timestamp: swapData.timestamp,
+          percentDayChange: 0,
         }),
-      }),
-
-      // Update asset entity
-      updateAsset({
-        assetAddress: swapData.assetAddress,
-        context,
-        update: SwapService.formatAssetUpdate(metrics),
-      }),
-
-      // Insert swap record
-      insertSwap({
-        ...SwapService.formatSwapEntity({
-          swapData,
-          swapType,
-          swapValueUsd: metrics.swapValueUsd,
-          chainId,
-        }),
-        context,
-      }),
-
-      // Update time series data
-      insertOrUpdateBuckets({
-        poolAddress: poolData.parentPoolAddress,
-        price: poolData.price,
-        timestamp: swapData.timestamp,
-        ethPrice: swapData.ethPriceUSD,
-        context,
-      }),
-
-      // Update daily volume
-      insertOrUpdateDailyVolume({
-        context,
-        poolAddress: poolData.parentPoolAddress,
-        amountIn: swapData.amountIn,
-        amountOut: swapData.amountOut,
-        timestamp: swapData.timestamp,
-        tokenIn: swapType === "buy" ? swapData.quoteAddress : swapData.assetAddress,
-        tokenOut: swapType === "buy" ? swapData.assetAddress : swapData.quoteAddress,
-        ethPrice: swapData.ethPriceUSD,
-        marketCapUsd: metrics.marketCapUsd,
-      }),
-
-      // Try to add to active pools
-      tryAddActivePool({
-        poolAddress: poolData.parentPoolAddress,
-        lastSwapTimestamp: Number(swapData.timestamp),
-        context,
       }),
     ];
 

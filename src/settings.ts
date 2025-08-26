@@ -1,7 +1,6 @@
 import { BLOCK_INTERVALS } from "./config/const";
 
 export enum NetworkEnum {
-    mainnet = "mainnet",
     base = "base",
     unichain = "unichain",
     ink = "ink",
@@ -20,10 +19,6 @@ const defaultNetworks: L2Network[] = [NetworkEnum.base, NetworkEnum.ink, Network
 export default {
     interval: BLOCK_INTERVALS.FIVE_MINUTES,
     enabledNetworks: process.env.ENABLED_NETWORKS ? process.env.ENABLED_NETWORKS.split(",") as L2Network[] : defaultNetworks,
-    mainnet: {
-        chainId: process.env.MAINNET_CHAIN_ID ? parseInt(process.env.MAINNET_CHAIN_ID) : 1,
-        rpc: process.env.MAINNET_RPC!,
-    },
     base: {
         chainId: process.env.BASE_CHAIN_ID ? parseInt(process.env.BASE_CHAIN_ID) : 8453,
         rpc: process.env.BASE_RPC!,

@@ -1,6 +1,5 @@
-import { CHAINLINK_ETH_DECIMALS, WAD } from "@app/config/const";
+import { WAD, CHAINLINK_ETH_DECIMALS } from "@app/utils/constants";
 import { PriceService } from "@app/core/pricing";
-
 
 /**
  * Market metrics interface
@@ -22,6 +21,7 @@ export interface LiquidityParams {
   price: bigint;
   ethPriceUSD: bigint;
   isQuoteETH?: boolean;
+  decimals?: number;
 }
 
 /**
@@ -33,6 +33,7 @@ export interface MarketCapParams {
   ethPriceUSD: bigint;
   assetDecimals?: number;
   isQuoteETH?: boolean;
+  decimals?: number;
 }
 
 /**
@@ -62,14 +63,16 @@ export class MarketDataService {
       ethPriceUSD,
       assetDecimals = 18,
       isQuoteETH = true,
+      decimals = 8,
     } = params;
+
 
     // Calculate market cap in quote currency
     const marketCap = (price * totalSupply) / BigInt(10 ** assetDecimals);
 
     // Convert to USD if quote is ETH
     if (isQuoteETH) {
-      return (marketCap * ethPriceUSD) / CHAINLINK_ETH_DECIMALS;
+      return (marketCap * ethPriceUSD) / BigInt(10 ** decimals);
     }
 
     return marketCap;
@@ -86,6 +89,7 @@ export class MarketDataService {
       price,
       ethPriceUSD,
       isQuoteETH = true,
+      decimals = 8,
     } = params;
 
     // Calculate asset value in quote currency
@@ -93,8 +97,8 @@ export class MarketDataService {
 
     if (isQuoteETH) {
       // Convert both to USD
-      const assetValueUsd = (assetValueInQuote * ethPriceUSD) / CHAINLINK_ETH_DECIMALS;
-      const quoteValueUsd = (quoteBalance * ethPriceUSD) / CHAINLINK_ETH_DECIMALS;
+      const assetValueUsd = (assetValueInQuote * ethPriceUSD) / BigInt(10 ** decimals);
+      const quoteValueUsd = (quoteBalance * ethPriceUSD) / BigInt(10 ** decimals);
       return assetValueUsd + quoteValueUsd;
     }
 
@@ -196,10 +200,10 @@ export class MarketDataService {
   }
 
   /**
-   * Calculate price change percentage
+   * Calculate price change percentage with proper bigint handling
    * @param currentPrice Current price
    * @param previousPrice Previous price (24h ago)
-   * @returns Percentage change
+   * @returns Percentage change with 2 decimal precision
    */
   static calculatePriceChange(
     currentPrice: bigint,
@@ -207,10 +211,15 @@ export class MarketDataService {
   ): number {
     if (previousPrice === 0n) return 0;
 
-    const change = Number(currentPrice - previousPrice);
-    const base = Number(previousPrice);
+    // Use basis points (10000 = 100%) for precision
+    const changeInBasisPoints = ((currentPrice - previousPrice) * 10000n) / previousPrice;
+    const percentChange = Number(changeInBasisPoints) / 100;
 
-    return (change / base) * 100;
+    // Cap extreme values
+    if (percentChange > 10000) return 10000; // Cap at 10,000%
+    if (percentChange < -100) return -100; // Floor at -100%
+
+    return percentChange;
   }
 
   /**

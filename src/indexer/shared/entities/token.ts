@@ -1,8 +1,59 @@
-import { Context } from "ponder:registry";
-import { token } from "ponder:schema";
-import { Address, zeroAddress } from "viem";
 import { DERC20ABI } from "@app/abis";
-// Token entity management
+import { zoraAddresses } from "@app/config/base";
+import { getMulticallOptions } from "@app/core/utils/multicall";
+import { token } from "ponder.schema";
+import { Context } from "ponder:registry";
+import { Address, zeroAddress } from "viem";
+
+export const appendTokenPool = async ({
+  tokenAddress,
+  isDerc20,
+  isCreatorCoin,
+  isContentCoin,
+  poolAddress,
+  context,
+  creatorCoinPid = null,
+  creatorAddress = zeroAddress,
+}: {
+  tokenAddress: Address;
+  isDerc20: boolean;
+  isCreatorCoin: boolean;
+  isContentCoin: boolean;
+  poolAddress: Address;
+  context: Context;
+  creatorCoinPid?: Address | null;
+  creatorAddress?: Address;
+}) => {
+  const { db, chain } = context;
+
+  const existingToken = await db.find(token, {
+    address: tokenAddress,
+    chainId: chain!.id,
+  });
+
+  if (!existingToken) {
+    await insertTokenIfNotExists({
+      tokenAddress,
+      creatorAddress,
+      timestamp: BigInt(context.chain!.id),
+      context,
+      poolAddress,
+    });
+  }
+
+  return await db
+    .update(token, {
+      address: tokenAddress,
+      chainId: chain!.id,
+    })
+    .set({
+      isDerc20,
+      isCreatorCoin,
+      isContentCoin,
+      pool: poolAddress,
+      creatorCoinPid,
+    });
+};
 
 export const insertTokenIfNotExists = async ({
   tokenAddress,
@@ -17,38 +68,35 @@ export const insertTokenIfNotExists = async ({
   timestamp: bigint;
   context: Context;
   isDerc20?: boolean;
+  creatorCoin?: boolean;
+  contentCoin?: boolean;
   poolAddress?: Address;
 }): Promise<typeof token.$inferSelect> => {
   const { db, chain } = context;
 
-  const multiCallAddress = {};
-  // TODO: add back when types are sorted
-  // if (chain.name == "ink") {
-  //   multiCallAddress = {
-  //     multicallAddress: "0xcA11bde05977b3631167028862bE2a173976CA11",
-  //   };
-  // }
+  const multicallOptions = getMulticallOptions(chain);
   const address = tokenAddress.toLowerCase() as `0x${string}`;
 
   const existingToken = await db.find(token, {
     address,
+    chainId: chain!.id,
   });
 
   if (existingToken?.isDerc20 && !existingToken?.pool && poolAddress) {
-    await db.update(token, { address }).set({
+    await db.update(token, { address, chainId: chain!.id }).set({
       pool: poolAddress,
     });
   } else if (existingToken) {
     return existingToken;
   }
 
-  const chainId = BigInt(chain!.id);
+  const zoraAddress = zoraAddresses.zoraToken;
 
   // ignore pool field for native tokens
   if (address == zeroAddress) {
     return await db.insert(token).values({
       address: address.toLowerCase() as `0x${string}`,
-      chainId,
+      chainId: chain!.id,
       name: "Ether",
       symbol: "ETH",
       decimals: 18,
@@ -56,6 +104,25 @@ export const insertTokenIfNotExists = async ({
       firstSeenAt: timestamp,
       lastSeenAt: timestamp,
       totalSupply: 0n,
+      isDerc20: false,
+    });
+  } else if (address == zoraAddress.toLowerCase()) {
+    if (process.env.NODE_ENV !== "local") {
+      fetch(
+        `${process.env.METADATA_UPDATER_ENDPOINT}?tokenAddress=${address}&chainId=${chain!.id}`
+      ) as unknown;
+    }
+
+    return await db.insert(token).values({
+      address: address.toLowerCase() as `0x${string}`,
+      chainId: chain!.id,
+      name: "Zora",
+      symbol: "ZORA",
+      decimals: 18,
+      creatorAddress: zeroAddress,
+      firstSeenAt: timestamp,
+      lastSeenAt: timestamp,
+      totalSupply: 10000000000000000000000000000n,
       isDerc20: false,
     });
   } else {
@@ -93,108 +160,31 @@ export const insertTokenIfNotExists = async ({
           functionName: "tokenURI",
         },
       ],
-      ...multiCallAddress,
+      ...multicallOptions,
     });
 
     const tokenURI = tokenURIResult?.result;
-    let tokenUriData;
-    let image: string | undefined;
-    // if (tokenURI?.startsWith("ipfs://")) {
-    //   try {
-    //     if (
-    //       !tokenURI.startsWith("ipfs://") &&
-    //       !tokenURI.startsWith("http://") &&
-    //       !tokenURI.startsWith("https://")
-    //     ) {
-    //       console.error(`Invalid tokenURI for token ${address}: ${tokenURI}`);
-    //     }
-    //     const cid = tokenURI.replace("ipfs://", "");
-    //     const url = `https://${process.env.PINATA_GATEWAY_URL}/ipfs/${cid}?pinataGatewayToken=${process.env.PINATA_GATEWAY_KEY}`;
-    //     const response = await fetch(url);
-    //     tokenUriData = await response.json();
-
-    //     if (
-    //       tokenUriData &&
-    //       typeof tokenUriData === "object" &&
-    //       "image" in tokenUriData &&
-    //       typeof tokenUriData.image === "string"
-    //     ) {
-    //       if (tokenUriData.image.startsWith("ipfs://")) {
-    //         image = tokenUriData.image;
-    //       }
-    //     } else if (
-    //       tokenUriData &&
-    //       typeof tokenUriData === "object" &&
-    //       "image_hash" in tokenUriData &&
-    //       typeof tokenUriData.image_hash === "string"
-    //     ) {
-    //       if (tokenUriData.image_hash.startsWith("ipfs://")) {
-    //         image = tokenUriData.image_hash;
-    //       }
-    //     }
-    //   } catch (error) {
-    //     console.error(
-    //       `Failed to fetch IPFS metadata for token ${address}:`,
-    //       error
-    //     );
-    //   }
-    // } else if (tokenURI?.includes("ohara")) {
-    //   try {
-    //     const url = tokenURI;
-    //     const response = await fetch(url);
-    //     tokenUriData = await response.json();
-
-    //     if (
-    //       tokenUriData &&
-    //       typeof tokenUriData === "object" &&
-    //       "image" in tokenUriData &&
-    //       typeof tokenUriData.image === "string"
-    //     ) {
-    //       if (tokenUriData.image.startsWith("https://")) {
-    //         image = tokenUriData.image;
-    //       }
-    //     } else {
-    //       // Add to pending list for retry
-    //       await addPendingTokenImage({
-    //         context,
-    //         chainId,
-    //         tokenAddress: address,
-    //         tokenURI,
-    //         timestamp: Number(timestamp),
-    //       });
-    //     }
-    //   } catch (error) {
-    //     console.error(
-    //       `Failed to fetch ohara metadata for token ${address}:`,
-    //       error
-    //     );
-    //     // Add to pending list for retry
-    //     await addPendingTokenImage({
-    //       context,
-    //       chainId,
-    //       tokenAddress: address,
-    //       tokenURI,
-    //       timestamp: Number(timestamp),
-    //     });
-    //   }
-    // }
+    if (process.env.NODE_ENV !== "local") {
+      fetch(
+        `${process.env.METADATA_UPDATER_ENDPOINT}?tokenAddress=${address}&chainId=${chain!.id}`
+      ) as unknown;
+    }
 
     return await context.db
       .insert(token)
       .values({
         address: address.toLowerCase() as `0x${string}`,
-        chainId,
+        chainId: chain!.id,
         name: nameResult?.result ?? `Unknown Token (${address})`,
         symbol: symbolResult?.result ?? "???",
-        decimals: decimalsResult.result ?? 18,
-        totalSupply: totalSupplyResult.result ?? 0n,
+        decimals: decimalsResult?.result ?? 18,
+        totalSupply: totalSupplyResult?.result ?? 0n,
         creatorAddress,
         firstSeenAt: timestamp,
         lastSeenAt: timestamp,
+        tokenURI,
         isDerc20,
-        image,
-        tokenUriData,
-        pool: isDerc20 ? poolAddress : undefined,
+        pool: poolAddress,
         derc20Data: isDerc20 ? address : undefined,
       })
       .onConflictDoUpdate((row) => ({
@@ -212,13 +202,14 @@ export const updateToken = async ({
   context: Context;
   update: Partial<typeof token.$inferInsert>;
 }): Promise<typeof token.$inferSelect> => {
-  const { db } = context;
+  const { db, chain } = context;
 
   const address = tokenAddress.toLowerCase() as `0x${string}`;
 
   return await db
     .update(token, {
       address,
+      chainId: chain!.id,
     })
     .set(update);
 };

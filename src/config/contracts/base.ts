@@ -3,6 +3,7 @@ import {
   AirlockABI,
   UniswapV3InitializerABI,
   UniswapV4InitializerABI,
+  ZoraFactoryABI,
 } from "@app/abis";
 import { getAbiItem } from "viem";
 import { ContractName, ContractInfo } from "@app/config/types";
@@ -23,6 +24,10 @@ const baseContracts = {
       address: "0xaA47D2977d622DBdFD33eeF6a8276727c52EB4e5",
       startBlock: 28415520,
     },
+  [ContractName.LockableUniswapV3Initializer]: {
+    address: "0x4c3062b9ccfdbcb10353f57c1b59a29d4c5cfa47",
+    startBlock: 28415520,
+  },
   [ContractName.UniswapV3Pool]: factory({
     address: "0xaA47D2977d622DBdFD33eeF6a8276727c52EB4e5",
     event: getAbiItem({ abi: UniswapV3InitializerABI, name: "Create" }),
@@ -73,6 +78,34 @@ const baseContracts = {
     address: "0x82Cc0DAAea3c9Ee022bC61dbC7Bf6dB6460b6000",
     startBlock: 30822164,
   },
+  [ContractName.ZoraFactory]: {
+      address: "0x777777751622c0d3258f214F9DF38E35BF45baF3",
+      startBlock: 31058549,
+  },
+  [ContractName.ZoraContentCoin]: factory({
+    address: "0x777777751622c0d3258f214F9DF38E35BF45baF3",
+    startBlock: 31058549,
+    event: getAbiItem({ abi: ZoraFactoryABI, name: "CoinCreatedV4" }),
+    parameter: "coin",
+  }),
+  [ContractName.ZoraCreatorCoin]: factory({
+    address: "0x777777751622c0d3258f214F9DF38E35BF45baF3",
+    startBlock: 31058549,
+    event: getAbiItem({ abi: ZoraFactoryABI, name: "CreatorCoinCreated" }),
+    parameter: "coin",
+  }),
+  [ContractName.ZoraContentCoinHook]: factory({
+    address: "0x777777751622c0d3258f214F9DF38E35BF45baF3",
+    startBlock: 31058549,
+    event: getAbiItem({ abi: ZoraFactoryABI, name: "CoinCreatedV4" }),
+    parameter: "poolKey.hooks",
+  }),
+  [ContractName.ZoraCreatorCoinHook]: factory({
+    address: "0x777777751622c0d3258f214F9DF38E35BF45baF3",
+    startBlock: 31058549,
+    event: getAbiItem({ abi: ZoraFactoryABI, name: "CreatorCoinCreated" }),
+    parameter: "poolKey.hooks",
+  }),
 } as const satisfies Partial<Record<keyof typeof ContractName, ContractInfo>>;
 
 export default baseContracts;

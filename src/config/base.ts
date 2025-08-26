@@ -19,16 +19,32 @@ export const addresses: NetworkAddresses = {
   v4MigratorHook: "0x1cb2230a3b228014532dd491b0ba385e53b7a000",
 } as const;
 
+export const zoraAddresses = {
+  zoraFactory: "0x777777751622c0d3258f214F9DF38E35BF45baF3",
+  zoraTokenPool: "0xedc625b74537ee3a10874f53d170e9c17a906b9c",
+  zoraToken: "0x1111111111166b7FE7bd91427724B487980aFc69",
+  creatorCoinHook: "0xd61A675F8a0c67A73DC3B54FB7318B4D91409040",
+  contentCoinHook: "0x9ea932730A7787000042e34390B8E435dD839040",
+};
+
 export const networkConfig: NetworkConfig<NetworkAddresses> = {
   chainId: settings.base.chainId,
   rpc: settings.base.rpc,
   addresses,
   blocks: {
-    PendingTokenImagesBase: {
+    ChainlinkEthPriceFeed: {
       chain: {
         base: {
           startBlock: START_BLOCKS.base,
           interval: BLOCK_INTERVALS.FIFTY_BLOCKS, // Check every 50 blocks
+        },
+      },
+    },
+    ZoraUsdPriceFeed: {
+      chain: {
+        base: {
+          startBlock: 26602741,
+          interval: BLOCK_INTERVALS.FIVE_MINUTES,
         },
       },
     },

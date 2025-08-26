@@ -28,7 +28,6 @@ export interface MarketMetrics {
   liquidityUsd: bigint;
   marketCapUsd: bigint;
   swapValueUsd: bigint;
-  percentDayChange: number;
 }
 
 /**
@@ -53,7 +52,10 @@ export class SwapService {
       return "sell";
     } else if (!isToken0 && amount0 < 0n) {
       return "sell";
+    } else if (!isToken0 && amount0 < 0n) {
+      return "buy";
     }
+
     // Default case (shouldn't happen in practice)
     return "buy";
   }
@@ -111,7 +113,6 @@ export class SwapService {
       liquidityUsd: metrics.liquidityUsd,
       marketCapUsd: metrics.marketCapUsd,
       swapValueUsd: metrics.volumeUsd || 0n,
-      percentDayChange: 0, // TODO: Implement historical price tracking
     };
   }
 
@@ -150,13 +151,15 @@ export class SwapService {
     marketCapUsd: bigint;
     volume24h: bigint;
     timestamp: bigint;
+    percentDayChange: number
   }) {
     return {
       price: params.price,
       dollarLiquidity: params.liquidityUsd, // Pool entity uses 'dollarLiquidity' field
       marketCapUsd: params.marketCapUsd,
-      volume24h: params.volume24h,
+      volumeUsd: params.volume24h, // Pool entity uses 'volumeUsd' field for 24h volume
       lastSwapTimestamp: params.timestamp,
+      percentDayChange: params.percentDayChange,
     };
   }
 
@@ -166,12 +169,10 @@ export class SwapService {
   static formatAssetUpdate(params: {
     liquidityUsd: bigint;
     marketCapUsd: bigint;
-    percentDayChange: number;
   }) {
     return {
       liquidityUsd: params.liquidityUsd,
       marketCapUsd: params.marketCapUsd,
-      percentDayChange: params.percentDayChange,
     };
   }
 }

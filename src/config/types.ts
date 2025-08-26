@@ -21,12 +21,12 @@ import { factory, ContractConfig as PonderContractConfig } from "ponder";
 export enum BlockName {
   ChainlinkEthPriceFeed = "ChainlinkEthPriceFeed",
   MetricRefresher = "MetricRefresher",
-  PendingTokenImages = "PendingTokenImages",
 }
 
 export enum ContractName {
   Airlock = "Airlock",
   DERC20 = "DERC20",
+  LockableUniswapV3Initializer = "LockableUniswapV3Initializer",
   UniswapV3Initializer = "UniswapV3Initializer",
   UniswapV3Pool = "UniswapV3Pool",
   UniswapV3MigrationPool = "UniswapV3MigrationPool",
@@ -40,6 +40,11 @@ export enum ContractName {
   V4DERC20 = "V4DERC20",
   V4DERC20_2 = "V4DERC20_2",
   V4Migrator = "V4Migrator",
+  ZoraFactory = "ZoraFactory",
+  ZoraContentCoin = "ZoraContentCoin",
+  ZoraCreatorCoin = "ZoraCreatorCoin",
+  ZoraContentCoinHook = "ZoraContentCoinHook",
+  ZoraCreatorCoinHook = "ZoraCreatorCoinHook",
 }
 
 export type DopplerAddresses =
@@ -55,8 +60,11 @@ export type DopplerAddresses =
   | "v4Migrator"
   | "v4MigratorHook"
 
+export type ZoraAddresses = "zoraToken" | "zoraFactory" | "zoraTokenPool" | "creatorCoinHook" | "contentCoinHook";
+
 type Address = PonderContractConfig["address"];
 export type NetworkAddresses = Record<DopplerAddresses, Address>;
+export type ZoraNetworkAddresses = Record<ZoraAddresses, Address>;
 
 export type RequiredBlocks = "V4PoolCheckpoints" | "MetricRefresher";
 type BlockMap = { chain: { [key in Network]?: { startBlock: number; interval: number } } };

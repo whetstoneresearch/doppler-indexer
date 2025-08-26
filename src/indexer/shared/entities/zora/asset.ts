@@ -1,15 +1,18 @@
 import { Context } from "ponder:registry";
 import { asset } from "ponder:schema";
-import { Address } from "viem";
-import { getAssetData } from "@app/utils/getAssetData";
+import { Address, zeroAddress } from "viem";
 
-export const insertAssetIfNotExists = async ({
+export const insertZoraAssetIfNotExists = async ({
   assetAddress,
+  poolAddress,
+  numeraireAddress,
   timestamp,
   context,
   marketCapUsd,
 }: {
   assetAddress: Address;
+  poolAddress: Address;
+  numeraireAddress: Address;
   timestamp: bigint;
   context: Context;
   marketCapUsd?: bigint;
@@ -26,15 +29,17 @@ export const insertAssetIfNotExists = async ({
     return existingAsset;
   }
 
-  const assetData = await getAssetData(assetAddress, context);
-
-  const poolAddress = assetData.pool.toLowerCase() as `0x${string}`;
-
-  const isToken0 =
-    assetAddress.toLowerCase() < assetData.numeraire.toLowerCase();
+  const isToken0 = assetAddress.toLowerCase() < numeraireAddress.toLowerCase();
 
   return await db.insert(asset).values({
-    ...assetData,
+    numeraire: numeraireAddress,
+    numTokensToSell: 0n,
+    poolInitializer: zeroAddress,
+    liquidityMigrator: zeroAddress,
+    integrator: zeroAddress,
+    governance: zeroAddress,
+    timelock: zeroAddress,
+    migrationPool: zeroAddress,
     poolAddress,
     address,
     chainId: chain!.id,
@@ -50,7 +55,7 @@ export const insertAssetIfNotExists = async ({
   });
 };
 
-export const updateAsset = async ({
+export const updateZoraAsset = async ({
   assetAddress,
   context,
   update,

@@ -13,7 +13,6 @@ export const CHAINLINK_ETH_DECIMALS = BigInt(10) ** BigInt(8);
 
 export enum DopplerRequiredBlocks {
   V4PoolCheckpoints = "V4PoolCheckpoints",
-  MetricRefresher = "MetricRefresher",
 }
 
 export enum DopplerRequiredContracts {
@@ -41,16 +40,12 @@ export const NETWORK_BLOCK_INTERVALS = {
 
 // Block numbers organized by purpose
 export const START_BLOCKS: Record<Network, number> = {
-  mainnet: 21781000,
   unichain: 8536880,
   ink: 9500879,
   base: 28415520,
 } as const;
 
 export const V4_START_BLOCKS: Record<Network, number> = {
-  // Satisfy typescript
-  // TODO: fix
-  mainnet: 0,
   unichain: 17686805,
   ink: 14937170,
   base: 30822164,
@@ -77,4 +72,16 @@ export const SHARED_ADDRESSES = {
   governanceFactory: "0x9dbfaadc8c0cb2c34ba698dd9426555336992e20",
   migrator: "0xb2ec6559704467306d04322a5dc082b2af4562dd",
   weth: COMMON_ADDRESSES.WETH_BASE,
+} as const;
+
+export const STATE_VIEWS = {
+  unichain: "0x86e8631a016f9068c3f085faf484ee3f5fdee8f2",
+  base: "0xa3c0c9b65bad0b08107aa264b0f3db444b867a71",
+  ink: "0x76fd297e2d437cd7f76d50f01afe6160f86e9990"
+} as const;
+
+export const DOPPLER_LENSES = {
+  unichain: "0x82ac010c67f70bacf7655cd8948a4ad92a173cac",
+  base: "0x43d0d97ec9241a8f05a264f94b82a1d2e600f2b3",
+  ink: "0x8af018e28c273826e6b2d5a99e81c8fb63729b07"
 } as const;

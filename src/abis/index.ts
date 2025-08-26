@@ -11,6 +11,9 @@ export {
   V4MigratorABI,
 } from "./v4-abis";
 
+// zora abis
+export { ZoraCoinABI, ZoraCreatorCoinABI, ZoraFactoryABI, ZoraV4HookABI } from "./zora-abis";
+
 // shared abis
 export { DERC20ABI } from "./DERC20ABI";
 export { AirlockABI } from "./AirlockABI";

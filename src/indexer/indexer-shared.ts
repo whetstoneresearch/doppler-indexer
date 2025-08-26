@@ -1,12 +1,13 @@
 import { ponder } from "ponder:registry";
 import { asset, pool } from "ponder:schema";
 import { insertAssetIfNotExists, updateAsset } from "./shared/entities/asset";
-import { insertV2MigrationPoolIfNotExists } from "./shared/entities/v2Pool";
-import { updatePool } from "./shared/entities/pool";
-import { addresses as allAddresses } from "@app/config/addresses";
 import { insertTokenIfNotExists, updateToken } from "./shared/entities/token";
+import { insertV2MigrationPoolIfNotExists } from "./shared/entities/v2Pool";
+import { updateUserAsset } from "./shared/entities/userAsset";
+import { insertUserAssetIfNotExists } from "./shared/entities/userAsset";
 import { insertUserIfNotExists, updateUser } from "./shared/entities/user";
-import { insertUserAssetIfNotExists, updateUserAsset } from "./shared/entities/userAsset";
+import { updatePool } from "./shared/entities/pool";
+import { addresses } from "@app/config/addresses";
 
 ponder.on("Airlock:Migrate", async ({ event, context }) => {
   const { chain } = context;
@@ -14,13 +15,17 @@ ponder.on("Airlock:Migrate", async ({ event, context }) => {
   const assetId = event.args.asset.toLowerCase() as `0x${string}`;
   const poolAddress = event.args.pool.toLowerCase() as `0x${string}`;
 
-  const assetEntity = await context.db.find(asset, {
-    address: assetId,
+  const assetEntity = await insertAssetIfNotExists({
+    assetAddress: assetId,
+    timestamp,
+    context,
   });
 
-  const v2Migrator = allAddresses[chain!.name].v2Migrator;
+  const v2Migrator = addresses[chain!.name].v2Migrator as `0x${string}`;
 
-  if (assetEntity?.liquidityMigrator == v2Migrator) {
+  if (
+    assetEntity.liquidityMigrator.toLowerCase() == v2Migrator.toLowerCase()
+  ) {
     const v2Pool = await insertV2MigrationPoolIfNotExists({
       assetAddress: assetId,
       timestamp,
@@ -63,12 +68,13 @@ ponder.on("Airlock:Migrate", async ({ event, context }) => {
 //   if (
 //     token0Address.toLowerCase() == zeroAddress ||
 //     token0Address.toLowerCase() ==
-//       chainConfigs[chain.name].addresses.shared.weth
+//     chainConfigs[chain.name].addresses.shared.weth
 //   ) {
 //     isToken0 = false;
 //   } else {
 //     const assetEntityCheck = await context.db.find(asset, {
 //       address: token0Address,
+//       chainId: chain.id,
 //     });
 //     if (assetEntityCheck) {
 //       isToken0 = true;
@@ -79,6 +85,7 @@ ponder.on("Airlock:Migrate", async ({ event, context }) => {
 
 //   const assetEntity = await context.db.find(asset, {
 //     address: isToken0 ? token0Address : token1Address,
+//     chainId: chain.id,
 //   });
 
 //   await insertV3MigrationPoolIfNotExists({
@@ -183,7 +190,7 @@ ponder.on("DERC20:Transfer", async ({ event, context }) => {
   const [poolEntity] = await Promise.all([
     db.find(pool, {
       address: assetData.poolAddress,
-      chainId: BigInt(chain!.id),
+      chainId: chain!.id,
     }),
     updateToken({
       tokenAddress: assetId,

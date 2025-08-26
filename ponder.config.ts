@@ -3,17 +3,12 @@ import settings, { NetworkEnum } from "./src/settings";
 import { BlockName, ContractName } from "./src/config/types";
 import fs from "fs";
 import stringify from "json-stable-stringify";
-import { START_BLOCKS } from "./src/config/const";
-import { AirlockABI, DERC20ABI, DopplerABI, PoolManagerABI, UniswapV2PairABI, UniswapV3InitializerABI, UniswapV3PoolABI, UniswapV4InitializerABI, V4MigratorABI } from "./src/abis";
+import { AirlockABI, DERC20ABI, DopplerABI, LockableUniswapV3InitializerABI, PoolManagerABI, UniswapV2PairABI, UniswapV3InitializerABI, UniswapV3PoolABI, UniswapV4InitializerABI, V4MigratorABI, ZoraCoinABI, ZoraCreatorCoinABI, ZoraFactoryABI, ZoraV4HookABI } from "./src/abis";
 import { generateBlocks, generateContractChains } from "./src/utils";
 
 const cfg = {
   ordering: "multichain" as const,
   chains: {
-    mainnet: {
-      id: settings.mainnet.chainId,
-      rpc: settings.mainnet.rpc,
-    },
     base: {
       id: settings.base.chainId,
       rpc: settings.base.rpc,
@@ -29,22 +24,13 @@ const cfg = {
   },
   blocks: {
     // mainnet required
-    [BlockName.ChainlinkEthPriceFeed]: {
-      chain: {
-        mainnet: {
-          startBlock: START_BLOCKS.mainnet,
-          interval: settings.interval,
-        },
-      },
-    },
+    [BlockName.ChainlinkEthPriceFeed]: generateBlocks({
+      blockName: BlockName.ChainlinkEthPriceFeed,
+      networks: [NetworkEnum.base, NetworkEnum.ink, NetworkEnum.unichain],
+    }),
     [BlockName.MetricRefresher]: generateBlocks({
       blockName: BlockName.MetricRefresher,
       networks: [NetworkEnum.base, NetworkEnum.ink, NetworkEnum.unichain],
-    }),
-
-    [BlockName.PendingTokenImages]: generateBlocks({
-      blockName: BlockName.PendingTokenImages,
-      networks: [NetworkEnum.base],
     }),
   },
   contracts: {
@@ -71,14 +57,19 @@ const cfg = {
         networks: [NetworkEnum.base, NetworkEnum.ink, NetworkEnum.unichain],
       }),
     },
-
+    [ContractName.LockableUniswapV3Initializer]: {
+      abi: LockableUniswapV3InitializerABI,
+      chain: generateContractChains({
+        contractName: ContractName.LockableUniswapV3Initializer,
+        networks: [NetworkEnum.base],
+      }),
+    },
     // [ContractName.UniswapV3MigrationPool]: {
     //   abi: UniswapV3PoolABI,
     //   chain: generateContractChains({
     //     contractName: ContractName.UniswapV3MigrationPool,
     //   }),
     // },
-
     [ContractName.DERC20]: {
       abi: DERC20ABI,
       chain: generateContractChains({
@@ -163,6 +154,41 @@ const cfg = {
       abi: V4MigratorABI,
       chain: generateContractChains({
         contractName: ContractName.V4Migrator,
+        networks: [NetworkEnum.base],
+      }),
+    },
+    [ContractName.ZoraFactory]: {
+      abi: ZoraFactoryABI,
+      chain: generateContractChains({
+        contractName: ContractName.ZoraFactory,
+        networks: [NetworkEnum.base],
+      }),
+    },
+    [ContractName.ZoraContentCoin]: {
+      abi: ZoraCoinABI,
+      chain: generateContractChains({
+        contractName: ContractName.ZoraContentCoin,
+        networks: [NetworkEnum.base],
+      }),
+    },
+    [ContractName.ZoraCreatorCoin]: {
+      abi: ZoraCreatorCoinABI,
+      chain: generateContractChains({
+        contractName: ContractName.ZoraCreatorCoin,
+        networks: [NetworkEnum.base],
+      }),
+    },
+    [ContractName.ZoraCreatorCoinHook]: {
+      abi: ZoraV4HookABI,
+      chain: generateContractChains({
+        contractName: ContractName.ZoraCreatorCoinHook,
+        networks: [NetworkEnum.base],
+      }),
+    },
+    [ContractName.ZoraContentCoinHook]: {
+      abi: ZoraV4HookABI,
+      chain: generateContractChains({
+        contractName: ContractName.ZoraContentCoinHook,
         networks: [NetworkEnum.base],
       }),
     },

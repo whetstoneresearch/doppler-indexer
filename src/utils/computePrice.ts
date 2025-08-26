@@ -1,4 +1,4 @@
-import { CHAINLINK_ETH_DECIMALS, Q192, WAD } from "@app/config/const";
+import { CHAINLINK_ETH_DECIMALS, Q192, WAD } from "@app/utils/constants";
 
 export const computeDollarPrice = ({
   sqrtPriceX96,
