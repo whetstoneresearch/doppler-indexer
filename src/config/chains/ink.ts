@@ -20,11 +20,13 @@ export const inkConfig: ChainConfig = {
     v2: {
       factory: "0xfe57A6BA1951F69aE2Ed4abe23e0f095DF500C04" as Address,
       v2Migrator: "0x5F3bA43D44375286296Cb85F1EA2EBfa25dde731" as Address,
+      nimCustomV2Migrator: COMMON_ADDRESSES.ZERO_ADDRESS,
     },
     v3: {
       v3Initializer: "0xaA47D2977d622DBdFD33eeF6a8276727c52EB4e5" as Address,
       lockableV3Initializer: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
       v3Migrator: COMMON_ADDRESSES.ZERO_ADDRESS,
+      nimCustomV3Migrator: COMMON_ADDRESSES.ZERO_ADDRESS,
     },
     v4: {
       poolManager: "0x360e68faccca8ca495c1b759fd9eee466db9fb32" as Address,
