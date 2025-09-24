@@ -1,12 +1,13 @@
 import { v2Pool } from "ponder:schema";
-import { Address } from "viem";
+import { Address, zeroAddress } from "viem";
 import { Context } from "ponder:registry";
-import { getPairData } from "@app/indexer/utils";
+import { getPairData } from "@app/utils/v2-utils/getPairData";
 import { insertAssetIfNotExists } from "./asset";
+import { PriceService } from "@app/core";
+import { fetchEthPrice } from "../oracle";
+import { CHAINLINK_ETH_DECIMALS } from "@app/utils/constants";
 import { insertPoolIfNotExists } from "./pool";
-import { CHAINLINK_ETH_DECIMALS } from "@app/config/const";
-import { PriceService } from "@app/core/pricing/PriceService";
-import { fetchEthPrice } from "@app/indexer/shared/oracle";
+import { chainConfigs } from "@app/config";
 
 export const insertV2PoolIfNotExists = async ({
   assetAddress,
@@ -32,6 +33,7 @@ export const insertV2PoolIfNotExists = async ({
 
   const existingV2Pool = await db.find(v2Pool, {
     address: migrationPoolAddr,
+    chainId: chain.id,
   });
 
   if (existingV2Pool) {
@@ -67,12 +69,12 @@ export const insertV2PoolIfNotExists = async ({
 
   return await db.insert(v2Pool).values({
     address: migrationPoolAddr,
-    chainId: BigInt(chain!.id),
+    chainId: chain.id,
     baseToken: assetId,
     quoteToken: numeraireId,
     reserveBaseToken: isToken0 ? reserve0 : reserve1,
     reserveQuoteToken: isToken0 ? reserve1 : reserve0,
-    price: BigInt(dollarPrice),
+    price: dollarPrice,
     v3Pool: poolAddr,
     parentPool: poolAddr,
     totalFeeBaseToken: 0n,
@@ -92,22 +94,31 @@ export const updateV2Pool = async ({
   context: Context;
   update: Partial<typeof v2Pool.$inferInsert>;
 }): Promise<typeof v2Pool.$inferSelect> => {
-  const { db } = context;
+  const { db, chain } = context;
 
   const address = poolAddress.toLowerCase() as `0x${string}`;
 
   return await db
     .update(v2Pool, {
       address,
+      chainId: chain.id,
     })
     .set(update);
 };
 
 export const insertV2MigrationPoolIfNotExists = async ({
+  migrationPoolAddress,
+  parentPoolAddress,
+  isToken0ParentPool,
+  numeraire,
   assetAddress,
   timestamp,
   context,
 }: {
+  migrationPoolAddress: Address;
+  parentPoolAddress: Address;
+  isToken0ParentPool: boolean;
+  numeraire: Address;
   assetAddress: Address;
   timestamp: bigint;
   context: Context;
@@ -116,64 +127,48 @@ export const insertV2MigrationPoolIfNotExists = async ({
 
   const ethPrice = await fetchEthPrice(timestamp, context);
 
-  const { poolAddress, migrationPool, numeraire } =
-    await insertAssetIfNotExists({
-      assetAddress,
-      timestamp,
-      context,
-    });
-
-  const migrationPoolAddr = migrationPool.toLowerCase() as `0x${string}`;
-
   const existingV2Pool = await db.find(v2Pool, {
-    address: migrationPoolAddr,
+    address: migrationPoolAddress,
+    chainId: chain.id,
   });
 
   if (existingV2Pool) {
     return existingV2Pool;
   }
 
-  const { baseToken } = await insertPoolIfNotExists({
-    poolAddress,
-    timestamp,
-    context,
-    ethPrice,
-  });
-
-  const isToken0 = baseToken === assetAddress;
-
   const assetId = assetAddress.toLowerCase() as `0x${string}`;
   const numeraireId = numeraire.toLowerCase() as `0x${string}`;
 
-  const poolAddr = poolAddress.toLowerCase() as `0x${string}`;
+  const wethAddress = chainConfigs[chain.name].addresses.shared.weth.toLowerCase() as `0x${string}`;
+
+  const migrationPoolIsToken0 = numeraireId === zeroAddress ? assetId < wethAddress : isToken0ParentPool;
 
   const { reserve0, reserve1 } = await getPairData({
-    address: migrationPoolAddr,
+    address: migrationPoolAddress,
     context,
   });
 
-
   const price = PriceService.computePriceFromReserves({
-    assetBalance: reserve0,
-    quoteBalance: reserve1,
+    assetBalance: migrationPoolIsToken0 ? reserve0 : reserve1,
+    quoteBalance: migrationPoolIsToken0 ? reserve1 : reserve0,
   });
 
   const dollarPrice = (price * ethPrice) / CHAINLINK_ETH_DECIMALS;
 
   return await db.insert(v2Pool).values({
-    address: migrationPoolAddr,
-    chainId: BigInt(chain!.id),
+    address: migrationPoolAddress,
+    chainId: chain.id,
     baseToken: assetId,
     quoteToken: numeraireId,
-    reserveBaseToken: isToken0 ? reserve0 : reserve1,
-    reserveQuoteToken: isToken0 ? reserve1 : reserve0,
+    reserveBaseToken: migrationPoolIsToken0 ? reserve0 : reserve1,
+    reserveQuoteToken: migrationPoolIsToken0 ? reserve1 : reserve0,
     price: dollarPrice,
-    v3Pool: poolAddr,
-    parentPool: poolAddr,
+    v3Pool: parentPoolAddress,
+    parentPool: parentPoolAddress,
     totalFeeBaseToken: 0n,
     totalFeeQuoteToken: 0n,
     migratedAt: timestamp,
     migrated: true,
-    isToken0,
+    isToken0: migrationPoolIsToken0,
   });
 };

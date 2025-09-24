@@ -1,17 +1,29 @@
 import { Address, Hex, numberToHex, zeroAddress } from "viem";
 import { Context } from "ponder:registry";
-import { getPoolId } from "@app/utils/v4-utils/getPoolId";
-import { computeV4Price } from "@app/utils/v4-utils/computeV4Price";
-import { getAssetData } from "@app/utils/getAssetData";
+import {
+  DERC20ABI,
+  DopplerABI,
+  DopplerLensQuoterABI,
+  StateViewABI,
+  ZoraV4HookABI,
+} from "@app/abis";
+import {
+  PoolKey,
+  V4PoolConfig,
+  PositionData,
+  Slot0Data,
+  V4PoolData,
+  QuoteExactSingleParams
+} from "@app/types/v4-types";
+import { getPoolId } from "./getPoolId";
+import { computeV4Price } from "./computeV4Price";
+import { getAssetData } from "../getAssetData";
 import {
   getAmount0Delta,
   getAmount1Delta,
-} from "@app/utils/v3-utils/computeGraduationThreshold";
+} from "../v3-utils/computeGraduationThreshold";
 import { getMulticallOptions } from "@app/core/utils";
-import { DopplerABI, StateViewABI, DERC20ABI, DopplerLensQuoterABI } from "@app/abis";
-import { V4PoolData, PoolKey, Slot0Data, V4PoolConfig, PositionData, QuoteExactSingleParams } from "@app/types";
-import { addresses } from "@app/config/addresses";
-import { L2Network } from "@app/settings";
+import { chainConfigs } from "@app/config";
 
 export const getV4PoolData = async ({
   hook,
@@ -20,8 +32,7 @@ export const getV4PoolData = async ({
   hook: Address;
   context: Context;
 }): Promise<V4PoolData> => {
-  const network = context.chain!.name as L2Network;
-  const stateView = addresses[network].v4StateView;
+  const { stateView } = chainConfigs[context.chain.name].addresses.v4;
   const { client, chain } = context;
 
   const poolConfig = await getV4PoolConfig({ hook, context });
@@ -48,13 +59,13 @@ export const getV4PoolData = async ({
     contracts: [
       {
         abi: StateViewABI,
-        address: stateView as Address,
+        address: stateView,
         functionName: "getSlot0",
         args: [poolId],
       },
       {
         abi: StateViewABI,
-        address: stateView as Address,
+        address: stateView,
         functionName: "getLiquidity",
         args: [poolId],
       },
@@ -97,7 +108,7 @@ export const getV4PoolData = async ({
     slot0Data,
     liquidity: liquidityResult,
     price,
-    poolConfig: poolConfig,
+    poolConfig: poolConfig!,
   };
 };
 
@@ -213,8 +224,7 @@ export const getReservesV4 = async ({
   context: Context;
 }) => {
   const { client } = context;
-  const network = context.chain!.name as L2Network;
-  const stateView = addresses[network].v4StateView;
+  const { stateView } = chainConfigs[context.chain.name].addresses.v4;
 
   const poolKey = await client.readContract({
     abi: DopplerABI,
@@ -241,7 +251,7 @@ export const getReservesV4 = async ({
 
   const [, tick] = await client.readContract({
     abi: StateViewABI,
-    address: stateView as Address,
+    address: stateView,
     functionName: "getSlot0",
     args: [poolId],
   });
@@ -366,9 +376,8 @@ export const getLatestSqrtPrice = async ({
   amount0: bigint;
   amount1: bigint;
 }> => {
-  const { client } = context;
-  const network = context.chain!.name as L2Network;
-  const lensQuoter = addresses[network].v4DopplerLens;
+  const { client, chain } = context;
+  const lensQuoter = chainConfigs[chain.name].addresses.v4.dopplerLens;
 
   const input: QuoteExactSingleParams = {
     poolKey,
@@ -379,7 +388,7 @@ export const getLatestSqrtPrice = async ({
 
   const lensQuote = await client.simulateContract({
     abi: DopplerLensQuoterABI,
-    address: lensQuoter as Address,
+    address: lensQuoter,
     functionName: "quoteDopplerLensData",
     args: [input],
   });
@@ -390,4 +399,113 @@ export const getLatestSqrtPrice = async ({
   const amount1 = lensQuote.result.amount1;
 
   return { sqrtPriceX96, tick, amount0, amount1 };
+};
+
+export const getReservesV4Zora = async ({
+  poolAddress,
+  isContentCoin,
+  isCreatorCoin,
+  poolKey,
+  context,
+  poolKeyHash,
+}: {
+  poolAddress: Address;
+  isContentCoin: boolean;
+  isCreatorCoin: boolean;
+  poolKey: PoolKey;
+  context: Context;
+  poolKeyHash?: Address;
+}) => {
+  const { client, chain } = context;
+
+  const stateView = chainConfigs[chain.name].addresses.v4.stateView;
+
+  const poolId = getPoolId(poolKey);
+  // convert the poolAddress to bytes23 instead of bytes32
+  const poolAddressBytes23 = poolAddress.slice(0, 48);
+
+  const hook = poolKey.hooks;
+
+  const [poolCoin, slot0] = await client.multicall({
+    contracts: [
+      {
+        abi: ZoraV4HookABI,
+        address: hook,
+        functionName: "getPoolCoin",
+        args: [poolKey],
+      },
+      {
+        abi: StateViewABI,
+        address: stateView,
+        functionName: "getSlot0",
+        args: [poolId],
+      },
+    ],
+  });
+
+
+  const sqrtPriceX96 = slot0.result?.[0] ?? 0n;
+  const tick = slot0.result?.[1] ?? 0;
+  const positions = poolCoin.result?.positions ?? [];
+
+  const reserves = positions
+    .map((position) => {
+      const { tickLower, tickUpper, liquidity } = position;
+
+      let amount0;
+      let amount1;
+      if (tick < tickLower) {
+        amount0 = getAmount0Delta({
+          tickLower,
+          tickUpper,
+          liquidity,
+          roundUp: false,
+        });
+      } else if (tick < tickUpper) {
+        amount0 = getAmount0Delta({
+          tickLower: tick,
+          tickUpper,
+          liquidity,
+          roundUp: false,
+        });
+      } else {
+        amount0 = 0n;
+      }
+
+      if (tick < tickLower) {
+        amount1 = 0n;
+      } else if (tick < tickUpper) {
+        amount1 = getAmount1Delta({
+          tickLower,
+          tickUpper: tick,
+          liquidity,
+          roundUp: false,
+        });
+      } else {
+        amount1 = getAmount1Delta({
+          tickLower,
+          tickUpper,
+          liquidity,
+          roundUp: false,
+        });
+      }
+
+      return {
+        liquidity: liquidity,
+        token0Reserve: amount0,
+        token1Reserve: amount1,
+      };
+    })
+    .reduce(
+      (acc, curr) => {
+        return {
+          liquidity: acc.liquidity + curr.liquidity,
+          token0Reserve: acc.token0Reserve + curr.token0Reserve,
+          token1Reserve: acc.token1Reserve + curr.token1Reserve,
+        };
+      },
+      { liquidity: 0n, token0Reserve: 0n, token1Reserve: 0n }
+    );
+
+  return { reserves, sqrtPriceX96, tick };
 };

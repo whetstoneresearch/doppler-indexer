@@ -1,6 +1,6 @@
 {
-  "name": "doppler-indexer-v2",
-  "version": "0.0.1",
+  "name": "doppler-v3-indexer",
+  "version": "0.0.2",
   "private": true,
   "type": "module",
   "scripts": {
@@ -8,27 +8,21 @@
     "start": "ponder start",
     "db": "ponder db",
     "codegen": "ponder codegen",
-    "debug": "ponder dev -vv",
     "lint": "eslint .",
     "typecheck": "tsc"
   },
   "dependencies": {
     "@uniswap/v3-sdk": "^3.25.2",
-    "deepmerge": "^4.3.1",
-    "hono": "^4.5.0",
+    "hono": "^4.9.8",
     "jsbi": "^4.3.2",
-    "json-stable-stringify": "^1.3.0",
-    "ponder": "^0.11.34",
-    "viem": "^2.21.3"
+    "ponder": "^0.13.4",
+    "viem": "2.30.1"
   },
   "devDependencies": {
-    "@eslint/js": "^9.31.0",
-    "@types/node": "^20.9.0",
-    "eslint": "^8.53.0",
-    "eslint-config-ponder": "^0.11.34",
-    "json-diff-ts": "^4.8.1",
-    "typescript": "^5.2.2",
-    "typescript-eslint": "^8.38.0"
+    "@types/node": "^20.19.17",
+    "eslint": "^8.57.1",
+    "eslint-config-ponder": "^0.8.33",
+    "typescript": "^5.9.2"
   },
   "engines": {
     "node": ">=18.14"

@@ -1,6 +1,5 @@
-import { CHAINLINK_ETH_DECIMALS, WAD } from "@app/config/const";
+import { WAD, CHAINLINK_ETH_DECIMALS } from "@app/utils/constants";
 import { PriceService } from "@app/core/pricing";
-
 
 /**
  * Market metrics interface
@@ -22,6 +21,7 @@ export interface LiquidityParams {
   price: bigint;
   ethPriceUSD: bigint;
   isQuoteETH?: boolean;
+  decimals?: number;
 }
 
 /**
@@ -33,6 +33,7 @@ export interface MarketCapParams {
   ethPriceUSD: bigint;
   assetDecimals?: number;
   isQuoteETH?: boolean;
+  decimals?: number;
 }
 
 /**
@@ -61,18 +62,12 @@ export class MarketDataService {
       totalSupply,
       ethPriceUSD,
       assetDecimals = 18,
-      isQuoteETH = true,
+      decimals = 8,
     } = params;
-
     // Calculate market cap in quote currency
     const marketCap = (price * totalSupply) / BigInt(10 ** assetDecimals);
 
-    // Convert to USD if quote is ETH
-    if (isQuoteETH) {
-      return (marketCap * ethPriceUSD) / CHAINLINK_ETH_DECIMALS;
-    }
-
-    return marketCap;
+    return (marketCap * ethPriceUSD) / BigInt(10 ** decimals);
   }
 
   /**
@@ -86,6 +81,7 @@ export class MarketDataService {
       price,
       ethPriceUSD,
       isQuoteETH = true,
+      decimals = 8,
     } = params;
 
     // Calculate asset value in quote currency
@@ -93,8 +89,8 @@ export class MarketDataService {
 
     if (isQuoteETH) {
       // Convert both to USD
-      const assetValueUsd = (assetValueInQuote * ethPriceUSD) / CHAINLINK_ETH_DECIMALS;
-      const quoteValueUsd = (quoteBalance * ethPriceUSD) / CHAINLINK_ETH_DECIMALS;
+      const assetValueUsd = (assetValueInQuote * ethPriceUSD) / BigInt(10 ** decimals);
+      const quoteValueUsd = (quoteBalance * ethPriceUSD) / BigInt(10 ** decimals);
       return assetValueUsd + quoteValueUsd;
     }
 
@@ -194,45 +190,5 @@ export class MarketDataService {
       priceUsd,
     };
   }
-
-  /**
-   * Calculate price change percentage
-   * @param currentPrice Current price
-   * @param previousPrice Previous price (24h ago)
-   * @returns Percentage change
-   */
-  static calculatePriceChange(
-    currentPrice: bigint,
-    previousPrice: bigint
-  ): number {
-    if (previousPrice === 0n) return 0;
-
-    const change = Number(currentPrice - previousPrice);
-    const base = Number(previousPrice);
-
-    return (change / base) * 100;
-  }
-
-  /**
-   * Format large USD values for display
-   * @param value Value in USD (with appropriate decimals)
-   * @param decimals Number of decimal places to show
-   */
-  static formatUsdValue(value: bigint, decimals: number = 2): string {
-    const divisor = BigInt(10 ** 18);
-    const whole = value / divisor;
-    const fraction = value % divisor;
-    
-    const fractionStr = fraction.toString().padStart(18, '0').slice(0, decimals);
-    
-    return `${whole}.${fractionStr}`;
-  }
-
-  /**
-   * Aggregate daily volume from multiple swaps
-   * @param swapVolumes Array of individual swap volumes in USD
-   */
-  static aggregateDailyVolume(swapVolumes: bigint[]): bigint {
-    return swapVolumes.reduce((total, volume) => total + volume, 0n);
-  }
 }
+

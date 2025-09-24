@@ -1,7 +1,8 @@
 import { Address } from "viem";
 import { Context } from "ponder:registry";
-import { SwapService, SwapData, MarketMetrics } from "./SwapService";
-import { SwapType } from "@app/types/shared";
+import { SwapService, SwapData, SwapMarketMetrics } from "./SwapService";
+import { SwapType } from "@app/types/shared-types";
+import { CHAINLINK_ETH_DECIMALS, WAD } from "@app/utils/constants";
 
 /**
  * Orchestrates all entity updates required after a swap
@@ -9,13 +10,13 @@ import { SwapType } from "@app/types/shared";
 export interface SwapUpdateParams {
   swapData: SwapData;
   swapType: SwapType;
-  metrics: MarketMetrics;
+  metrics: SwapMarketMetrics;
   poolData: {
     parentPoolAddress: Address;
     price: bigint;
-    volume24h?: bigint;
+    isQuoteEth?: boolean;
   };
-  chainId: bigint;
+  chainId: number;
   context: Context;
 }
 
@@ -24,11 +25,7 @@ export interface SwapUpdateParams {
  */
 export interface EntityUpdaters {
   updatePool: (params: any) => Promise<any>;
-  updateAsset: (params: any) => Promise<any>;
-  insertSwap: (params: any) => Promise<any>;
-  insertOrUpdateBuckets: (params: any) => Promise<any>;
-  insertOrUpdateDailyVolume: (params: any) => Promise<any>;
-  tryAddActivePool: (params: any) => Promise<any>;
+  updateFifteenMinuteBucketUsd: (context: Context, params: any) => Promise<any>;
 }
 
 /**
@@ -43,17 +40,12 @@ export class SwapOrchestrator {
     params: SwapUpdateParams,
     updaters: EntityUpdaters
   ): Promise<void> {
-    const { swapData, swapType, metrics, poolData, chainId, context } = params;
+    const { swapData, metrics, poolData, chainId, context } = params;
     const {
       updatePool,
-      updateAsset,
-      insertSwap,
-      insertOrUpdateBuckets,
-      insertOrUpdateDailyVolume,
-      tryAddActivePool,
+      updateFifteenMinuteBucketUsd,
     } = updaters;
 
-    // Prepare all update operations
     const updates = [
       // Update pool entity
       updatePool({
@@ -63,56 +55,15 @@ export class SwapOrchestrator {
           price: poolData.price,
           liquidityUsd: metrics.liquidityUsd,
           marketCapUsd: metrics.marketCapUsd,
-          volume24h: poolData.volume24h ?? 0n,
           timestamp: swapData.timestamp,
         }),
       }),
-
-      // Update asset entity
-      updateAsset({
-        assetAddress: swapData.assetAddress,
-        context,
-        update: SwapService.formatAssetUpdate(metrics),
-      }),
-
-      // Insert swap record
-      insertSwap({
-        ...SwapService.formatSwapEntity({
-          swapData,
-          swapType,
-          swapValueUsd: metrics.swapValueUsd,
-          chainId,
-        }),
-        context,
-      }),
-
-      // Update time series data
-      insertOrUpdateBuckets({
+      updateFifteenMinuteBucketUsd(context, {
         poolAddress: poolData.parentPoolAddress,
-        price: poolData.price,
+        chainId,
         timestamp: swapData.timestamp,
-        ethPrice: swapData.ethPriceUSD,
-        context,
-      }),
-
-      // Update daily volume
-      insertOrUpdateDailyVolume({
-        context,
-        poolAddress: poolData.parentPoolAddress,
-        amountIn: swapData.amountIn,
-        amountOut: swapData.amountOut,
-        timestamp: swapData.timestamp,
-        tokenIn: swapType === "buy" ? swapData.quoteAddress : swapData.assetAddress,
-        tokenOut: swapType === "buy" ? swapData.assetAddress : swapData.quoteAddress,
-        ethPrice: swapData.ethPriceUSD,
-        marketCapUsd: metrics.marketCapUsd,
-      }),
-
-      // Try to add to active pools
-      tryAddActivePool({
-        poolAddress: poolData.parentPoolAddress,
-        lastSwapTimestamp: Number(swapData.timestamp),
-        context,
+        priceUsd: swapData.price * swapData.usdPrice / (poolData.isQuoteEth ? CHAINLINK_ETH_DECIMALS : WAD),
+        volumeUsd: metrics.swapValueUsd,
       }),
     ];
 
@@ -136,7 +87,7 @@ export class SwapOrchestrator {
     amountIn: bigint;
     amountOut: bigint;
     price: bigint;
-    ethPriceUSD: bigint;
+    usdPrice: bigint;
   }): SwapData {
     return params;
   }

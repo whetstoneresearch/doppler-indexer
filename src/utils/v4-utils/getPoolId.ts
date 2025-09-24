@@ -1,4 +1,4 @@
-import { encodeAbiParameters, Hex, keccak256 } from "viem";
+import { encodeAbiParameters, encodePacked, Hex, keccak256 } from "viem";
 import { PoolKey } from "@app/types/v4-types";
 
 export const getPoolId = (poolKey: PoolKey): Hex => {
