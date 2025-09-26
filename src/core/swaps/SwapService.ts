@@ -1,5 +1,5 @@
 import { Address } from "viem";
-import { SwapType } from "@app/types/shared";
+import { SwapType } from "@app/types/shared-types";
 import { MarketDataService } from "@app/core/market";
 
 /**
@@ -18,17 +18,16 @@ export interface SwapData {
   amountIn: bigint;
   amountOut: bigint;
   price: bigint;
-  ethPriceUSD: bigint;
+  usdPrice: bigint;
 }
 
 /**
  * Market metrics calculated from swap data
  */
-export interface MarketMetrics {
+export interface SwapMarketMetrics {
   liquidityUsd: bigint;
   marketCapUsd: bigint;
   swapValueUsd: bigint;
-  percentDayChange: number;
 }
 
 /**
@@ -42,8 +41,9 @@ export class SwapService {
   static determineSwapType(params: {
     isToken0: boolean;
     amount0: bigint;
+    amount1: bigint;
   }): SwapType {
-    const { isToken0, amount0 } = params;
+    const { isToken0, amount0, amount1 } = params;
 
     // For V2/V3: positive amount means tokens going in (swap input)
     // If asset is token0 and amount0 is positive, user is buying with token0
@@ -53,7 +53,10 @@ export class SwapService {
       return "sell";
     } else if (!isToken0 && amount0 < 0n) {
       return "sell";
+    } else if (!isToken0 && amount0 < 0n) {
+      return "buy";
     }
+
     // Default case (shouldn't happen in practice)
     return "buy";
   }
@@ -82,7 +85,7 @@ export class SwapService {
     assetBalance: bigint;
     quoteBalance: bigint;
     isQuoteETH?: boolean;
-  }): MarketMetrics {
+  }): SwapMarketMetrics {
     const {
       totalSupply,
       price,
@@ -111,7 +114,6 @@ export class SwapService {
       liquidityUsd: metrics.liquidityUsd,
       marketCapUsd: metrics.marketCapUsd,
       swapValueUsd: metrics.volumeUsd || 0n,
-      percentDayChange: 0, // TODO: Implement historical price tracking
     };
   }
 
@@ -148,14 +150,12 @@ export class SwapService {
     price: bigint;
     liquidityUsd: bigint;
     marketCapUsd: bigint;
-    volume24h: bigint;
     timestamp: bigint;
   }) {
     return {
       price: params.price,
       dollarLiquidity: params.liquidityUsd, // Pool entity uses 'dollarLiquidity' field
       marketCapUsd: params.marketCapUsd,
-      volume24h: params.volume24h,
       lastSwapTimestamp: params.timestamp,
     };
   }
@@ -166,12 +166,10 @@ export class SwapService {
   static formatAssetUpdate(params: {
     liquidityUsd: bigint;
     marketCapUsd: bigint;
-    percentDayChange: number;
   }) {
     return {
       liquidityUsd: params.liquidityUsd,
       marketCapUsd: params.marketCapUsd,
-      percentDayChange: params.percentDayChange,
     };
   }
 }

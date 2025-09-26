@@ -1,15 +1,17 @@
-import { MarketDataService } from "@app/core/market";
+import { MarketDataService } from "@app/core";
 
 export const computeDollarLiquidity = ({
   assetBalance,
   quoteBalance,
   price,
   ethPrice,
+  decimals,
 }: {
   assetBalance: bigint;
   quoteBalance: bigint;
   price: bigint;
   ethPrice: bigint;
+  decimals?: number;
 }) => {
   return MarketDataService.calculateLiquidity({
     assetBalance,
@@ -17,5 +19,6 @@ export const computeDollarLiquidity = ({
     price,
     ethPriceUSD: ethPrice,
     isQuoteETH: true,
+    decimals,
   });
 };

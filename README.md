@@ -1,43 +1,38 @@
-# Doppler Protocol Indexer 🚀
+# Doppler V3 Indexer — Configs & Usage
 
-## Disclaimer 
-This repository is under active devlopment and not yet officially supported.
+## Multicurve Quickstart
 
-In the meantime, please use the [doppler-indexer](https://github.com/whetstoneresearch/doppler-sdk/tree/main/packages/doppler-v3-indexer) released in the [sdk monorepo](https://github.com/whetstoneresearch/doppler-sdk).
+- Prereqs: Bun installed and Postgres reachable; copy `.env.local.example` to `.env.local` and set required RPC URLs and DB connection.
+- Dev run: `bun run dev --config ./ponder.config.multicurve.ts`
+- Prod run: `bun run start --config ./ponder.config.multicurve.ts`
 
-Although it is currently named "doppler-v3-indexer" it supports indexing both Doppler v3 and v4 tokens. 
+This uses the `ponder.config.multicurve.ts` file to index the Multicurve setup. Logs will show chains and contracts being synced according to that config.
 
-We will update this README when it is ready for use. 
+This package ships with multiple Ponder configs so you can index different networks or a Zora‑only subset. You can select a config at runtime via `--config` when using `ponder dev` or `ponder start`.
 
-<hr/>
+## Configs
 
-### Getting Started
-run:
-```bash
-cp .env.example .env.local
-npm install
-npm run dev
-```
+- `ponder.config.ts`: Multichain (Base, Unichain, Ink) + Zora listeners on Base.
+- `ponder.config.multichain.ts`: Multichain (same scope as above).
+- `ponder.config.multicurve.ts`: Multicurve indexing setup.
+- `ponder.confg.zora.ts`: Zora‑only on Base (limits chains/contracts to Zora needs).
 
----
+## Run
 
-### Environment Variables
-it is recommended to use a third party RPC for better performance
-```
-MAINNET_RPC=""
-BASE_RPC=""
-INK_RPC=""
-UNICHAIN_RPC=""
-ENABLED_NETWORKS="base,ink,unichain"
+From this package directory:
 
-# postgres or sqlite db
-DATABASE_URL="postgresql://postgres:postgres@localhost:5432/default"
-```
+- Dev (hot reload): `ponder dev --config ./ponder.config.ts`
+- Prod: `ponder start --config ./ponder.config.ts`
 
----
+Swap the config path to target a different setup, for example:
 
-### Database
-Ponder can run with postgres or sqlite db. Start your own local postgres db
-```bash
-docker-compose -f docker-compose.yml up -d doppler-indexer-database
-```
+- Multichain: `ponder dev --config ./ponder.config.multichain.ts`
+- Zora‑only: `ponder dev --config ./ponder.config.zora.ts`
+
+## Notes
+
+- RPC env vars live in `.env.local` (see `.env.local.example`). Common ones:
+  - Base: `PONDER_RPC_URL_8453`
+  - Unichain: `PONDER_RPC_URL_130`
+  - Ink: `PONDER_RPC_URL_57073`
+- The database connection defaults to Postgres at `postgresql://postgres:postgres@localhost:5432/default` (see `docker-compose.yml`).

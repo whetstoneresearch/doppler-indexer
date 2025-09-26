@@ -1,177 +1,405 @@
-import { createConfig } from "ponder";
-import settings, { NetworkEnum } from "./src/settings";
-import { BlockName, ContractName } from "./src/config/types";
-import fs from "fs";
-import stringify from "json-stable-stringify";
-import { START_BLOCKS } from "./src/config/const";
-import { AirlockABI, DERC20ABI, DopplerABI, PoolManagerABI, UniswapV2PairABI, UniswapV3InitializerABI, UniswapV3PoolABI, UniswapV4InitializerABI, V4MigratorABI } from "./src/abis";
-import { generateBlocks, generateContractChains } from "./src/utils";
+import { createConfig, factory, mergeAbis } from "ponder";
+import { getAbiItem, http } from "viem";
+import {
+  UniswapV3InitializerABI,
+  UniswapV4InitializerABI,
+  UniswapV3PoolABI,
+  AirlockABI,
+  DERC20ABI,
+  DopplerABI,
+  PoolManagerABI,
+  UniswapV2PairABI,
+  ZoraFactoryABI,
+  ZoraV4HookABI,
+  ZoraCoinABI,
+  ZoraCreatorCoinABI,
+} from "./src/abis";
+import { BLOCK_INTERVALS } from "./src/config/chains/constants";
+import { chainConfigs, CHAIN_IDS } from "./src/config/chains";
+import { LockableUniswapV3InitializerABI } from "@app/abis/v3-abis/LockableUniswapV3InitializerABI";
+import { UniswapV3MigratorAbi } from "@app/abis/v3-abis/UniswapV3Migrator";
+import { UniswapV2FactoryABI } from "@app/abis/UniswapV2Factory";
+import { UniswapV4MulticurveInitializerHookABI } from "@app/abis/multicurve-abis/UniswapV4MulticurveInitializerHookABI";
+import { UniswapV4MulticurveInitializerABI } from "@app/abis/multicurve-abis/UniswapV4MulticurveInitializerABI";
 
-const cfg = {
+const { base, unichain, ink, baseSepolia } = chainConfigs;
+
+export default createConfig({
+  database: {
+    kind: "postgres",
+    connectionString: "postgresql://postgres:postgres@localhost:5432/default",
+    poolConfig: {
+      max: 100,
+    },
+  },
+  ordering: "multichain",
   chains: {
-    mainnet: {
-      id: settings.mainnet.chainId,
-      rpc: settings.mainnet.rpc,
-    },
-    base: {
-      id: settings.base.chainId,
-      rpc: settings.base.rpc,
-    },
     unichain: {
-      id: settings.unichain.chainId,
-      rpc: settings.unichain.rpc,
+      id: CHAIN_IDS.unichain,
+      rpc: http(process.env.PONDER_RPC_URL_130),
     },
     ink: {
-      id: settings.ink.chainId,
-      rpc: settings.ink.rpc,
+      id: CHAIN_IDS.ink,
+      rpc: http(process.env.PONDER_RPC_URL_57073),
+    },
+    base: {
+      id: CHAIN_IDS.base,
+      rpc: http(process.env.PONDER_RPC_URL_8453),
+    },
+    baseSepolia: {
+      id: CHAIN_IDS.baseSepolia,
+      rpc: http(process.env.PONDER_RPC_URL_84532),
     },
   },
   blocks: {
-    // mainnet required
-    [BlockName.ChainlinkEthPriceFeed]: {
+    BaseChainlinkEthPriceFeed: {
+      chain: "base",
+      startBlock: base.startBlock,
+      interval: BLOCK_INTERVALS.FIVE_MINUTES, // every 5 minutes
+    },
+    UnichainChainlinkEthPriceFeed: {
+      chain: "unichain",
+      startBlock: unichain.startBlock,
+      interval: BLOCK_INTERVALS.FIVE_MINUTES, // every 5 minutes
+    },
+    InkChainlinkEthPriceFeed: {
+      chain: "ink",
+      startBlock: ink.startBlock,
+      interval: BLOCK_INTERVALS.FIVE_MINUTES, // every 5 minutes
+    },
+    ZoraUsdcPrice: {
+      chain: "base",
+      startBlock: 31058549,
+      interval: BLOCK_INTERVALS.FIVE_MINUTES, // every 5 minutes
+    },
+    BaseSepoliaChainlinkEthPriceFeed: {
+      chain: "baseSepolia",
+      startBlock: baseSepolia.startBlock,
+      interval: BLOCK_INTERVALS.FIVE_MINUTES, // every 5 minutes
+    },
+  },
+  contracts: {
+    Airlock: {
+      abi: AirlockABI,
       chain: {
-        mainnet: {
-          startBlock: START_BLOCKS.mainnet,
-          interval: settings.interval,
+        unichain: {
+          startBlock: unichain.startBlock,
+          address: unichain.addresses.shared.airlock,
+        },
+        base: {
+          startBlock: base.startBlock,
+          address: base.addresses.shared.airlock,
+        },
+        ink: {
+          startBlock: ink.startBlock,
+          address: ink.addresses.shared.airlock,
         },
       },
     },
-    [BlockName.MetricRefresher]: generateBlocks({
-      blockName: BlockName.MetricRefresher,
-      networks: [NetworkEnum.base, NetworkEnum.ink, NetworkEnum.unichain],
-    }),
-
-    [BlockName.PendingTokenImages]: generateBlocks({
-      blockName: BlockName.PendingTokenImages,
-      networks: [NetworkEnum.base],
-    }),
-  },
-  contracts: {
-    [ContractName.Airlock]: {
-      abi: AirlockABI,
-      chain: generateContractChains({
-        contractName: ContractName.Airlock,
-        networks: [NetworkEnum.base, NetworkEnum.ink, NetworkEnum.unichain],
-      }),
+    MigrationPool: {
+      abi: mergeAbis([UniswapV3PoolABI, UniswapV2PairABI]),
+      chain: {
+        base: {
+          startBlock: base.startBlock,
+          address: factory({
+            address: base.addresses.shared.airlock,
+            event: getAbiItem({
+              abi: AirlockABI,
+              name: "Migrate",
+            }),
+            parameter: "pool",
+          }),
+        },
+        unichain: {
+          startBlock: unichain.startBlock,
+          address: factory({
+            address: unichain.addresses.shared.airlock,
+            event: getAbiItem({ abi: AirlockABI, name: "Migrate" }),
+            parameter: "pool",
+          }),
+        },
+        ink: {
+          startBlock: ink.startBlock,
+          address: factory({
+            address: ink.addresses.shared.airlock,
+            event: getAbiItem({ abi: AirlockABI, name: "Migrate" }),
+            parameter: "pool",
+          }),
+        },
+      },
     },
-
-    [ContractName.UniswapV2Pair]: {
-      abi: UniswapV2PairABI,
-      chain: generateContractChains({
-        contractName: ContractName.UniswapV2Pair,
-        networks: [NetworkEnum.base, NetworkEnum.ink],
-      }),
-    },
-
-    [ContractName.UniswapV3Initializer]: {
+    UniswapV3Initializer: {
       abi: UniswapV3InitializerABI,
-      chain: generateContractChains({
-        contractName: ContractName.UniswapV3Initializer,
-        networks: [NetworkEnum.base, NetworkEnum.ink, NetworkEnum.unichain],
-      }),
+      chain: {
+        unichain: {
+          startBlock: unichain.startBlock,
+          address: unichain.addresses.v3.v3Initializer,
+        },
+        base: {
+          startBlock: base.startBlock,
+          address: base.addresses.v3.v3Initializer,
+        },
+        ink: {
+          startBlock: ink.startBlock,
+          address: ink.addresses.v3.v3Initializer,
+        },
+      },
     },
-
-    // [ContractName.UniswapV3MigrationPool]: {
-    //   abi: UniswapV3PoolABI,
-    //   chain: generateContractChains({
-    //     contractName: ContractName.UniswapV3MigrationPool,
-    //   }),
-    // },
-
-    [ContractName.DERC20]: {
+    UniswapV4Initializer: {
+      abi: UniswapV4InitializerABI,
+      chain: {
+        unichain: {
+          startBlock: unichain.v4StartBlock,
+          address: [unichain.addresses.v4.v4Initializer, unichain.addresses.v4.v4Initializer2, unichain.addresses.v4.v4InitializerLatest, unichain.addresses.v4.v4InitializerSelfCorrecting],
+        },
+        base: {
+          startBlock: base.v4StartBlock,
+          address: [base.addresses.v4.v4Initializer, base.addresses.v4.v4Initializer2, base.addresses.v4.v4InitializerLatest, base.addresses.v4.v4InitializerSelfCorrecting],
+        },
+        ink: {
+          startBlock: ink.v4StartBlock,
+          address: [ink.addresses.v4.v4Initializer, ink.addresses.v4.v4Initializer2, ink.addresses.v4.v4InitializerLatest, ink.addresses.v4.v4InitializerSelfCorrecting],
+        },
+      },
+    },
+    DERC20: {
       abi: DERC20ABI,
-      chain: generateContractChains({
-        contractName: ContractName.DERC20,
-        networks: [NetworkEnum.base, NetworkEnum.ink, NetworkEnum.unichain],
-      }),
+      chain: {
+        unichain: {
+          startBlock: unichain.startBlock,
+          address: factory({
+            address: unichain.addresses.shared.airlock,
+            event: getAbiItem({ abi: AirlockABI, name: "Create" }),
+            parameter: "asset",
+          }),
+        },
+        base: {
+          startBlock: base.startBlock,
+          address: factory({
+            address: base.addresses.shared.airlock,
+            event: getAbiItem({ abi: AirlockABI, name: "Create" }),
+            parameter: "asset",
+          }),
+        },
+        ink: {
+          startBlock: ink.startBlock,
+          address: factory({
+            address: ink.addresses.shared.airlock,
+            event: getAbiItem({ abi: AirlockABI, name: "Create" }),
+            parameter: "asset",
+          }),
+        },
+      },
     },
-
-    [ContractName.PoolManager]: {
-      abi: PoolManagerABI,
-      chain: generateContractChains({
-        contractName: ContractName.PoolManager,
-        networks: [NetworkEnum.base, NetworkEnum.ink, NetworkEnum.unichain],
-      }),
+    UniswapV3Migrator: {
+      abi: UniswapV3MigratorAbi,
+      chain: {
+        base: {
+          startBlock: base.startBlock, // hardcoded for now
+          address: base.addresses.v3.v3Migrator,
+        },
+      },
     },
-
-    [ContractName.UniswapV2PairUnichain]: {
-      abi: UniswapV2PairABI,
-      chain: generateContractChains({
-        contractName: ContractName.UniswapV2PairUnichain,
-        networks: [NetworkEnum.unichain],
-      }),
-    },
-    
-    [ContractName.UniswapV3Pool]: {
+    UniswapV3Pool: {
       abi: UniswapV3PoolABI,
-      chain: generateContractChains({
-        contractName: ContractName.UniswapV3Pool,
-        networks: [NetworkEnum.base, NetworkEnum.ink, NetworkEnum.unichain],
-      }),
+      chain: {
+        unichain: {
+          startBlock: unichain.startBlock,
+          address: factory({
+            address: unichain.addresses.v3.v3Initializer,
+            event: getAbiItem({ abi: UniswapV3InitializerABI, name: "Create" }),
+            parameter: "poolOrHook",
+          }),
+        },
+        base: {
+          startBlock: base.startBlock,
+          address: factory({
+            address: base.addresses.v3.v3Initializer,
+            event: getAbiItem({ abi: UniswapV3InitializerABI, name: "Create" }),
+            parameter: "poolOrHook",
+          }),
+        },
+        ink: {
+          startBlock: ink.startBlock,
+          address: factory({
+            address: ink.addresses.v3.v3Initializer,
+            event: getAbiItem({ abi: UniswapV3InitializerABI, name: "Create" }),
+            parameter: "poolOrHook",
+          }),
+        },
+      },
     },
-    
-    [ContractName.UniswapV4Initializer]: {
-      abi: UniswapV4InitializerABI,
-      chain: generateContractChains({
-        contractName: ContractName.UniswapV4Initializer,
-        networks: [NetworkEnum.base, NetworkEnum.ink, NetworkEnum.unichain],
-      }),
+    LockableUniswapV3Pool: {
+      abi: UniswapV3PoolABI,
+      chain: {
+        base: {
+          startBlock: base.startBlock,
+          address: factory({
+            address: base.addresses.v3.lockableV3Initializer,
+            event: getAbiItem({
+              abi: LockableUniswapV3InitializerABI,
+              name: "Create",
+            }),
+            parameter: "poolOrHook",
+          }),
+        },
+      },
     },
-    
-    [ContractName.UniswapV4Pool]: {
+    UniswapV2PairUnichain: {
+      abi: UniswapV2PairABI,
+      chain: {
+        unichain: {
+          startBlock: unichain.startBlock,
+          address: factory({
+            address: unichain.addresses.v2.factory,
+            event: getAbiItem({
+              abi: UniswapV2FactoryABI,
+              name: "PairCreated",
+            }),
+            parameter: "pair",
+          }),
+        },
+      },
+    },
+    PoolManager: {
+      abi: PoolManagerABI,
+      chain: {
+        base: {
+          startBlock: base.v4StartBlock,
+          address: base.addresses.v4.poolManager,
+        },
+        unichain: {
+          startBlock: unichain.v4StartBlock,
+          address: unichain.addresses.v4.poolManager,
+        },
+        ink: {
+          startBlock: ink.v4StartBlock,
+          address: ink.addresses.v4.poolManager,
+        },
+      },
+    },
+    UniswapV4Pool: {
       abi: DopplerABI,
-      chain: generateContractChains({
-        contractName: ContractName.UniswapV4Pool,
-        networks: [NetworkEnum.base, NetworkEnum.ink, NetworkEnum.unichain],
-      }),
+      chain: {
+        base: {
+          startBlock: base.v4StartBlock,
+          address: factory({
+            address: [base.addresses.v4.v4Initializer, base.addresses.v4.v4Initializer2, base.addresses.v4.v4InitializerLatest, base.addresses.v4.v4InitializerSelfCorrecting],
+            event: getAbiItem({ abi: UniswapV4InitializerABI, name: "Create" }),
+            parameter: "poolOrHook",
+          }),
+        },
+        unichain: {
+          startBlock: unichain.v4StartBlock,
+          address: factory({
+            address: [unichain.addresses.v4.v4Initializer, unichain.addresses.v4.v4Initializer2, unichain.addresses.v4.v4InitializerLatest, unichain.addresses.v4.v4InitializerSelfCorrecting],
+            event: getAbiItem({ abi: UniswapV4InitializerABI, name: "Create" }),
+            parameter: "poolOrHook",
+          }),
+        },
+        ink: {
+          startBlock: ink.v4StartBlock,
+          address: factory({
+            address: [ink.addresses.v4.v4Initializer, ink.addresses.v4.v4Initializer2, ink.addresses.v4.v4InitializerLatest, ink.addresses.v4.v4InitializerSelfCorrecting],
+            event: getAbiItem({ abi: UniswapV4InitializerABI, name: "Create" }),
+            parameter: "poolOrHook",
+          }),
+        },
+      },
     },
-
-    [ContractName.UniswapV4Initializer2]: {
-      abi: UniswapV4InitializerABI,
-      chain: generateContractChains({
-        contractName: ContractName.UniswapV4Initializer2,
-        networks: [NetworkEnum.base, NetworkEnum.ink],
-      }),
+    LockableUniswapV3Initializer: {
+      abi: LockableUniswapV3InitializerABI,
+      chain: {
+        base: {
+          startBlock: base.startBlock,
+          address: base.addresses.v3.lockableV3Initializer,
+        },
+      },
     },
-
-    [ContractName.UniswapV4Pool2]: {
-      abi: DopplerABI,
-      chain: generateContractChains({
-        contractName: ContractName.UniswapV4Pool2,
-        networks: [NetworkEnum.base, NetworkEnum.ink],
-      }),
+    ZoraFactory: {
+      abi: ZoraFactoryABI,
+      chain: {
+        base: {
+          startBlock: 31058549,
+          address: base.addresses.zora.zoraFactory,
+        },
+      },
     },
-
-    [ContractName.V4DERC20]: {
-      abi: DERC20ABI,
-      chain: generateContractChains({
-        contractName: ContractName.V4DERC20,
-        networks: [NetworkEnum.base, NetworkEnum.ink, NetworkEnum.unichain],
-      }),
+    ZoraCoinV4: {
+      abi: ZoraCoinABI,
+      chain: {
+        base: {
+          startBlock: 31058549,
+          address: factory({
+            address: base.addresses.zora.zoraFactory,
+            event: getAbiItem({ abi: ZoraFactoryABI, name: "CoinCreatedV4" }),
+            parameter: "coin",
+          }),
+        },
+      },
     },
-
-    [ContractName.V4DERC20_2]: {
-      abi: DERC20ABI,
-      chain: generateContractChains({
-        contractName: ContractName.V4DERC20_2,
-        networks: [NetworkEnum.base, NetworkEnum.ink],
-      }),
+    ZoraCreatorCoinV4: {
+      abi: ZoraCreatorCoinABI,
+      chain: {
+        base: {
+          startBlock: 31058549,
+          address: factory({
+            address: base.addresses.zora.zoraFactory,
+            event: getAbiItem({
+              abi: ZoraFactoryABI,
+              name: "CreatorCoinCreated",
+            }),
+            parameter: "coin",
+          }),
+        },
+      },
     },
-
-    [ContractName.V4Migrator]: {
-      abi: V4MigratorABI,
-      chain: generateContractChains({
-        contractName: ContractName.V4Migrator,
-        networks: [NetworkEnum.base],
-      }),
+    ZoraV4Hook: {
+      abi: ZoraV4HookABI,
+      chain: {
+        base: {
+          startBlock: 31058549,
+          address: factory({
+            address: base.addresses.zora.zoraFactory,
+            event: getAbiItem({ abi: ZoraFactoryABI, name: "CoinCreatedV4" }),
+            parameter: "poolKey.hooks",
+          }),
+        },
+      },
+    },
+    ZoraV4CreatorCoinHook: {
+      abi: ZoraV4HookABI,
+      chain: {
+        base: {
+          startBlock: 31058549,
+          address: factory({
+            address: base.addresses.zora.zoraFactory,
+            event: getAbiItem({
+              abi: ZoraFactoryABI,
+              name: "CreatorCoinCreated",
+            }),
+            parameter: "poolKey.hooks",
+          }),
+        },
+      },
+    },
+    UniswapV4MulticurveInitializer: {
+      abi: UniswapV4MulticurveInitializerABI,
+      chain: {
+        base: {
+          startBlock: 31058549,
+          address: base.addresses.v4.v4MulticurveInitializer,
+        },
+      },
+    },
+    UniswapV4MulticurveInitializerHook: {
+      abi: UniswapV4MulticurveInitializerHookABI,
+      chain: {
+        base: {
+          startBlock: 31058549,
+          address: base.addresses.v4.v4MulticurveInitializerHook,
+        },
+      },
     },
   },
-};
-
-const cleanedCfg = JSON.parse(JSON.stringify(cfg, (key, value) => {
-  if (key === 'rpc') return undefined;
-  return value;
-}));
-fs.writeFileSync("ponder.config.json", stringify(cleanedCfg, { space: 2 }) as string);
-
-export default createConfig(cfg);
+});
