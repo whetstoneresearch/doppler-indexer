@@ -64,11 +64,27 @@ export const ethPrice = onchainTable("eth_price", (t) => ({
   })
 );
 
-export const zoraUsdcPrice = onchainTable("zora_usdc_price", (t) => ({
-  timestamp: t.bigint().notNull(),
-  chainId: t.integer().notNull(),
-  price: t.bigint().notNull(),
-}),
+export const zoraUsdcPrice = onchainTable(
+  "zora_usdc_price",
+  (t) => ({
+    timestamp: t.bigint().notNull(),
+    chainId: t.integer().notNull(),
+    price: t.bigint().notNull(),
+  }),
+  (table) => ({
+    pk: primaryKey({
+      columns: [table.timestamp, table.chainId],
+    }),
+  }),
+);
+
+export const fxhWethPrice = onchainTable(
+  "fxh_weth_price",
+  (t) => ({
+    timestamp: t.bigint().notNull(),
+    chainId: t.integer().notNull(),
+    price: t.bigint().notNull(),
+  }),
   (table) => ({
     pk: primaryKey({
       columns: [table.timestamp, table.chainId],
