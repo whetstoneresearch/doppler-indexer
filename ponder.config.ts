@@ -79,7 +79,7 @@ export default createConfig({
     },
     FxhWethPrice: {
       chain: "base",
-      startBlock: 30485113,
+      startBlock: 32294733,
       interval: BLOCK_INTERVALS.FIVE_MINUTES, // every 5 minutes
     },
   },
