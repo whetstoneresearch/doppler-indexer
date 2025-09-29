@@ -51,6 +51,10 @@ export const inkConfig: ChainConfig = {
       weth: COMMON_ADDRESSES.WETH_BASE,
       chainlinkEthOracle:
         "0xe5867B1d421f0b52697F16e2ac437e87d66D5fbF" as Address,
+      fxHash: {
+        fxhAddress: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
+        fxhWethPool: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
+      },
     },
     zora: {
       zoraFactory: COMMON_ADDRESSES.ZERO_ADDRESS,

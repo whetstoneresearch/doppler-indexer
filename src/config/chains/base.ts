@@ -62,6 +62,10 @@ export const baseSepoliaConfig: ChainConfig = {
       weth: COMMON_ADDRESSES.WETH_BASE,
       chainlinkEthOracle:
         "0x5b0cf2b36a65a6BB085D501B971e4c102B9Cd473" as Address,
+      fxHash: {
+        fxhAddress: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
+        fxhWethPool: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
+      },
     },
     oracle: ORACLE_ADDRESSES,
   },
@@ -112,6 +116,9 @@ export const baseConfig: ChainConfig = {
       creatorCoinHook: "0xd61A675F8a0c67A73DC3B54FB7318B4D91409040" as Address,
       contentCoinHook: "0x9ea932730A7787000042e34390B8E435dD839040" as Address,
     },
+    fxhash: {
+      fxhWethPool: "0xC3e7433ae4d929092F8dFf62F7E2f15f23bC3E63" as Address,
+    },
     shared: {
       airlock: "0x660eAaEdEBc968f8f3694354FA8EC0b4c5Ba8D12" as Address,
       tokenFactory: "0xFAafdE6a5b658684cC5eb0C5c2c755B00A246F45" as Address,
@@ -121,6 +128,10 @@ export const baseConfig: ChainConfig = {
       weth: COMMON_ADDRESSES.WETH_BASE,
       chainlinkEthOracle:
         "0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70" as Address,
+      fxHash: {
+        fxhAddress: "0x5fc2843838e65eb0b5d33654628f446d54602791" as Address,
+        fxhWethPool: "0xC3e7433ae4d929092F8dFf62F7E2f15f23bC3E63" as Address,
+      },
     },
     stables: {
       usdc: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" as Address,

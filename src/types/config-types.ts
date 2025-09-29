@@ -35,6 +35,7 @@ export interface ChainAddresses {
   v3: V3Addresses;
   v4: V4Addresses;
   zora: ZoraAddresses;
+  fxhash: FxHashAddresses;
   shared: SharedAddresses;
   stables?: StablesAddresses;
   oracle: OracleAddresses;
@@ -52,6 +53,10 @@ export interface ZoraAddresses {
   contentCoinHook: Address;
 }
 
+export interface FxHashAddresses {
+  fxhWethPool: Address;
+}
+
 /**
  * Shared addresses across protocols
  */
@@ -62,6 +67,12 @@ export interface SharedAddresses {
   governanceFactory: Address;
   weth: Address;
   chainlinkEthOracle: Address;
+  fxHash: FxHashAddresses;
+}
+
+export interface FxHashAddresses {
+  fxhAddress: Address;
+  fxhWethPool: Address;
 }
 
 /**
