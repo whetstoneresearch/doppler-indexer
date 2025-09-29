@@ -4,6 +4,7 @@ import { ethPrice, zoraUsdcPrice } from "ponder.schema";
 import { UniswapV3PoolABI } from "@app/abis/v3-abis/UniswapV3PoolABI";
 import { computeV3Price } from "@app/utils/v3-utils";
 import { chainConfigs } from "@app/config";
+import { parseUnits } from "viem";
 
 ponder.on("BaseChainlinkEthPriceFeed:block", async ({ event, context }) => {
   const { db, client, chain } = context;
@@ -124,7 +125,7 @@ ponder.on(
       functionName: "latestAnswer",
     });
 
-    const price = latestAnswer;
+    const price = latestAnswer / parseUnits("1", 10);
 
     const roundedTimestamp = BigInt(Math.floor(Number(timestamp) / 300) * 300);
     const adjustedTimestamp = roundedTimestamp + 300n;
