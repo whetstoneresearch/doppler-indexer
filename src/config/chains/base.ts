@@ -116,9 +116,6 @@ export const baseConfig: ChainConfig = {
       creatorCoinHook: "0xd61A675F8a0c67A73DC3B54FB7318B4D91409040" as Address,
       contentCoinHook: "0x9ea932730A7787000042e34390B8E435dD839040" as Address,
     },
-    fxhash: {
-      fxhWethPool: "0xC3e7433ae4d929092F8dFf62F7E2f15f23bC3E63" as Address,
-    },
     shared: {
       airlock: "0x660eAaEdEBc968f8f3694354FA8EC0b4c5Ba8D12" as Address,
       tokenFactory: "0xFAafdE6a5b658684cC5eb0C5c2c755B00A246F45" as Address,
