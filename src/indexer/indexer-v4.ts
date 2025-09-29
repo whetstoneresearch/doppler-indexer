@@ -311,7 +311,21 @@ ponder.on(
       chainId: context.chain.id,
     });
 
-    const ethPrice = await fetchEthPrice(timestamp, context);
+    const quoteToken = poolEntity.quoteToken;
+    const isQuoteFxh =
+      quoteToken != zeroAddress &&
+      quoteToken ===
+        chainConfigs[context.chain.name].addresses.shared.fxHash.fxhAddress;
+
+    var ethPrice, fxhWethPrice;
+    if (isQuoteFxh) {
+      [ethPrice, fxhWethPrice] = await Promise.all([
+        fetchEthPrice(timestamp, context),
+        fetchFxhPrice(timestamp, context),
+      ]);
+    } else {
+      ethPrice = await fetchEthPrice(timestamp, context);
+    }
 
     // Calculate reserves only if needed
     let token0Reserve = poolEntity.reserves0;
@@ -351,12 +365,22 @@ ponder.on(
       });
     }
 
-    const price = computeV3Price({
-      sqrtPriceX96: sqrtPrice,
-      isToken0: poolEntity.isToken0,
-      decimals: 18,
-    });
-
+    var price;
+    if (isQuoteFxh) {
+      price =
+        fxhWethPrice! *
+        computeV3Price({
+          sqrtPriceX96: sqrtPrice,
+          isToken0: poolEntity.isToken0,
+          decimals: 18,
+        });
+    } else {
+      price = computeV3Price({
+        sqrtPriceX96: sqrtPrice,
+        isToken0: poolEntity.isToken0,
+        decimals: 18,
+      });
+    }
     const marketCapUsd = computeMarketCap({
       price,
       ethPrice,
