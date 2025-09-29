@@ -1,7 +1,11 @@
 import { ponder } from "ponder:registry";
 import { getPoolId, getV4PoolData } from "@app/utils/v4-utils";
 import { insertTokenIfNotExists } from "./shared/entities/token";
-import { computeMarketCap, fetchEthPrice } from "./shared/oracle";
+import {
+  computeMarketCap,
+  fetchEthPrice,
+  fetchFxhPrice,
+} from "./shared/oracle";
 import { insertPoolIfNotExistsV4, updatePool } from "./shared/entities/pool";
 import { insertAssetIfNotExists } from "./shared/entities/asset";
 import { computeDollarLiquidity } from "@app/utils/computeDollarLiquidity";
@@ -21,6 +25,7 @@ import { computeV3Price } from "@app/utils/v3-utils/computeV3Price";
 import { pool, token } from "ponder:schema";
 import { handleOptimizedSwap } from "./shared/swap-optimizer";
 import { StateViewABI } from "@app/abis";
+import { zeroAddress } from "viem";
 
 ponder.on("UniswapV4Initializer:Create", async ({ event, context }) => {
   const { poolOrHook, asset: assetId, numeraire } = event.args;
