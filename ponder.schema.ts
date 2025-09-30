@@ -507,7 +507,7 @@ export const swap = onchainTable("swap", (t) => ({
   type: t.text().notNull(), // buy or sell
   user: t.hex().notNull(),
   timestamp: t.bigint().notNull(),
-  usdPrice: t.bigint().notNull(),
+  swapValueUsd: t.bigint().notNull(),
 }),
   (table) => ({
     pk: primaryKey({

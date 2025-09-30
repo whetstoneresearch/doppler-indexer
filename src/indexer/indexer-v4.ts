@@ -22,10 +22,11 @@ import { insertMulticurvePoolV4Optimized } from "./shared/entities/multicurve/po
 import { getAmount1Delta } from "@app/utils/v3-utils/computeGraduationThreshold";
 import { getAmount0Delta } from "@app/utils/v3-utils/computeGraduationThreshold";
 import { computeV3Price } from "@app/utils/v3-utils/computeV3Price";
-import { pool, token } from "ponder:schema";
+import { ethPrice, pool, token } from "ponder:schema";
 import { handleOptimizedSwap } from "./shared/swap-optimizer";
 import { StateViewABI } from "@app/abis";
 import { parseUnits, zeroAddress } from "viem";
+import { insertSwapIfNotExists } from "./shared/entities/swap";
 
 ponder.on("UniswapV4Initializer:Create", async ({ event, context }) => {
   const { poolOrHook, asset: assetId, numeraire } = event.args;
@@ -447,6 +448,20 @@ ponder.on(
     const isCoinBuy = poolEntity.isToken0
       ? amount0 > amount1
       : amount1 > amount0;
+
+    await insertSwapIfNotExists({
+      txHash: event.transaction.hash,
+      timestamp,
+      context,
+      pool: poolId,
+      asset: poolEntity.baseToken,
+      chainId: context.chain.id,
+      type: "multicurve",
+      user: sender,
+      amountIn: amount0,
+      amountOut: amount1,
+      usdPrice: ethPrice,
+    });
 
     await handleOptimizedSwap(
       {

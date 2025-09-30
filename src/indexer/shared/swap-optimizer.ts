@@ -16,6 +16,7 @@ import { chainConfigs } from "@app/config";
 import { updateFifteenMinuteBucketUsd } from "@app/utils/time-buckets";
 import { SwapType } from "@app/types";
 import { CHAINLINK_ETH_DECIMALS, WAD } from "@app/utils/constants";
+import { insertSwapIfNotExists } from "./entities/swap";
 
 interface SwapHandlerParams {
   poolAddress: `0x${string}`; // can be 32byte poolid or 20byte pool address
@@ -301,6 +302,7 @@ export async function handleOptimizedSwap(
   const entityUpdaters = {
     updatePool,
     updateFifteenMinuteBucketUsd,
+    insertSwapIfNotExists
   };
   
   // Execute all updates in parallel
@@ -320,5 +322,18 @@ export async function handleOptimizedSwap(
       },
       entityUpdaters
     ),
+    insertSwapIfNotExists({
+      txHash: params.transactionHash,
+      timestamp,
+      context,
+      pool: poolAddress,
+      asset: poolEntity.baseToken,
+      chainId: context.chain.id,
+      type: "multicurve",
+      user: params.transactionFrom,
+      amountIn: swapData.amountIn,
+      amountOut: swapData.amountOut,
+      swapValueUsd: swapData.swapValueUsd,
+    }),
   ]);
 }

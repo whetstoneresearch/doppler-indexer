@@ -79,7 +79,7 @@ export default createConfig({
     },
     FxhWethPrice: {
       chain: "base",
-      startBlock: 32294733,
+      startBlock: 36178538,
       interval: BLOCK_INTERVALS.FIVE_MINUTES, // every 5 minutes
     },
   },
@@ -422,7 +422,7 @@ export default createConfig({
       abi: UniswapV4MulticurveInitializerABI,
       chain: {
         base: {
-          startBlock: 31058549,
+          startBlock: 36178538,
           address: base.addresses.v4.v4MulticurveInitializer,
         },
       },
@@ -431,7 +431,7 @@ export default createConfig({
       abi: UniswapV4MulticurveInitializerHookABI,
       chain: {
         base: {
-          startBlock: 31058549,
+          startBlock: 36178538,
           address: base.addresses.v4.v4MulticurveInitializerHook,
         },
       },

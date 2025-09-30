@@ -3,6 +3,7 @@ import { Context } from "ponder:registry";
 import { SwapService, SwapData, SwapMarketMetrics } from "./SwapService";
 import { SwapType } from "@app/types/shared-types";
 import { CHAINLINK_ETH_DECIMALS, WAD } from "@app/utils/constants";
+import { insertSwapIfNotExists } from "@app/indexer/shared/entities/swap";
 
 /**
  * Orchestrates all entity updates required after a swap

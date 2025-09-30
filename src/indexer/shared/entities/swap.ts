@@ -12,7 +12,7 @@ export const insertSwapIfNotExists = async ({
     user,
     amountIn,
     amountOut,
-    usdPrice,
+    swapValueUsd,
 }: {
     txHash: Address;
     timestamp: bigint;
@@ -24,7 +24,7 @@ export const insertSwapIfNotExists = async ({
     user: Address;
     amountIn: bigint;
     amountOut: bigint;
-    usdPrice: bigint;
+    swapValueUsd: bigint;
 }): Promise<typeof swap.$inferSelect> => {
     const { db, chain } = context;
 
@@ -48,6 +48,6 @@ export const insertSwapIfNotExists = async ({
         user,
         amountIn,
         amountOut,
-        usdPrice,
+        swapValueUsd,
     });
 };
