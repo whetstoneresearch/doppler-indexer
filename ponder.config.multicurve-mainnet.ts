@@ -76,6 +76,11 @@ export default createConfig({
       startBlock: 31058549,
       interval: 99999999999, // never run on testnet, just need this otherwise build fails...
     },
+    FxhWethPrice: {
+      chain: "base",
+      startBlock: 32294733,
+      interval: BLOCK_INTERVALS.FIVE_MINUTES, // every 5 minutes
+    },
   },
   contracts: {
     Airlock: {

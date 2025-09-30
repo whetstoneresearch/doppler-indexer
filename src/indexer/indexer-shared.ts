@@ -27,6 +27,10 @@ ponder.on("Airlock:Migrate", async ({ event, context }) => {
     context,
   });
 
+  if (!parentPool) {
+    return;
+  }
+
   if (parentPool.migrationType === "v2") {
     await Promise.all([
       insertV2MigrationPoolIfNotExists({

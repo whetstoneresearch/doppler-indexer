@@ -29,7 +29,7 @@ export const fetchExistingPool = async ({
   });
 
   if (!existingPool) {
-    throw new Error(`Pool ${address} not found in chain ${chain.id}`);
+    return;
   }
   return existingPool;
 };
