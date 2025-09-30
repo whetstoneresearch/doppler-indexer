@@ -1,4 +1,4 @@
-import { createConfig, factory } from "ponder";
+import { createConfig, factory, mergeAbis } from "ponder";
 import { http, getAbiItem } from "viem";
 import {
   UniswapV3InitializerABI,
@@ -86,6 +86,10 @@ export default createConfig({
           address: base.addresses.shared.airlock,
         },
       },
+    },
+    MigrationPool: {
+      abi: mergeAbis([UniswapV3PoolABI, UniswapV2PairABI]),
+      chain: {},
     },
     UniswapV3Initializer: {
       abi: UniswapV3InitializerABI,
