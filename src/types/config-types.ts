@@ -62,6 +62,12 @@ export interface SharedAddresses {
   governanceFactory: Address;
   weth: Address;
   chainlinkEthOracle: Address;
+  fxHash: FxHashAddresses;
+}
+
+export interface FxHashAddresses {
+  fxhAddress: Address;
+  fxhWethPool: Address;
 }
 
 /**

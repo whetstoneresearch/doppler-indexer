@@ -5,7 +5,12 @@ import { SwapOrchestrator } from "@app/core";
 import { SwapService } from "@app/core";
 import { computeV3Price } from "@app/utils";
 import { computeDollarLiquidity } from "@app/utils/computeDollarLiquidity";
-import { computeMarketCap, fetchEthPrice, fetchZoraPrice } from "./oracle";
+import {
+  computeMarketCap,
+  fetchEthPrice,
+  fetchZoraPrice,
+  fetchFxhPrice,
+} from "./oracle";
 import { updatePool } from "./entities";
 import { chainConfigs } from "@app/config";
 import { updateFifteenMinuteBucketUsd } from "@app/utils/time-buckets";
@@ -46,20 +51,30 @@ interface ProcessedSwapData {
 export async function getPoolUsdPrice(
   poolEntity: typeof pool.$inferSelect,
   zoraPrice: bigint,
+  fxhPrice: bigint,
   ethPrice: bigint,
   context: Context
 ): Promise<bigint | null> {
   const { db, chain } = context;
   const zoraToken = chainConfigs[chain.name].addresses.zora.zoraToken;
   const wethToken = chainConfigs[chain.name].addresses.shared.weth;
-  
-  const isQuoteZora = poolEntity.quoteToken.toLowerCase() === zoraToken.toLowerCase();
-  const isQuoteEth = poolEntity.quoteToken.toLowerCase() === wethToken.toLowerCase();
-  
+  const fxhToken = chainConfigs[chain.name].addresses.shared.fxHash.fxhAddress;
+
+  const isQuoteZora =
+    poolEntity.quoteToken.toLowerCase() === zoraToken.toLowerCase();
+  const isQuoteEth =
+    poolEntity.quoteToken.toLowerCase() === wethToken.toLowerCase();
+  const isQuoteFxh =
+    poolEntity.quoteToken.toLowerCase() === fxhToken.toLowerCase();
+
   if (isQuoteZora) {
     return zoraPrice;
   }
-  
+
+  if (isQuoteFxh) {
+    return fxhPrice * ethPrice;
+  }
+
   if (isQuoteEth) {
     return ethPrice;
   }
@@ -182,21 +197,31 @@ export function processSwapCalculations(
 export async function handleOptimizedSwap(
   params: SwapHandlerParams,
   isZora?: boolean,
+  isFxh?: boolean,
 ): Promise<void> {
   const { context, timestamp } = params;
   const { db, chain } = context;
   const poolAddress = params.poolAddress;
 
-  let zoraPrice, ethPrice, poolEntity;
+  let zoraPrice, ethPrice, fxhWethPrice, poolEntity;
   if (isZora) {
     [zoraPrice, ethPrice, poolEntity] = await Promise.all([
-    fetchZoraPrice(timestamp, context),
-    fetchEthPrice(timestamp, context),
-    db.find(pool, {
-      address: poolAddress,
-      chainId: chain.id,
-    }),
-  ]);
+      fetchZoraPrice(timestamp, context),
+      fetchEthPrice(timestamp, context),
+      db.find(pool, {
+        address: poolAddress,
+        chainId: chain.id,
+      }),
+    ]);
+  } else if (isFxh) {
+    [fxhWethPrice, ethPrice, poolEntity] = await Promise.all([
+      fetchFxhPrice(timestamp, context),
+      fetchEthPrice(timestamp, context),
+      db.find(pool, {
+        address: poolAddress,
+        chainId: chain.id,
+      }),
+    ]);
   } else {
     [ethPrice, poolEntity] = await Promise.all([
       fetchEthPrice(timestamp, context),
@@ -213,7 +238,13 @@ export async function handleOptimizedSwap(
   }
   
   // Get USD price efficiently
-  const usdPrice = await getPoolUsdPrice(poolEntity, zoraPrice ?? 1n, ethPrice, context);
+  const usdPrice = await getPoolUsdPrice(
+    poolEntity,
+    zoraPrice ?? 1n,
+    fxhWethPrice ?? 1n,
+    ethPrice,
+    context,
+  );
 
   if (!usdPrice) {
     return;

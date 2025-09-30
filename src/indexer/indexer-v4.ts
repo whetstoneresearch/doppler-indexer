@@ -1,7 +1,11 @@
 import { ponder } from "ponder:registry";
 import { getPoolId, getV4PoolData } from "@app/utils/v4-utils";
 import { insertTokenIfNotExists } from "./shared/entities/token";
-import { computeMarketCap, fetchEthPrice } from "./shared/oracle";
+import {
+  computeMarketCap,
+  fetchEthPrice,
+  fetchFxhPrice,
+} from "./shared/oracle";
 import { insertPoolIfNotExistsV4, updatePool } from "./shared/entities/pool";
 import { insertAssetIfNotExists } from "./shared/entities/asset";
 import { computeDollarLiquidity } from "@app/utils/computeDollarLiquidity";
@@ -21,6 +25,7 @@ import { computeV3Price } from "@app/utils/v3-utils/computeV3Price";
 import { pool, token } from "ponder:schema";
 import { handleOptimizedSwap } from "./shared/swap-optimizer";
 import { StateViewABI } from "@app/abis";
+import { zeroAddress } from "viem";
 
 ponder.on("UniswapV4Initializer:Create", async ({ event, context }) => {
   const { poolOrHook, asset: assetId, numeraire } = event.args;
@@ -311,7 +316,21 @@ ponder.on(
       chainId: context.chain.id,
     });
 
-    const ethPrice = await fetchEthPrice(timestamp, context);
+    const quoteToken = poolEntity.quoteToken;
+    const isQuoteFxh =
+      quoteToken != zeroAddress &&
+      quoteToken ===
+        chainConfigs[context.chain.name].addresses.shared.fxHash.fxhAddress;
+
+    var ethPrice, fxhWethPrice;
+    if (isQuoteFxh) {
+      [ethPrice, fxhWethPrice] = await Promise.all([
+        fetchEthPrice(timestamp, context),
+        fetchFxhPrice(timestamp, context),
+      ]);
+    } else {
+      ethPrice = await fetchEthPrice(timestamp, context);
+    }
 
     // Calculate reserves only if needed
     let token0Reserve = poolEntity.reserves0;
@@ -351,12 +370,22 @@ ponder.on(
       });
     }
 
-    const price = computeV3Price({
-      sqrtPriceX96: sqrtPrice,
-      isToken0: poolEntity.isToken0,
-      decimals: 18,
-    });
-
+    var price;
+    if (isQuoteFxh) {
+      price =
+        fxhWethPrice! *
+        computeV3Price({
+          sqrtPriceX96: sqrtPrice,
+          isToken0: poolEntity.isToken0,
+          decimals: 18,
+        });
+    } else {
+      price = computeV3Price({
+        sqrtPriceX96: sqrtPrice,
+        isToken0: poolEntity.isToken0,
+        decimals: 18,
+      });
+    }
     const marketCapUsd = computeMarketCap({
       price,
       ethPrice,
@@ -386,47 +415,59 @@ ponder.on(
   }
 );
 
-ponder.on("UniswapV4MulticurveInitializerHook:Swap", async ({ event, context }) => {
-  const { poolId, sender, amount0, amount1 } = event.args;
-  const timestamp = event.block.timestamp;
+ponder.on(
+  "UniswapV4MulticurveInitializerHook:Swap",
+  async ({ event, context }) => {
+    const { poolId, sender, amount0, amount1 } = event.args;
+    const timestamp = event.block.timestamp;
 
-  const poolEntity = await context.db.find(pool, {
-    address: poolId,
-    chainId: context.chain.id,
-  });
+    const poolEntity = await context.db.find(pool, {
+      address: poolId,
+      chainId: context.chain.id,
+    });
 
-  console.log("here?")
+    console.log("here?");
 
-  if (!poolEntity) {
-    return;
-  }
+    if (!poolEntity) {
+      return;
+    }
 
-  const slot0 = await context.client.readContract({
-    abi: StateViewABI,
-    address: chainConfigs[context.chain.name].addresses.v4.stateView,
-    functionName: "getSlot0",
-    args: [poolId],
-  });
+    const slot0 = await context.client.readContract({
+      abi: StateViewABI,
+      address: chainConfigs[context.chain.name].addresses.v4.stateView,
+      functionName: "getSlot0",
+      args: [poolId],
+    });
 
-  console.log(slot0)
+    console.log(slot0);
 
-  const sqrtPriceX96 = slot0?.[0] ?? 0n;
+    const isQuoteFxh =
+      poolEntity!.quoteToken != zeroAddress &&
+      poolEntity!.quoteToken ===
+        chainConfigs[context.chain.name].addresses.shared.fxHash.fxhAddress;
 
-  const isCoinBuy = poolEntity.isToken0 ? amount0 > amount1 : amount1 > amount0;
+    const sqrtPriceX96 = slot0?.[0] ?? 0n;
 
-  await handleOptimizedSwap(
-    {
-      poolAddress: poolId,
-      swapSender: sender,
-      amount0,
-      amount1,
-      sqrtPriceX96,
-      isCoinBuy,
-      timestamp,
-      transactionHash: event.transaction.hash,
-      transactionFrom: event.transaction.from,
-      blockNumber: event.block.number,
-      context,
-    },
-  );
-});
+    const isCoinBuy = poolEntity.isToken0
+      ? amount0 > amount1
+      : amount1 > amount0;
+
+    await handleOptimizedSwap(
+      {
+        poolAddress: poolId,
+        swapSender: sender,
+        amount0,
+        amount1,
+        sqrtPriceX96,
+        isCoinBuy,
+        timestamp,
+        transactionHash: event.transaction.hash,
+        transactionFrom: event.transaction.from,
+        blockNumber: event.block.number,
+        context,
+      },
+      false,
+      isQuoteFxh,
+    );
+  },
+);

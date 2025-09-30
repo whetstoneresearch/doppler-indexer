@@ -51,6 +51,10 @@ export const unichainConfig: ChainConfig = {
       weth: COMMON_ADDRESSES.WETH_BASE,
       chainlinkEthOracle:
         "0xED2B1ca5D7E246f615c2291De309643D41FeC97e" as Address,
+      fxHash: {
+        fxhAddress: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
+        fxhWethPool: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
+      },
     },
     zora: {
       zoraFactory: COMMON_ADDRESSES.ZERO_ADDRESS,

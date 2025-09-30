@@ -6,7 +6,7 @@ import { Address, zeroAddress } from "viem";
 import { StateViewABI } from "@app/abis";
 import { getPoolId } from "@app/utils/v4-utils/getPoolId";
 import { chainConfigs } from "@app/config";
-import { computeMarketCap, fetchEthPrice } from "../../oracle";
+import { computeMarketCap, fetchEthPrice, fetchFxhPrice } from "../../oracle";
 import { UniswapV4MulticurveInitializerABI } from "@app/abis/multicurve-abis/UniswapV4MulticurveInitializerABI";
 import { upsertTokenWithPool } from "../token-optimized";
 
@@ -64,8 +64,9 @@ export const insertMulticurvePoolV4Optimized = async ({
     quoteToken = poolKey.currency1;
   }
 
-  const [ethPrice, baseTokenEntity] = await Promise.all([
+  const [ethPrice, fxhWethPrice, baseTokenEntity] = await Promise.all([
     fetchEthPrice(timestamp, context),
+    fetchFxhPrice(timestamp, context),
     upsertTokenWithPool({
       tokenAddress: baseToken,
       isDerc20: true,
@@ -91,6 +92,11 @@ export const insertMulticurvePoolV4Optimized = async ({
   ]);
 
   const isToken0 = baseToken.toLowerCase() < quoteToken.toLowerCase();
+
+  const isQuoteFxh =
+    quoteToken != zeroAddress &&
+    quoteToken ===
+      chainConfigs[context.chain.name].addresses.shared.fxHash.fxhAddress;
   const isQuoteEth =
     quoteToken === zeroAddress ||
     quoteToken === chainConfigs[chain.name].addresses.shared.weth;
@@ -112,11 +118,22 @@ export const insertMulticurvePoolV4Optimized = async ({
   const sqrtPriceX96 = slot0Result?.[0] ?? 0n;
   const tick = slot0Result?.[1] ?? 0;
 
-  const price = computeV3Price({
-    sqrtPriceX96,
-    isToken0,
-    decimals: 18,
-  });
+  var price;
+  if (isQuoteFxh) {
+    price =
+      fxhWethPrice *
+      computeV3Price({
+        sqrtPriceX96,
+        isToken0,
+        decimals: 18,
+      });
+  } else {
+    price = computeV3Price({
+      sqrtPriceX96,
+      isToken0,
+      decimals: 18,
+    });
+  }
 
   const marketCapUsd = computeMarketCap({
     price,
