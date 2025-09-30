@@ -75,7 +75,7 @@ export default createConfig({
     BaseSepoliaChainlinkEthPriceFeed: {
       chain: "baseSepolia",
       startBlock: baseSepolia.startBlock,
-      interval: BLOCK_INTERVALS.FIVE_MINUTES, // every 5 minutes
+      interval: 99999999999999, // every 5 minutes
     },
     FxhWethPrice: {
       chain: "base",

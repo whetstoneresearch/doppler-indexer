@@ -273,6 +273,7 @@ export async function handleOptimizedSwap(
     decimals: isQuoteEth ? 8 : 18,
   });
 
+
   
   // Create swap data for orchestrator
   const orchestratorSwapData = SwapOrchestrator.createSwapData({
@@ -302,9 +303,8 @@ export async function handleOptimizedSwap(
   const entityUpdaters = {
     updatePool,
     updateFifteenMinuteBucketUsd,
-    insertSwapIfNotExists
   };
-  
+
   // Execute all updates in parallel
   await Promise.all([
     SwapOrchestrator.performSwapUpdates(
