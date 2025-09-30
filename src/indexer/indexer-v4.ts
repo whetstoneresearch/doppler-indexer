@@ -25,7 +25,7 @@ import { computeV3Price } from "@app/utils/v3-utils/computeV3Price";
 import { pool, token } from "ponder:schema";
 import { handleOptimizedSwap } from "./shared/swap-optimizer";
 import { StateViewABI } from "@app/abis";
-import { zeroAddress } from "viem";
+import { parseUnits, zeroAddress } from "viem";
 
 ponder.on("UniswapV4Initializer:Create", async ({ event, context }) => {
   const { poolOrHook, asset: assetId, numeraire } = event.args;
@@ -320,7 +320,7 @@ ponder.on(
     const isQuoteFxh =
       quoteToken != zeroAddress &&
       quoteToken ===
-        chainConfigs[context.chain.name].addresses.shared.fxHash.fxhAddress;
+        chainConfigs[context.chain.name].addresses.shared.fxHash.fxhAddress.toLowerCase();
 
     var ethPrice, fxhWethPrice;
     if (isQuoteFxh) {
@@ -370,15 +370,14 @@ ponder.on(
       });
     }
 
+    const fxhUsdPrice = fxhWethPrice! * ethPrice / 10n ** 8n;
     var price;
     if (isQuoteFxh) {
-      price =
-        fxhWethPrice! *
-        computeV3Price({
-          sqrtPriceX96: sqrtPrice,
-          isToken0: poolEntity.isToken0,
-          decimals: 18,
-        });
+      price = computeV3Price({
+        sqrtPriceX96: sqrtPrice,
+        isToken0: poolEntity.isToken0,
+        decimals: 18,
+      });
     } else {
       price = computeV3Price({
         sqrtPriceX96: sqrtPrice,
@@ -388,7 +387,7 @@ ponder.on(
     }
     const marketCapUsd = computeMarketCap({
       price,
-      ethPrice,
+      ethPrice: isQuoteFxh ? fxhUsdPrice : ethPrice,
       totalSupply: baseTokenEntity!.totalSupply,
       decimals: poolEntity.isQuoteEth ? 8 : 18,
     });
@@ -397,9 +396,10 @@ ponder.on(
       assetBalance: poolEntity.isToken0 ? token0Reserve : token1Reserve,
       quoteBalance: poolEntity.isToken0 ? token1Reserve : token0Reserve,
       price,
-      ethPrice,
+      ethPrice: isQuoteFxh ? fxhUsdPrice : ethPrice,
       decimals: poolEntity.isQuoteEth ? 8 : 18,
     });
+
 
     await updatePool({
       poolAddress: poolAddress,
@@ -426,8 +426,6 @@ ponder.on(
       chainId: context.chain.id,
     });
 
-    console.log("here?");
-
     if (!poolEntity) {
       return;
     }
@@ -439,12 +437,10 @@ ponder.on(
       args: [poolId],
     });
 
-    console.log(slot0);
-
     const isQuoteFxh =
       poolEntity!.quoteToken != zeroAddress &&
       poolEntity!.quoteToken ===
-        chainConfigs[context.chain.name].addresses.shared.fxHash.fxhAddress;
+        chainConfigs[context.chain.name].addresses.shared.fxHash.fxhAddress.toLowerCase();
 
     const sqrtPriceX96 = slot0?.[0] ?? 0n;
 

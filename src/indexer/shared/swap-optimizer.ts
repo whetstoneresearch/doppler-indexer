@@ -72,7 +72,7 @@ export async function getPoolUsdPrice(
   }
 
   if (isQuoteFxh) {
-    return fxhPrice * ethPrice;
+    return fxhPrice * ethPrice / 10n ** 8n;
   }
 
   if (isQuoteEth) {

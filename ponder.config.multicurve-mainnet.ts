@@ -58,7 +58,7 @@ export default createConfig({
     },
     BaseChainlinkEthPriceFeed: {
       chain: "base",
-      startBlock: base.startBlock,
+      startBlock: 36178538,
       interval: BLOCK_INTERVALS.FIVE_MINUTES, // never run on testnet, just need this otherwise build fails...
     },
     UnichainChainlinkEthPriceFeed: {
@@ -73,12 +73,12 @@ export default createConfig({
     },
     ZoraUsdcPrice: {
       chain: "base",
-      startBlock: 31058549,
+      startBlock: 36178538,
       interval: 99999999999, // never run on testnet, just need this otherwise build fails...
     },
     FxhWethPrice: {
       chain: "base",
-      startBlock: 32294733,
+      startBlock: 36178538,
       interval: BLOCK_INTERVALS.FIVE_MINUTES, // every 5 minutes
     },
   },
@@ -87,7 +87,7 @@ export default createConfig({
       abi: AirlockABI,
       chain: {
         base: {
-          startBlock: base.startBlock,
+          startBlock: 36178538,
           address: base.addresses.shared.airlock,
         },
       },
@@ -116,7 +116,7 @@ export default createConfig({
       abi: DERC20ABI,
       chain: {
         base: {
-          startBlock: base.startBlock,
+          startBlock: 36178538,
           address: factory({
             address: base.addresses.shared.airlock,
             event: getAbiItem({ abi: AirlockABI, name: "Create" }),
@@ -193,7 +193,7 @@ export default createConfig({
       abi: UniswapV4MulticurveInitializerABI,
       chain: {
         base: {
-          startBlock: base.startBlock,
+          startBlock: 36178538,
           address: base.addresses.v4.v4MulticurveInitializer,
         },
       },
@@ -202,7 +202,7 @@ export default createConfig({
       abi: UniswapV4MulticurveInitializerHookABI,
       chain: {
         base: {
-          startBlock: base.startBlock,
+          startBlock: 36178538,
           address: base.addresses.v4.v4MulticurveInitializerHook,
         },
       },
