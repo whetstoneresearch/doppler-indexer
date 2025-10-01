@@ -2,7 +2,7 @@ import { PoolKey } from "@app/types";
 import { computeV3Price } from "@app/utils/v3-utils";
 import { Context } from "ponder:registry";
 import { pool } from "ponder:schema";
-import { Address, zeroAddress } from "viem";
+import { Address, parseUnits, zeroAddress } from "viem";
 import { StateViewABI } from "@app/abis";
 import { getPoolId } from "@app/utils/v4-utils/getPoolId";
 import { chainConfigs } from "@app/config";
@@ -64,9 +64,15 @@ export const insertMulticurvePoolV4Optimized = async ({
     quoteToken = poolKey.currency1;
   }
 
-  const [ethPrice, fxhWethPrice, baseTokenEntity] = await Promise.all([
+  let fxhWethPrice;
+  if (chain.name === "base") {
+    fxhWethPrice = await fetchFxhPrice(timestamp, context);
+  } else {
+    fxhWethPrice = parseUnits("1", 8);
+  }
+
+  const [ethPrice, baseTokenEntity] = await Promise.all([
     fetchEthPrice(timestamp, context),
-    fetchFxhPrice(timestamp, context),
     upsertTokenWithPool({
       tokenAddress: baseToken,
       isDerc20: true,
@@ -121,7 +127,7 @@ export const insertMulticurvePoolV4Optimized = async ({
   var price;
   if (isQuoteFxh) {
     price =
-      fxhWethPrice *
+      fxhWethPrice! *
       computeV3Price({
         sqrtPriceX96,
         isToken0,

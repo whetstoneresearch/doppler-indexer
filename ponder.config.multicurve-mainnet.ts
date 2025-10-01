@@ -31,7 +31,7 @@ export default createConfig({
       max: 100,
     },
   },
-  ordering: "multichain",
+  ordering: "omnichain",
   chains: {
     baseSepolia: {
       id: CHAIN_IDS.baseSepolia,
@@ -123,6 +123,14 @@ export default createConfig({
             parameter: "asset",
           }),
         },
+        baseSepolia: {
+          startBlock: 31080880,
+          address: factory({
+            address: baseSepolia.addresses.shared.airlock,
+            event: getAbiItem({ abi: AirlockABI, name: "Create" }),
+            parameter: "asset",
+          }),
+        },
       },
     },
     UniswapV3MigrationPool: {
@@ -196,6 +204,10 @@ export default createConfig({
           startBlock: 36178538,
           address: base.addresses.v4.v4MulticurveInitializer,
         },
+        baseSepolia: {
+          startBlock: 31080880,
+          address: baseSepolia.addresses.v4.v4MulticurveInitializer,
+        },
       },
     },
     UniswapV4MulticurveInitializerHook: {
@@ -204,6 +216,10 @@ export default createConfig({
         base: {
           startBlock: 36178538,
           address: base.addresses.v4.v4MulticurveInitializerHook,
+        },
+        baseSepolia: {
+          startBlock: 31080880,
+          address: baseSepolia.addresses.v4.v4MulticurveInitializerHook,
         },
       },
     },

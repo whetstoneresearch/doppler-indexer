@@ -311,6 +311,7 @@ ponder.on(
       return;
     }
 
+
     const baseTokenEntity = await context.db.find(token, {
       address: poolEntity.baseToken,
       chainId: context.chain.id,
@@ -370,9 +371,10 @@ ponder.on(
       });
     }
 
-    const fxhUsdPrice = fxhWethPrice! * ethPrice / 10n ** 8n;
+    let fxhUsdPrice;
     var price;
     if (isQuoteFxh) {
+      fxhUsdPrice = fxhWethPrice! * ethPrice / 10n ** 8n;
       price = computeV3Price({
         sqrtPriceX96: sqrtPrice,
         isToken0: poolEntity.isToken0,
@@ -387,7 +389,7 @@ ponder.on(
     }
     const marketCapUsd = computeMarketCap({
       price,
-      ethPrice: isQuoteFxh ? fxhUsdPrice : ethPrice,
+      ethPrice: isQuoteFxh ? fxhUsdPrice! : ethPrice,
       totalSupply: baseTokenEntity!.totalSupply,
       decimals: poolEntity.isQuoteEth ? 8 : 18,
     });
