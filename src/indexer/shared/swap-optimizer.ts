@@ -247,14 +247,10 @@ export async function handleOptimizedSwap(
     context,
   );
 
-  if (!usdPrice) {
-    return;
-  }
-  
   const isQuoteEth = poolEntity.quoteToken.toLowerCase() === 
     chainConfigs[chain.name].addresses.shared.weth.toLowerCase();
   
-  const swapData = processSwapCalculations(poolEntity, params, usdPrice, isQuoteEth);
+  const swapData = processSwapCalculations(poolEntity, params, usdPrice ?? WAD, isQuoteEth);
 
   const tokenEntity = await db.find(token, {
     address: poolEntity.baseToken,
@@ -268,7 +264,7 @@ export async function handleOptimizedSwap(
   // Calculate market cap
   const marketCapUsd = computeMarketCap({
     price: swapData.price,
-    ethPrice: usdPrice,
+    ethPrice: usdPrice ?? WAD,
     totalSupply: tokenEntity.totalSupply,
     decimals: isQuoteEth ? 8 : 18,
   });
@@ -289,7 +285,7 @@ export async function handleOptimizedSwap(
     amountIn: swapData.amountIn,
     amountOut: swapData.amountOut,
     price: swapData.price,
-    usdPrice,
+    usdPrice: usdPrice ?? WAD,
   });
 
   // Create metrics
@@ -306,7 +302,7 @@ export async function handleOptimizedSwap(
   };
 
   // Execute all updates in parallel
-  await Promise.all([
+  const [_, swap] = await Promise.all([
     SwapOrchestrator.performSwapUpdates(
       {
         swapData: orchestratorSwapData,
@@ -329,11 +325,13 @@ export async function handleOptimizedSwap(
       pool: poolAddress,
       asset: poolEntity.baseToken,
       chainId: context.chain.id,
-      type: "multicurve",
+      type: swapData.swapType,
       user: params.transactionFrom,
       amountIn: swapData.amountIn,
       amountOut: swapData.amountOut,
       swapValueUsd: swapData.swapValueUsd,
     }),
   ]);
+
+  console.log("swap", swap);
 }
