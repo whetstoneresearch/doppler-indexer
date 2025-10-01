@@ -116,7 +116,7 @@ export default createConfig({
       chain: {
         baseSepolia: {
           startBlock: baseSepolia.v4StartBlock,
-          address: [baseSepolia.addresses.v4.v4Initializer, baseSepolia.addresses.v4.v4Initializer2, baseSepolia.addresses.v4.v4InitializerLatest, baseSepolia.addresses.v4.v4InitializerSelfCorrecting],
+          address: baseSepolia.addresses.v4.v4Initializer,
         },
       },
     },
@@ -190,7 +190,7 @@ export default createConfig({
         baseSepolia: {
           startBlock: baseSepolia.v4StartBlock,
           address: factory({
-            address: [baseSepolia.addresses.v4.v4Initializer, baseSepolia.addresses.v4.v4Initializer2, baseSepolia.addresses.v4.v4InitializerLatest, baseSepolia.addresses.v4.v4InitializerSelfCorrecting],
+            address: baseSepolia.addresses.v4.v4Initializer,
             event: getAbiItem({ abi: UniswapV4InitializerABI, name: "Create" }),
             parameter: "poolOrHook",
           }),
