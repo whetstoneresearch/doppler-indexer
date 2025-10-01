@@ -216,104 +216,104 @@ ponder.on("ZoraFactory:CreatorCoinCreated", async ({ event, context }) => {
 //   );
 // });
 
-// ponder.on("ZoraV4CreatorCoinHook:Swapped", async ({ event, context }) => {
-//   const { poolKeyHash, swapSender, amount0, amount1, sqrtPriceX96, isCoinBuy } = event.args;
-//   const timestamp = event.block.timestamp;
+ponder.on("ZoraV4CreatorCoinHook:Swapped", async ({ event, context }) => {
+  const { poolKeyHash, swapSender, amount0, amount1, sqrtPriceX96, isCoinBuy } = event.args;
+  const timestamp = event.block.timestamp;
 
-//   await handleOptimizedSwap(
-//     {
-//       poolAddress: poolKeyHash,
-//       swapSender,
-//       amount0,
-//       amount1,
-//       sqrtPriceX96,
-//       isCoinBuy,
-//       timestamp,
-//       transactionHash: event.transaction.hash,
-//       transactionFrom: event.transaction.from,
-//       blockNumber: event.block.number,
-//       context,
-//     },
-//     true,
-//   );
-// });
+  await handleOptimizedSwap(
+    {
+      poolAddress: poolKeyHash,
+      swapSender,
+      amount0,
+      amount1,
+      sqrtPriceX96,
+      isCoinBuy,
+      timestamp,
+      transactionHash: event.transaction.hash,
+      transactionFrom: event.transaction.from,
+      blockNumber: event.block.number,
+      context,
+    },
+    true,
+  );
+});
 
-// ponder.on("ZoraCreatorCoinV4:LiquidityMigrated", async ({ event, context }) => {
-//   const { chain, db } = context;
-//   const { fromPoolKeyHash, toPoolKey, toPoolKeyHash } = event.args;
-//   const timestamp = event.block.timestamp;
+ponder.on("ZoraCreatorCoinV4:LiquidityMigrated", async ({ event, context }) => {
+  const { chain, db } = context;
+  const { fromPoolKeyHash, toPoolKey, toPoolKeyHash } = event.args;
+  const timestamp = event.block.timestamp;
 
-//   const fromPoolAddress = fromPoolKeyHash;
-//   const toPoolAddress = toPoolKeyHash;
+  const fromPoolAddress = fromPoolKeyHash;
+  const toPoolAddress = toPoolKeyHash;
 
-//   const fromPoolEntity = await db.find(pool, {
-//     address: fromPoolAddress,
-//     chainId: chain.id,
-//   });
+  const fromPoolEntity = await db.find(pool, {
+    address: fromPoolAddress,
+    chainId: chain.id,
+  });
 
-//   if (!fromPoolEntity) {
-//     return;
-//   }
+  if (!fromPoolEntity) {
+    return;
+  }
 
-//   const baseTokenEntity = await db.find(token, {
-//     address: fromPoolEntity.baseToken,
-//     chainId: chain.id,
-//   });
+  const baseTokenEntity = await db.find(token, {
+    address: fromPoolEntity.baseToken,
+    chainId: chain.id,
+  });
 
-//   if (!baseTokenEntity) {
-//     return;
-//   }
+  if (!baseTokenEntity) {
+    return;
+  }
 
-//   const totalSupply = baseTokenEntity.totalSupply;
+  const totalSupply = baseTokenEntity.totalSupply;
 
-//   const zoraPrice = await fetchZoraPrice(timestamp, context);
-//   const ethPrice = await fetchEthPrice(timestamp, context);
+  const zoraPrice = await fetchZoraPrice(timestamp, context);
+  const ethPrice = await fetchEthPrice(timestamp, context);
 
-//   const isQuoteZora = fromPoolEntity.quoteToken.toLowerCase() === chainConfigs[context.chain.name].addresses.zora.zoraToken.toLowerCase();
-//   const isQuoteEth = fromPoolEntity.quoteToken.toLowerCase() === chainConfigs[context.chain.name].addresses.shared.weth.toLowerCase();
+  const isQuoteZora = fromPoolEntity.quoteToken.toLowerCase() === chainConfigs[context.chain.name].addresses.zora.zoraToken.toLowerCase();
+  const isQuoteEth = fromPoolEntity.quoteToken.toLowerCase() === chainConfigs[context.chain.name].addresses.shared.weth.toLowerCase();
 
-//   await Promise.all([
-//     insertZoraPoolV4Optimized({
-//       poolAddress: toPoolAddress,
-//       context,
-//       timestamp,
-//       ethPrice: isQuoteEth ? ethPrice : zoraPrice,
-//       poolKey: toPoolKey,
-//       baseToken: fromPoolEntity.baseToken,
-//       quoteToken: fromPoolEntity.quoteToken,
-//       isQuoteZora,
-//       isCreatorCoin: true,
-//       isContentCoin: false,
-//       totalSupply,
-//     }),
-//     updateToken({
-//       tokenAddress: fromPoolEntity.baseToken,
-//       context,
-//       update: {
-//         pool: toPoolAddress,
-//       },
-//     }),
-//   ]);
+  await Promise.all([
+    insertZoraPoolV4Optimized({
+      poolAddress: toPoolAddress,
+      context,
+      timestamp,
+      ethPrice: isQuoteEth ? ethPrice : zoraPrice,
+      poolKey: toPoolKey,
+      baseToken: fromPoolEntity.baseToken,
+      quoteToken: fromPoolEntity.quoteToken,
+      isQuoteZora,
+      isCreatorCoin: true,
+      isContentCoin: false,
+      totalSupply,
+    }),
+    updateToken({
+      tokenAddress: fromPoolEntity.baseToken,
+      context,
+      update: {
+        pool: toPoolAddress,
+      },
+    }),
+  ]);
 
-//   const updateData = {
-//     ...fromPoolEntity,
-//     address: toPoolAddress,
-//     poolKey: toPoolKey,
-//   }
+  const updateData = {
+    ...fromPoolEntity,
+    address: toPoolAddress,
+    poolKey: toPoolKey,
+  }
 
-//   await updatePool({
-//     poolAddress: toPoolAddress,
-//     context,
-//     update: updateData,
-//   });
+  await updatePool({
+    poolAddress: toPoolAddress,
+    context,
+    update: updateData,
+  });
 
-//   await db.delete(pool, {
-//     address: fromPoolAddress,
-//     chainId: chain.id,
-//   }).catch(() => {
-//     console.log(`Failed to delete pool ${fromPoolAddress} from ZoraCreatorCoinV4:LiquidityMigrated`);
-//   });
-// });
+  await db.delete(pool, {
+    address: fromPoolAddress,
+    chainId: chain.id,
+  }).catch(() => {
+    console.log(`Failed to delete pool ${fromPoolAddress} from ZoraCreatorCoinV4:LiquidityMigrated`);
+  });
+});
 
 ponder.on("ZoraCreatorCoinV4:CoinTransfer", async ({ event, context }) => {
   const { address } = event.log;
