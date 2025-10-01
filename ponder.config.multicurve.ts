@@ -53,7 +53,7 @@ export default createConfig({
   blocks: {
     BaseSepoliaChainlinkEthPriceFeed: {
       chain: "baseSepolia",
-      startBlock: 31080880,
+      startBlock: 31000617,
       interval: BLOCK_INTERVALS.FIVE_MINUTES, // every 5 minutes
     },
     BaseChainlinkEthPriceFeed: {
@@ -87,7 +87,7 @@ export default createConfig({
       abi: AirlockABI,
       chain: {
         baseSepolia: {
-          startBlock: 31080880,
+        startBlock: 31000617,
           address: baseSepolia.addresses.shared.airlock,
         },
         base: {
@@ -128,7 +128,7 @@ export default createConfig({
           }),
         },
         baseSepolia: {
-          startBlock: 31080880,
+          startBlock: 31000617,
           address: factory({
             address: baseSepolia.addresses.shared.airlock,
             event: getAbiItem({ abi: AirlockABI, name: "Create" }),
@@ -197,8 +197,8 @@ export default createConfig({
       abi: UniswapV4MulticurveInitializerABI,
       chain: {
         baseSepolia: {
-          startBlock: 31080880,
-          address: baseSepolia.addresses.v4.v4MulticurveInitializer,
+          startBlock: 31000617,
+          address: [baseSepolia.addresses.v4.v4MulticurveInitializer, "0x359b5952a254baaA0105381825DaEdB8986BB55C"],
         },
         base: {
           startBlock: 36178538,
@@ -210,8 +210,8 @@ export default createConfig({
       abi: UniswapV4MulticurveInitializerHookABI,
       chain: {
         baseSepolia: {
-          startBlock: 31080880,
-          address: baseSepolia.addresses.v4.v4MulticurveInitializerHook,
+          startBlock: 31000617,
+          address: [baseSepolia.addresses.v4.v4MulticurveInitializerHook, "0x06f5BBB7E503c87d78B6811077d6572fD8a3Ed40"],
         },
         base: {
           startBlock: 36178538,
