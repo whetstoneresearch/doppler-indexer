@@ -1,4 +1,4 @@
-import { createConfig, factory } from "ponder";
+import { createConfig, factory, mergeAbis } from "ponder";
 import { getAbiItem, http } from "viem";
 import {
   UniswapV3InitializerABI,
@@ -96,6 +96,10 @@ export default createConfig({
         },
       },
     },
+    MigrationPool: {
+      abi: mergeAbis([UniswapV3PoolABI, UniswapV2PairABI]),
+      chain: {},
+    },
     UniswapV3Initializer: {
       abi: UniswapV3InitializerABI,
       chain: {},
@@ -133,10 +137,6 @@ export default createConfig({
         },
       },
     },
-    UniswapV3MigrationPool: {
-      abi: UniswapV3PoolABI,
-      chain: {},
-    },
     UniswapV3Migrator: {
       abi: UniswapV3MigratorAbi,
       chain: {},
@@ -147,10 +147,6 @@ export default createConfig({
     },
     LockableUniswapV3Pool: {
       abi: UniswapV3PoolABI,
-      chain: {},
-    },
-    UniswapV2Pair: {
-      abi: UniswapV2PairABI,
       chain: {},
     },
     UniswapV2PairUnichain: {
