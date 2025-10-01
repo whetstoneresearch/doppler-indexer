@@ -117,15 +117,15 @@ export default createConfig({
       chain: {
         unichain: {
           startBlock: unichain.v4StartBlock,
-          address: [unichain.addresses.v4.v4Initializer, unichain.addresses.v4.v4Initializer2, unichain.addresses.v4.v4InitializerLatest, unichain.addresses.v4.v4InitializerSelfCorrecting],
+          address: unichain.addresses.v4.v4Initializer,
         },
         base: {
           startBlock: base.v4StartBlock,
-          address: [base.addresses.v4.v4Initializer, base.addresses.v4.v4Initializer2, base.addresses.v4.v4InitializerLatest, base.addresses.v4.v4InitializerSelfCorrecting],
+          address: base.addresses.v4.v4Initializer,
         },
         ink: {
           startBlock: ink.v4StartBlock,
-          address: [ink.addresses.v4.v4Initializer, ink.addresses.v4.v4Initializer2, ink.addresses.v4.v4InitializerLatest, ink.addresses.v4.v4InitializerSelfCorrecting],
+          address: ink.addresses.v4.v4Initializer,
         },
       },
     },
@@ -291,7 +291,7 @@ export default createConfig({
         base: {
           startBlock: base.v4StartBlock,
           address: factory({
-            address: [base.addresses.v4.v4Initializer, base.addresses.v4.v4Initializer2, base.addresses.v4.v4InitializerLatest, base.addresses.v4.v4InitializerSelfCorrecting],
+            address: base.addresses.v4.v4Initializer,
             event: getAbiItem({ abi: UniswapV4InitializerABI, name: "Create" }),
             parameter: "poolOrHook",
           }),
@@ -299,7 +299,7 @@ export default createConfig({
         unichain: {
           startBlock: unichain.v4StartBlock,
           address: factory({
-            address: [unichain.addresses.v4.v4Initializer, unichain.addresses.v4.v4Initializer2, unichain.addresses.v4.v4InitializerLatest, unichain.addresses.v4.v4InitializerSelfCorrecting],
+            address: unichain.addresses.v4.v4Initializer,
             event: getAbiItem({ abi: UniswapV4InitializerABI, name: "Create" }),
             parameter: "poolOrHook",
           }),
@@ -307,7 +307,7 @@ export default createConfig({
         ink: {
           startBlock: ink.v4StartBlock,
           address: factory({
-            address: [ink.addresses.v4.v4Initializer, ink.addresses.v4.v4Initializer2, ink.addresses.v4.v4InitializerLatest, ink.addresses.v4.v4InitializerSelfCorrecting],
+            address: ink.addresses.v4.v4Initializer,
             event: getAbiItem({ abi: UniswapV4InitializerABI, name: "Create" }),
             parameter: "poolOrHook",
           }),

@@ -20,7 +20,7 @@ export const fetchExistingPool = async ({
 }: {
   poolAddress: Address;
   context: Context;
-}): Promise<typeof pool.$inferSelect> => {
+}): Promise<typeof pool.$inferSelect | null> => {
   const { db, chain } = context;
   const address = poolAddress.toLowerCase() as `0x${string}`;
   const existingPool = await db.find(pool, {
@@ -29,7 +29,7 @@ export const fetchExistingPool = async ({
   });
 
   if (!existingPool) {
-    return;
+    return null;
   }
   return existingPool;
 };
