@@ -58,8 +58,8 @@ export default createConfig({
     },
     BaseChainlinkEthPriceFeed: {
       chain: "base",
-      startBlock: base.startBlock,
-      interval: 99999999999, // never run on testnet, just need this otherwise build fails...
+      startBlock: 36175538,
+      interval: BLOCK_INTERVALS.FIVE_MINUTES, // every 5 minutes
     },
     UnichainChainlinkEthPriceFeed: {
       chain: "unichain",
