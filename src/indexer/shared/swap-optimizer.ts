@@ -302,7 +302,7 @@ export async function handleOptimizedSwap(
   };
 
   // Execute all updates in parallel
-  const [_, swap] = await Promise.all([
+  await Promise.all([
     SwapOrchestrator.performSwapUpdates(
       {
         swapData: orchestratorSwapData,
@@ -332,6 +332,4 @@ export async function handleOptimizedSwap(
       swapValueUsd: swapData.swapValueUsd,
     }),
   ]);
-
-  console.log("swap", swap);
 }
