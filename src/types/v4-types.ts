@@ -6,10 +6,7 @@ import { Address, Hex } from "viem";
 export interface V4Addresses {
   poolManager: Address;
   dopplerDeployer: Address;
-  v4Initializer: Address;
-  v4Initializer2: Address;
-  v4InitializerSelfCorrecting: Address;
-  v4InitializerLatest: Address;
+  v4Initializer: Address | Address[];
   stateView: Address;
   dopplerLens: Address;
   v4Migrator: Address;

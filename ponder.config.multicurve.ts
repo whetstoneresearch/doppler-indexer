@@ -198,7 +198,7 @@ export default createConfig({
       chain: {
         baseSepolia: {
           startBlock: 31000617,
-          address: [baseSepolia.addresses.v4.v4MulticurveInitializer, "0x359b5952a254baaA0105381825DaEdB8986BB55C"],
+          address: [baseSepolia.addresses.v4.v4MulticurveInitializer],
         },
         base: {
           startBlock: 36178538,
@@ -211,7 +211,7 @@ export default createConfig({
       chain: {
         baseSepolia: {
           startBlock: 31000617,
-          address: [baseSepolia.addresses.v4.v4MulticurveInitializerHook, "0x06f5BBB7E503c87d78B6811077d6572fD8a3Ed40"],
+          address: [baseSepolia.addresses.v4.v4MulticurveInitializerHook],
         },
         base: {
           startBlock: 36178538,

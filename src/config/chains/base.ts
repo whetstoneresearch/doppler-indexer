@@ -39,15 +39,16 @@ export const baseSepoliaConfig: ChainConfig = {
     v4: {
       poolManager: "0x05E73354cFDd6745C338b50BcFDfA3Aa6fA03408" as Address,
       dopplerDeployer: "0x4bf819dfa4066bd7c9f21ea3db911bd8c10cb3ca" as Address,
-      v4Initializer2: "0x832e4763deecb9941a768f2bbd18583219f018cc" as Address,
       dopplerLens: "0x4a8d81db741248a36d9eb3bc6ef648bf798b47a7" as Address,
       stateView: "0x571291b572ed32ce6751a2cb2486ebee8defb9b4" as Address,
-      v4Initializer: "0xca2079706a4c2a4a1aa637dfb47d7f27fe58653f" as Address,
+      v4Initializer: [
+        "0xca2079706a4c2a4a1aa637dfb47d7f27fe58653f",
+        "0x832e4763deecb9941a768f2bbd18583219f018cc",
+        "0x8e891d249f1ecbffa6143c03eb1b12843aef09d3",
+        "0x870386944938130457606451820a351420888434"
+      ] as Address[],
       v4Migrator: "0xe713efce3c639432fc3ca902f34edaf15ebcf3ac" as Address,
       v4MigratorHook: "0x508812fcdd4972a59b66eb2cad3772279c052000" as Address,
-      v4InitializerSelfCorrecting:
-        "0x8e891d249f1ecbffa6143c03eb1b12843aef09d3" as Address,
-      v4InitializerLatest: COMMON_ADDRESSES.ZERO_ADDRESS,
       v4MulticurveInitializer:
         "0x359b5952a254baaa0105381825daedb8986bb55c" as Address,
       v4MulticurveInitializerHook:
@@ -95,15 +96,16 @@ export const baseConfig: ChainConfig = {
     v4: {
       poolManager: "0x498581ff718922c3f8e6a244956af099b2652b2b" as Address,
       dopplerDeployer: "0x014E1c0bd34f3B10546E554CB33B3293fECDD056" as Address,
-      v4Initializer: "0x8AF018e28c273826e6b2d5a99e81c8fB63729b07" as Address,
-      v4Initializer2: "0x77EbfBAE15AD200758E9E2E61597c0B07d731254" as Address,
+      v4Initializer: [
+        "0x8AF018e28c273826e6b2d5a99e81c8fB63729b07", 
+        "0x77EbfBAE15AD200758E9E2E61597c0B07d731254", 
+        "0x82Ac010C67f70BACf7655cd8948a4AD92A173CAC", 
+        "0xED344444633B965cd148F8fFCE3765938A179094"
+      ] as Address[],
       stateView: "0xa3c0c9b65bad0b08107aa264b0f3db444b867a71" as Address,
       dopplerLens: "0x094d926a969b3024ca46d2186bf13fd5cdba9ce2" as Address,
       v4Migrator: "0xa24e35a5d71d02a59b41e7c93567626302da1958" as Address,
       v4MigratorHook: "0x1370ad7fda3b054eca3532a066b968433e736000" as Address,
-      v4InitializerSelfCorrecting:
-        "0x82Ac010C67f70BACf7655cd8948a4AD92A173CAC" as Address,
-      v4InitializerLatest: "0xED344444633B965cd148F8fFCE3765938A179094" as Address,
       v4MulticurveInitializer:
         "0x65de470da664a5be139a5d812be5fda0d76cc951" as Address,
       v4MulticurveInitializerHook:
