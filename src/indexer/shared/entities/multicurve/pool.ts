@@ -68,7 +68,7 @@ export const insertMulticurvePoolV4Optimized = async ({
   if (chain.name === "base") {
     fxhWethPrice = await fetchFxhPrice(timestamp, context);
   } else {
-    fxhWethPrice = parseUnits("1", 8);
+    fxhWethPrice = parseUnits("1", 18);
   }
 
   const [ethPrice, baseTokenEntity] = await Promise.all([
