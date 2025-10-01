@@ -90,70 +90,6 @@ ponder.on("Airlock:Migrate", async ({ event, context }) => {
   }
 });
 
-// ponder.on("UniswapV3Migrator:Migrate", async ({ event, context }) => {
-//   const { chain } = context;
-//   const { timestamp } = event.block;
-//   const { pool, token0, token1 } = event.args;
-
-//   const poolAddress = pool.toLowerCase() as `0x${string}`;
-//   const token0Address = token0.toLowerCase() as `0x${string}`;
-//   const token1Address = token1.toLowerCase() as `0x${string}`;
-
-//   let isToken0 = false;
-
-//   if (
-//     token0Address.toLowerCase() == zeroAddress ||
-//     token0Address.toLowerCase() ==
-//     chainConfigs[chain.name].addresses.shared.weth
-//   ) {
-//     isToken0 = false;
-//   } else {
-//     const assetEntityCheck = await context.db.find(asset, {
-//       address: token0Address,
-//       chainId: chain.id,
-//     });
-//     if (assetEntityCheck) {
-//       isToken0 = true;
-//     } else {
-//       isToken0 = false;
-//     }
-//   }
-
-//   const assetEntity = await context.db.find(asset, {
-//     address: isToken0 ? token0Address : token1Address,
-//     chainId: chain.id,
-//   });
-
-//   await insertV3MigrationPoolIfNotExists({
-//     poolAddress,
-//     parentPool: assetEntity!.poolAddress,
-//     timestamp,
-//     context,
-//   });
-
-//   await Promise.all([
-//     updatePool({
-//       poolAddress: assetEntity!.poolAddress,
-//       context,
-//       update: {
-//         migratedAt: timestamp,
-//         migrated: true,
-//         migratedToPool: poolAddress,
-//         migrationType: "v3",
-//       },
-//     }),
-//     updateAsset({
-//       assetAddress: isToken0 ? token0Address : token1Address,
-//       context,
-//       update: {
-//         migratedAt: timestamp,
-//         migrated: true,
-//         migrationType: "v3",
-//       },
-//     }),
-//   ]);
-// });
-
 ponder.on("DERC20:Transfer", async ({ event, context }) => {
   const { address } = event.log;
   const { timestamp } = event.block;
@@ -167,7 +103,7 @@ ponder.on("DERC20:Transfer", async ({ event, context }) => {
   const toId = to.toLowerCase() as `0x${string}`;
   const assetId = address.toLowerCase() as `0x${string}`;
 
-  const [tokenData, assetData, fromUser, toUserAsset, fromUserAsset] =
+  const [tokenData, fromUser, toUserAsset, fromUserAsset] =
     await Promise.all([
       insertTokenIfNotExists({
         tokenAddress: assetId,
@@ -175,11 +111,6 @@ ponder.on("DERC20:Transfer", async ({ event, context }) => {
         timestamp,
         context,
         isDerc20: true,
-      }),
-      insertAssetIfNotExists({
-        assetAddress: assetId,
-        timestamp,
-        context,
       }),
       insertUserIfNotExists({
         userId: fromId,
@@ -225,7 +156,7 @@ ponder.on("DERC20:Transfer", async ({ event, context }) => {
 
   const [poolEntity] = await Promise.all([
     db.find(pool, {
-      address: assetData.poolAddress,
+      address: tokenData.pool ?? zeroAddress,
       chainId: chain.id,
     }),
     updateToken({
@@ -233,13 +164,6 @@ ponder.on("DERC20:Transfer", async ({ event, context }) => {
       context,
       update: {
         holderCount: tokenData.holderCount + holderCountDelta,
-      },
-    }),
-    updateAsset({
-      assetAddress: assetId,
-      context,
-      update: {
-        holderCount: assetData.holderCount + holderCountDelta,
       },
     }),
     updateUserAsset({
@@ -262,9 +186,9 @@ ponder.on("DERC20:Transfer", async ({ event, context }) => {
     }),
   ]);
 
-  if (poolEntity) {
+  if (poolEntity && tokenData.pool) {
     await updatePool({
-      poolAddress: assetData.poolAddress,
+      poolAddress: tokenData.pool,
       context,
       update: {
         holderCount: tokenData.holderCount + holderCountDelta,

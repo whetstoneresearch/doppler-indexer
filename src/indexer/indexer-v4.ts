@@ -249,7 +249,7 @@ ponder.on("UniswapV4Pool:Swap", async ({ event, context }) => {
 ponder.on(
   "UniswapV4MulticurveInitializer:Create",
   async ({ event, context }) => {
-    const { asset: assetId, numeraire } = event.args;
+    const { asset: assetId } = event.args;
     const { block } = event;
     const timestamp = block.timestamp;
 
@@ -267,7 +267,6 @@ ponder.on(
 
     const poolAddress = poolId.toLowerCase() as `0x${string}`;
     const assetAddress = assetId.toLowerCase() as `0x${string}`;
-    const numeraireAddress = numeraire.toLowerCase() as `0x${string}`;
     const creatorAddress =
       event.transaction.from.toLowerCase() as `0x${string}`;
 
@@ -283,6 +282,7 @@ ponder.on(
       timestamp,
       context,
       marketCapUsd: poolEntity.marketCapUsd,
+      poolAddress,
     });
   }
 );
@@ -310,7 +310,6 @@ ponder.on(
     if (!poolEntity) {
       return;
     }
-
 
     const baseTokenEntity = await context.db.find(token, {
       address: poolEntity.baseToken,

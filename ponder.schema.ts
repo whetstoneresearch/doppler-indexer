@@ -114,7 +114,6 @@ export const asset = onchainTable(
     migrationType: t.text().notNull().default("v2"),
     percentDayChange: t.doublePrecision().notNull().default(0),
     marketCapUsd: t.bigint().notNull().default(0n),
-    holderCount: t.integer().notNull().default(0),
     dayVolumeUsd: t.bigint().notNull().default(0n),
     liquidityUsd: t.bigint().notNull().default(0n),
   }),

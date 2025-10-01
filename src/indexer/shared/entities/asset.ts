@@ -8,11 +8,13 @@ export const insertAssetIfNotExists = async ({
   timestamp,
   context,
   marketCapUsd,
+  poolAddress,
 }: {
   assetAddress: Address;
   timestamp: bigint;
   context: Context;
   marketCapUsd?: bigint;
+  poolAddress?: Address;
 }) => {
   const { db, chain } = context;
   const address = assetAddress.toLowerCase() as `0x${string}`;
@@ -28,14 +30,12 @@ export const insertAssetIfNotExists = async ({
 
   const assetData = await getAssetData(assetAddress, context);
 
-  const poolAddress = assetData.pool.toLowerCase() as `0x${string}`;
-
   const isToken0 =
     assetAddress.toLowerCase() < assetData.numeraire.toLowerCase();
 
   return await db.insert(asset).values({
     ...assetData,
-    poolAddress,
+    poolAddress: poolAddress ?? assetData.pool.toLowerCase() as `0x${string}`,
     address,
     chainId: chain.id,
     isToken0,
