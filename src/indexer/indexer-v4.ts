@@ -277,13 +277,20 @@ ponder.on(
       context,
       creatorAddress,
     });
-    await insertAssetIfNotExists({
+    const assetEntity = await insertAssetIfNotExists({
       assetAddress: assetAddress,
       timestamp,
       context,
       marketCapUsd: poolEntity.marketCapUsd,
       poolAddress,
     });
+    await updatePool({
+      poolAddress: poolAddress,
+      context,
+      update: {
+        integrator: assetEntity.integrator,
+      },
+    })
   }
 );
 
