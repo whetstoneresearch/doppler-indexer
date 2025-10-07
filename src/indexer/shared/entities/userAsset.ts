@@ -30,6 +30,7 @@ export const insertUserAssetIfNotExists = async ({
   return await db.insert(userAsset).values({
     userId: userIdAddr,
     lastInteraction: timestamp,
+    asset: assetIdAddr,
     createdAt: timestamp,
     assetId: assetIdAddr,
     balance: 0n,
