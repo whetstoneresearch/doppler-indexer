@@ -6,13 +6,14 @@ import { getV3PoolData } from "@app/utils/v3-utils";
 import { computeGraduationPercentage } from "@app/utils/v4-utils";
 import { getReservesV4 } from "@app/utils/v4-utils/getV4PoolData";
 import { Context } from "ponder:registry";
-import { pool } from "ponder:schema";
+import { pool, token } from "ponder:schema";
 import { Address } from "viem";
-import { computeMarketCap } from "../oracle";
+import { computeMarketCap, fetchZoraPrice } from "../oracle";
 import { getLockableV3PoolData } from "@app/utils/v3-utils/getV3PoolData";
 import { chainConfigs } from "@app/config";
 import { AssetData } from "@app/types";
 import { Network } from "@app/types/config-types";
+import { eq, and } from "ponder";
 
 export const fetchExistingPool = async ({
   poolAddress,
@@ -71,8 +72,39 @@ export const insertPoolIfNotExists = async ({
 
   const isQuoteEth =
     poolState.numeraire.toLowerCase() ===
-    "0x0000000000000000000000000000000000000000" ||
-    poolState.numeraire.toLowerCase() === chainConfigs[chain.name].addresses.shared.weth;
+      "0x0000000000000000000000000000000000000000" ||
+    poolState.numeraire.toLowerCase() ===
+      chainConfigs[chain.name].addresses.shared.weth;
+
+  let quotePool;
+  let quoteToken;
+  let isQuoteCreatorCoin;
+  let zoraPrice;
+
+  if (!isQuoteEth) {
+    [zoraPrice, quotePool, quoteToken] = await Promise.all([
+      fetchZoraPrice(timestamp, context),
+      db.sql
+        .select()
+        .from(pool)
+        .where(
+          and(
+            eq(pool.baseToken, numeraireAddr),
+            eq(
+              pool.quoteToken,
+              chainConfigs[chain.name].addresses.zora.zoraToken,
+            ),
+            eq(pool.chainId, chain.id),
+          ),
+        )
+        .then((rows) => rows[0] ?? null),
+      db.find(token, {
+        address: numeraireAddr,
+        chainId: chain.id,
+      }),
+    ]);
+    isQuoteCreatorCoin = quoteToken?.isCreatorCoin ?? false;
+  }
 
   const [assetTotalSupply, assetData] = await Promise.all([
     client.readContract({
@@ -83,11 +115,16 @@ export const insertPoolIfNotExists = async ({
     getAssetData(assetAddr, context),
   ]);
 
-  const marketCapUsd = computeMarketCap({
-    price,
-    ethPrice,
-    totalSupply: assetTotalSupply,
-  });
+  let marketCapUsd;
+  if (isQuoteCreatorCoin && quotePool) {
+    marketCapUsd = quotePool.price * zoraPrice! * assetTotalSupply;
+  } else {
+    marketCapUsd = computeMarketCap({
+      price,
+      ethPrice,
+      totalSupply: assetTotalSupply,
+    });
+  }
 
   let migrationType = getMigrationType(assetData, chain.name);
 
@@ -293,6 +330,36 @@ export const insertLockableV3PoolIfNotExists = async ({
     "0x0000000000000000000000000000000000000000" ||
     poolState.numeraire.toLowerCase() === chainConfigs[chain.name].addresses.shared.weth;
 
+  let quotePool;
+  let quoteToken;
+  let isQuoteCreatorCoin;
+  let zoraPrice;
+
+  if (!isQuoteEth) {
+    [zoraPrice, quotePool, quoteToken] = await Promise.all([
+      fetchZoraPrice(timestamp, context),
+      db.sql
+        .select()
+        .from(pool)
+        .where(
+          and(
+            eq(pool.baseToken, numeraireAddr),
+            eq(
+              pool.quoteToken,
+              chainConfigs[chain.name].addresses.zora.zoraToken,
+            ),
+            eq(pool.chainId, chain.id),
+          ),
+        )
+        .then((rows) => rows[0] ?? null),
+      db.find(token, {
+        address: numeraireAddr,
+        chainId: chain.id,
+      }),
+    ]);
+    isQuoteCreatorCoin = quoteToken?.isCreatorCoin ?? false;
+  }
+
   const [assetTotalSupply, assetData] = await Promise.all([
     client.readContract({
       address: assetAddr,
@@ -302,11 +369,16 @@ export const insertLockableV3PoolIfNotExists = async ({
     getAssetData(assetAddr, context),
   ]);
 
-  const marketCapUsd = computeMarketCap({
-    price,
-    ethPrice,
-    totalSupply: assetTotalSupply,
-  });
+  let marketCapUsd;
+  if (isQuoteCreatorCoin && quotePool) {
+    marketCapUsd = quotePool.price * zoraPrice! * assetTotalSupply;
+  } else {
+    marketCapUsd = computeMarketCap({
+      price,
+      ethPrice,
+      totalSupply: assetTotalSupply,
+    });
+  }
 
   return await db.insert(pool).values({
     ...poolData,
