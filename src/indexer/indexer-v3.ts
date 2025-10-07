@@ -16,6 +16,7 @@ import { insertTokenIfNotExists } from "./shared/entities/token";
 import { computeMarketCap, fetchEthPrice } from "./shared/oracle";
 import { updateFifteenMinuteBucketUsd } from "@app/utils/time-buckets";
 import { fetchV3MigrationPool, updateMigrationPool } from "./shared/entities/migrationPool";
+import { insertAssetIfNotExists } from "./shared/entities";
 
 ponder.on("UniswapV3Initializer:Create", async ({ event, context }) => {
   const { poolOrHook, asset, numeraire } = event.args;
@@ -28,7 +29,7 @@ ponder.on("UniswapV3Initializer:Create", async ({ event, context }) => {
 
   const ethPrice = await fetchEthPrice(timestamp, context);
 
-  await Promise.all([
+  const [,, poolEntity] = await Promise.all([
     insertTokenIfNotExists({
       tokenAddress: assetId,
       creatorAddress: creatorId,
@@ -50,6 +51,13 @@ ponder.on("UniswapV3Initializer:Create", async ({ event, context }) => {
       ethPrice,
     }),
   ]);
+
+  await insertAssetIfNotExists({
+    assetAddress: assetId,
+    timestamp,
+    context,
+    marketCapUsd: poolEntity.marketCapUsd,
+  });
 });
 
 ponder.on("LockableUniswapV3Initializer:Create", async ({ event, context }) => {
@@ -63,7 +71,7 @@ ponder.on("LockableUniswapV3Initializer:Create", async ({ event, context }) => {
 
   const ethPrice = await fetchEthPrice(timestamp, context);
 
-  await insertLockableV3PoolIfNotExists({
+  const poolEntity = await insertLockableV3PoolIfNotExists({
     poolAddress: poolOrHookId,
     context,
     timestamp,
@@ -84,6 +92,12 @@ ponder.on("LockableUniswapV3Initializer:Create", async ({ event, context }) => {
       timestamp,
       context,
       isDerc20: false,
+    }),
+    insertAssetIfNotExists({
+      assetAddress: assetId,
+      timestamp,
+      context,
+      marketCapUsd: poolEntity.marketCapUsd,
     }),
   ]);
 });
