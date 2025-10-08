@@ -1,9 +1,9 @@
+import { DERC20ABI } from "@app/abis";
+import { chainConfigs } from "@app/config";
+import { getMulticallOptions } from "@app/core/utils";
 import { Context } from "ponder:registry";
 import { token } from "ponder:schema";
 import { Address, zeroAddress } from "viem";
-import { DERC20ABI } from "@app/abis";
-import { getMulticallOptions } from "@app/core/utils";
-import { chainConfigs } from "@app/config";
 
 /**
  * Optimized version that combines insert and update in a single operation
@@ -70,17 +70,22 @@ export const upsertTokenWithPool = async ({
   } else {
     // Fetch token metadata for regular tokens
     const multicallOptions = getMulticallOptions(chain);
-    const [nameResult, symbolResult, decimalsResult, totalSupplyResult, tokenURIResult] =
-      await client.multicall({
-        contracts: [
-          { abi: DERC20ABI, address, functionName: "name" },
-          { abi: DERC20ABI, address, functionName: "symbol" },
-          { abi: DERC20ABI, address, functionName: "decimals" },
-          { abi: DERC20ABI, address, functionName: "totalSupply" },
-          { abi: DERC20ABI, address, functionName: "tokenURI" },
-        ],
-        ...multicallOptions,
-      });
+    const [
+      nameResult,
+      symbolResult,
+      decimalsResult,
+      totalSupplyResult,
+      tokenURIResult,
+    ] = await client.multicall({
+      contracts: [
+        { abi: DERC20ABI, address, functionName: "name" },
+        { abi: DERC20ABI, address, functionName: "symbol" },
+        { abi: DERC20ABI, address, functionName: "decimals" },
+        { abi: DERC20ABI, address, functionName: "totalSupply" },
+        { abi: DERC20ABI, address, functionName: "tokenURI" },
+      ],
+      ...multicallOptions,
+    });
 
     tokenData = {
       ...tokenData,
@@ -91,12 +96,6 @@ export const upsertTokenWithPool = async ({
       derc20Data: isDerc20 ? address : undefined,
       tokenUri: tokenURIResult?.result ?? "",
     };
-
-    if (process.env.NODE_ENV !== "local") {
-      void fetch(
-        `${process.env.METADATA_UPDATER_ENDPOINT}?tokenAddress=${address}&chainId=${chain.id}`
-      );
-    }
   }
 
   if (poolAddress) {
