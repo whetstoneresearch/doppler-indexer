@@ -29,28 +29,27 @@ ponder.on("UniswapV3Initializer:Create", async ({ event, context }) => {
 
   const ethPrice = await fetchEthPrice(timestamp, context);
 
-  const [,, poolEntity] = await Promise.all([
-    insertTokenIfNotExists({
-      tokenAddress: assetId,
-      creatorAddress: creatorId,
-      poolAddress: poolOrHookId,
-      timestamp,
-      context,
-    }),
-    insertTokenIfNotExists({
-      tokenAddress: numeraireId,
-      creatorAddress: creatorId,
-      timestamp,
-      context,
-      isDerc20: false,
-    }),
-    insertPoolIfNotExists({
-      poolAddress: poolOrHookId,
-      context,
-      timestamp,
-      ethPrice,
-    }),
-  ]);
+  await insertTokenIfNotExists({
+    tokenAddress: assetId,
+    creatorAddress: creatorId,
+    poolAddress: poolOrHookId,
+    timestamp,
+    context,
+  });
+  await insertTokenIfNotExists({
+    tokenAddress: numeraireId,
+    creatorAddress: creatorId,
+    timestamp,
+    context,
+    isDerc20: false,
+  });
+
+  const poolEntity = await insertPoolIfNotExists({
+    poolAddress: poolOrHookId,
+    context,
+    timestamp,
+    ethPrice,
+  });
 
   await insertAssetIfNotExists({
     assetAddress: assetId,
@@ -78,28 +77,26 @@ ponder.on("LockableUniswapV3Initializer:Create", async ({ event, context }) => {
     ethPrice,
   });
 
-  await Promise.all([
-    insertTokenIfNotExists({
-      tokenAddress: assetId,
-      creatorAddress: creatorId,
-      poolAddress: poolOrHookId,
-      timestamp,
-      context,
-    }),
-    insertTokenIfNotExists({
-      tokenAddress: numeraireId,
-      creatorAddress: creatorId,
-      timestamp,
-      context,
-      isDerc20: false,
-    }),
-    insertAssetIfNotExists({
-      assetAddress: assetId,
-      timestamp,
-      context,
-      marketCapUsd: poolEntity.marketCapUsd,
-    }),
-  ]);
+  await insertTokenIfNotExists({
+    tokenAddress: assetId,
+    creatorAddress: creatorId,
+    poolAddress: poolOrHookId,
+    timestamp,
+    context,
+  });
+  await insertTokenIfNotExists({
+    tokenAddress: numeraireId,
+    creatorAddress: creatorId,
+    timestamp,
+    context,
+    isDerc20: false,
+  });
+  await insertAssetIfNotExists({
+    assetAddress: assetId,
+    timestamp,
+    context,
+    marketCapUsd: poolEntity.marketCapUsd,
+  });
 });
 
 ponder.on("LockableUniswapV3Initializer:Lock", async ({ event, context }) => {
