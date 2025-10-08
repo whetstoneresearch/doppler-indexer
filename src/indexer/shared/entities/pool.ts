@@ -320,10 +320,6 @@ export const insertLockableV3PoolIfNotExists = async ({
     ]);
     isQuoteCreatorCoin = quoteToken?.isCreatorCoin ?? false;
   }
-  
-  if (existingPool) {
-    return [existingPool, isQuoteCreatorCoin ?? false, 0n]
-  }
 
   const [assetTotalSupply, assetData] = await Promise.all([
     client.readContract({
@@ -352,6 +348,10 @@ export const insertLockableV3PoolIfNotExists = async ({
       ethPrice,
       totalSupply: assetTotalSupply,
     });
+  }
+  
+  if (existingPool) {
+    return [existingPool, isQuoteCreatorCoin ?? false, creatorCoinUsdPrice ?? 0n];
   }
 
   return [await db.insert(pool).values({
