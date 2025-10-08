@@ -76,36 +76,6 @@ export const insertPoolIfNotExists = async ({
     poolState.numeraire.toLowerCase() ===
       chainConfigs[chain.name].addresses.shared.weth;
 
-  let quotePool;
-  let quoteToken;
-  let isQuoteCreatorCoin;
-  let zoraPrice;
-
-  if (!isQuoteEth) {
-    [zoraPrice, quotePool, quoteToken] = await Promise.all([
-      fetchZoraPrice(timestamp, context),
-      db.sql
-        .select()
-        .from(pool)
-        .where(
-          and(
-            eq(pool.baseToken, numeraireAddr),
-            eq(
-              pool.quoteToken,
-              chainConfigs[chain.name].addresses.zora.zoraToken,
-            ),
-            eq(pool.chainId, chain.id),
-          ),
-        )
-        .then((rows) => rows[0] ?? null),
-      db.find(token, {
-        address: numeraireAddr,
-        chainId: chain.id,
-      }),
-    ]);
-    isQuoteCreatorCoin = quoteToken?.isCreatorCoin ?? false;
-  }
-
   const [assetTotalSupply, assetData] = await Promise.all([
     client.readContract({
       address: assetAddr,
@@ -115,16 +85,11 @@ export const insertPoolIfNotExists = async ({
     getAssetData(assetAddr, context),
   ]);
 
-  let marketCapUsd;
-  if (isQuoteCreatorCoin && quotePool) {
-    marketCapUsd = quotePool.price * zoraPrice! * assetTotalSupply;
-  } else {
-    marketCapUsd = computeMarketCap({
-      price,
-      ethPrice,
-      totalSupply: assetTotalSupply,
-    });
-  }
+  const marketCapUsd = computeMarketCap({
+    price,
+    ethPrice,
+    totalSupply: assetTotalSupply,
+  });
 
   let migrationType = getMigrationType(assetData, chain.name);
 
@@ -300,7 +265,7 @@ export const insertLockableV3PoolIfNotExists = async ({
   timestamp: bigint;
   context: Context;
   ethPrice: bigint;
-}): Promise<typeof pool.$inferSelect> => {
+}): Promise<[typeof pool.$inferSelect, boolean, bigint]> => {
   const { db, chain, client } = context;
   const address = poolAddress.toLowerCase() as `0x${string}`;
 
@@ -308,10 +273,6 @@ export const insertLockableV3PoolIfNotExists = async ({
     address,
     chainId: chain.id,
   });
-
-  if (existingPool) {
-    return existingPool;
-  }
 
   const poolData = await getLockableV3PoolData({
     address,
@@ -359,6 +320,10 @@ export const insertLockableV3PoolIfNotExists = async ({
     ]);
     isQuoteCreatorCoin = quoteToken?.isCreatorCoin ?? false;
   }
+  
+  if (existingPool) {
+    return [existingPool, isQuoteCreatorCoin ?? false, 0n]
+  }
 
   const [assetTotalSupply, assetData] = await Promise.all([
     client.readContract({
@@ -370,8 +335,17 @@ export const insertLockableV3PoolIfNotExists = async ({
   ]);
 
   let marketCapUsd;
+  let creatorCoinUsdPrice;
   if (isQuoteCreatorCoin && quotePool) {
-    marketCapUsd = quotePool.price * zoraPrice! * assetTotalSupply;
+    creatorCoinUsdPrice = quotePool.price * zoraPrice! / 10n ** 18n;
+    marketCapUsd = computeMarketCap(
+      {
+        price,
+        ethPrice: creatorCoinUsdPrice,
+        totalSupply: assetTotalSupply,
+        decimals: quoteToken!.decimals
+      }
+    )
   } else {
     marketCapUsd = computeMarketCap({
       price,
@@ -380,7 +354,7 @@ export const insertLockableV3PoolIfNotExists = async ({
     });
   }
 
-  return await db.insert(pool).values({
+  return [await db.insert(pool).values({
     ...poolData,
     ...slot0Data,
     address,
@@ -408,7 +382,7 @@ export const insertLockableV3PoolIfNotExists = async ({
     isStreaming: true,
     isQuoteEth,
     integrator: assetData.integrator,
-  });
+  }), isQuoteCreatorCoin ?? false, creatorCoinUsdPrice ?? 0n];
 };
 
 function getMigrationType(assetData: AssetData, chainName: Network): string {
