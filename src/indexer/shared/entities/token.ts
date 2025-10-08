@@ -107,12 +107,6 @@ export const insertTokenIfNotExists = async ({
       isDerc20: false,
     });
   } else if (address == zoraAddress.toLowerCase()) {
-    if (process.env.NODE_ENV !== "local") {
-      fetch(
-        `${process.env.METADATA_UPDATER_ENDPOINT}?tokenAddress=${address}&chainId=${chain.id}`
-      ) as unknown;
-    }
-
     return await db.insert(token).values({
       address: address.toLowerCase() as `0x${string}`,
       chainId: chain.id,
@@ -126,37 +120,42 @@ export const insertTokenIfNotExists = async ({
       isDerc20: false,
     });
   } else {
-    const [nameResult, symbolResult, decimalsResult, totalSupplyResult, tokenURIResult] =
-      await context.client.multicall({
-        contracts: [
-          {
-            abi: DERC20ABI,
-            address,
-            functionName: "name",
-          },
-          {
-            abi: DERC20ABI,
-            address,
-            functionName: "symbol",
-          },
-          {
-            abi: DERC20ABI,
-            address,
-            functionName: "decimals",
-          },
-          {
-            abi: DERC20ABI,
-            address,
-            functionName: "totalSupply",
-          },
-          {
-            abi: DERC20ABI,
-            address,
-            functionName: "tokenURI",
-          }
-        ],
-        ...multicallOptions,
-      });
+    const [
+      nameResult,
+      symbolResult,
+      decimalsResult,
+      totalSupplyResult,
+      tokenURIResult,
+    ] = await context.client.multicall({
+      contracts: [
+        {
+          abi: DERC20ABI,
+          address,
+          functionName: "name",
+        },
+        {
+          abi: DERC20ABI,
+          address,
+          functionName: "symbol",
+        },
+        {
+          abi: DERC20ABI,
+          address,
+          functionName: "decimals",
+        },
+        {
+          abi: DERC20ABI,
+          address,
+          functionName: "totalSupply",
+        },
+        {
+          abi: DERC20ABI,
+          address,
+          functionName: "tokenURI",
+        },
+      ],
+      ...multicallOptions,
+    });
 
     if (process.env.NODE_ENV !== "local") {
       void fetch(
@@ -170,9 +169,7 @@ export const insertTokenIfNotExists = async ({
     const shouldFetchImage = process.env.ENABLE_IMAGE_FETCHING === "true";
     if (tokenURI?.startsWith("ipfs://") && shouldFetchImage) {
       try {
-        if (
-          !tokenURI.startsWith("ipfs://")
-        ) {
+        if (!tokenURI.startsWith("ipfs://")) {
           console.error(`Invalid tokenURI for token ${address}: ${tokenURI}`);
         }
         const cid = tokenURI.replace("ipfs://", "");
@@ -205,7 +202,7 @@ export const insertTokenIfNotExists = async ({
           error
         );
       }
-    } 
+    }
     return await context.db
       .insert(token)
       .values({
