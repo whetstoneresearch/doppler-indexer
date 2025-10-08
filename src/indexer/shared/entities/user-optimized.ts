@@ -155,38 +155,6 @@ export const batchUpsertUsersAndAssets = async ({
         .then(result => { recipientAsset = result; })
     );
   }
-
-  assetUpserts.push(
-    db.insert(userAsset)
-      .values({
-        userId: senderLower,
-        assetId: tokenLower,
-        chainId: chain.id,
-        balance: senderBalance,
-        createdAt: timestamp,
-        lastInteraction: timestamp,
-      })
-      .onConflictDoUpdate(() => ({
-        balance: senderBalance,
-        lastInteraction: timestamp,
-      }))
-  );
-
-  assetUpserts.push(
-    db.insert(userAsset)
-      .values({
-        userId: recipientLower,
-        assetId: tokenLower,
-        chainId: chain.id,
-        balance: recipientBalance,
-        createdAt: timestamp,
-        lastInteraction: timestamp,
-      })
-      .onConflictDoUpdate(() => ({
-        balance: recipientBalance,
-        lastInteraction: timestamp,
-      }))
-  );
   
   if (assetUpserts.length > 0) {
     await Promise.all(assetUpserts);

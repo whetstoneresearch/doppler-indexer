@@ -1,5 +1,5 @@
 import { ponder } from "ponder:registry";
-import { asset, pool } from "ponder:schema";
+import { pool } from "ponder:schema";
 import { insertV3MigrationPoolIfNotExists } from "./shared/entities/migrationPool";
 import { insertAssetIfNotExists, updateAsset } from "./shared/entities/asset";
 import { insertTokenIfNotExists, updateToken } from "./shared/entities/token";
@@ -8,7 +8,6 @@ import { updateUserAsset } from "./shared/entities/userAsset";
 import { insertUserAssetIfNotExists } from "./shared/entities/userAsset";
 import { insertUserIfNotExists, updateUser } from "./shared/entities/user";
 import { fetchExistingPool, updatePool } from "./shared/entities/pool";
-import { chainConfigs } from "../config/chains";
 import { zeroAddress } from "viem";
 
 ponder.on("Airlock:Migrate", async ({ event, context }) => {

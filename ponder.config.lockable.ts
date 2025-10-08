@@ -54,7 +54,7 @@ export default createConfig({
   blocks: {
     BaseChainlinkEthPriceFeed: {
       chain: "base",
-      startBlock: base.startBlock,
+      startBlock: 31058549,
       interval: BLOCK_INTERVALS.FIVE_MINUTES, // every 5 minutes
     },
     UnichainChainlinkEthPriceFeed: {
@@ -92,7 +92,7 @@ export default createConfig({
           address: unichain.addresses.shared.airlock,
         },
         base: {
-          startBlock: base.startBlock,
+          startBlock: 31058549,
           address: base.addresses.shared.airlock,
         },
         ink: {
@@ -179,7 +179,7 @@ export default createConfig({
           }),
         },
         base: {
-          startBlock: base.startBlock,
+          startBlock: 31058549,
           address: factory({
             address: base.addresses.shared.airlock,
             event: getAbiItem({ abi: AirlockABI, name: "Create" }),
@@ -238,7 +238,7 @@ export default createConfig({
       abi: UniswapV3PoolABI,
       chain: {
         base: {
-          startBlock: base.startBlock,
+          startBlock: 31058549,
           address: factory({
             address: base.addresses.v3.lockableV3Initializer,
             event: getAbiItem({
@@ -316,7 +316,7 @@ export default createConfig({
       abi: LockableUniswapV3InitializerABI,
       chain: {
         base: {
-          startBlock: base.startBlock,
+          startBlock: 31058549,
           address: base.addresses.v3.lockableV3Initializer,
         },
       },
