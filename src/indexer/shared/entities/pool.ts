@@ -297,27 +297,17 @@ export const insertLockableV3PoolIfNotExists = async ({
   let zoraPrice;
 
   if (!isQuoteEth) {
-    [zoraPrice, quotePool, quoteToken] = await Promise.all([
+    [zoraPrice, quoteToken] = await Promise.all([
       fetchZoraPrice(timestamp, context),
-      db.sql
-        .select()
-        .from(pool)
-        .where(
-          and(
-            eq(pool.baseToken, numeraireAddr),
-            eq(
-              pool.quoteToken,
-              chainConfigs[chain.name].addresses.zora.zoraToken,
-            ),
-            eq(pool.chainId, chain.id),
-          ),
-        )
-        .then((rows) => rows[0] ?? null),
       db.find(token, {
         address: numeraireAddr,
         chainId: chain.id,
       }),
     ]);
+    quotePool = await db.find(pool, {
+      address: quoteToken!.pool!,
+      chainId: chain.id,
+    })
     isQuoteCreatorCoin = quoteToken?.isCreatorCoin ?? false;
   }
 
