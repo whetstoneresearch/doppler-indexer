@@ -265,7 +265,7 @@ export const insertLockableV3PoolIfNotExists = async ({
   timestamp: bigint;
   context: Context;
   ethPrice: bigint;
-}): Promise<[typeof pool.$inferSelect, boolean, bigint]> => {
+}): Promise<[typeof pool.$inferSelect, boolean, bigint] | null> => {
   const { db, chain, client } = context;
   const address = poolAddress.toLowerCase() as `0x${string}`;
 
@@ -304,11 +304,16 @@ export const insertLockableV3PoolIfNotExists = async ({
         chainId: chain.id,
       }),
     ]);
+
+    if (!quoteToken || !quoteToken.pool) {
+      return null;
+    }
+
     quotePool = await db.find(pool, {
-      address: quoteToken!.pool!,
+      address: quoteToken.pool,
       chainId: chain.id,
     })
-    isQuoteCreatorCoin = quoteToken?.isCreatorCoin ?? false;
+    isQuoteCreatorCoin = quoteToken.isCreatorCoin ?? false;
   }
 
   const [assetTotalSupply, assetData] = await Promise.all([

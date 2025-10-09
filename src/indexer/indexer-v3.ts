@@ -84,12 +84,19 @@ ponder.on("LockableUniswapV3Initializer:Create", async ({ event, context }) => {
     context,
     isDerc20: false,
   });
-  const [poolEntity, _] = await insertLockableV3PoolIfNotExists({
+  const result = await insertLockableV3PoolIfNotExists({
     poolAddress: poolOrHookId,
     context,
     timestamp,
     ethPrice,
   });
+
+  if (!result) {
+    return;
+  }
+
+  const [poolEntity, _] = result;
+
   await insertAssetIfNotExists({
     assetAddress: assetId,
     timestamp,
@@ -118,13 +125,18 @@ ponder.on("LockableUniswapV3Pool:Mint", async ({ event, context }) => {
   const ethPrice = await fetchEthPrice(timestamp, context);
 
   // Price is returned in terms of quote asset
-  const [{ isToken0, price, liquidity, reserves0, reserves1 }, isQuoteCreator, creatorCoinUsdPrice] =
-    await insertLockableV3PoolIfNotExists({
-      poolAddress: address,
-      timestamp,
-      context,
-      ethPrice,
-    });
+  const result = await insertLockableV3PoolIfNotExists({
+    poolAddress: address,
+    timestamp,
+    context,
+    ethPrice,
+  });
+
+  if (!result) {
+    return;
+  }
+
+  const [{ isToken0, price, liquidity, reserves0, reserves1 }, isQuoteCreator, creatorCoinUsdPrice] = result;
 
   const reserveAssetBefore = isToken0 ? reserves0 : reserves1;
   const reserveQuoteBefore = isToken0 ? reserves1 : reserves0;
@@ -195,13 +207,18 @@ ponder.on("LockableUniswapV3Pool:Burn", async ({ event, context }) => {
 
   const ethPrice = await fetchEthPrice(timestamp, context);
 
-  const [{ isToken0, price, liquidity, reserves0, reserves1 }, isQuoteCreator, creatorCoinUsdPrice] =
-    await insertLockableV3PoolIfNotExists({
-      poolAddress: address,
-      timestamp,
-      context,
-      ethPrice,
-    });
+  const result = await insertLockableV3PoolIfNotExists({
+    poolAddress: address,
+    timestamp,
+    context,
+    ethPrice,
+  });
+
+  if (!result) {
+    return;
+  }
+
+  const [{ isToken0, price, liquidity, reserves0, reserves1 }, isQuoteCreator, creatorCoinUsdPrice] = result;
 
   const reserveAssetBefore = isToken0 ? reserves0 : reserves1;
   const reserveQuoteBefore = isToken0 ? reserves1 : reserves0;
@@ -269,6 +286,17 @@ ponder.on("LockableUniswapV3Pool:Swap", async ({ event, context }) => {
 
   const ethPrice = await fetchEthPrice(event.block.timestamp, context);
 
+  const result = await insertLockableV3PoolIfNotExists({
+    poolAddress: address,
+    timestamp,
+    context,
+    ethPrice,
+  });
+
+  if (!result) {
+    return;
+  }
+
   const [{
     isToken0,
     baseToken,
@@ -279,12 +307,7 @@ ponder.on("LockableUniswapV3Pool:Swap", async ({ event, context }) => {
     totalFee0,
     totalFee1,
     graduationBalance,
-  }, isQuoteCreator, creatorCoinUsdPrice] = await insertLockableV3PoolIfNotExists({
-    poolAddress: address,
-    timestamp,
-    context,
-    ethPrice,
-  });
+  }, isQuoteCreator, creatorCoinUsdPrice] = result;
 
   const price = PriceService.computePriceFromSqrtPriceX96({
     sqrtPriceX96,
