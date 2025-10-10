@@ -135,7 +135,16 @@ export const updatePool = async ({
 }) => {
   const { db, chain } = context;
   const address = poolAddress.toLowerCase() as `0x${string}`;
-
+  
+  const existingPool = await db.find(pool, {
+    address,
+    chainId: chain.id,
+  });
+  
+  if (!existingPool) {
+    return;
+  }
+  
   await db
     .update(pool, {
       address,
