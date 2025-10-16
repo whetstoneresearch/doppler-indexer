@@ -540,12 +540,12 @@ export const swapRelations = relations(swap, ({ one }) => ({
 export const poolRelations = relations(pool, ({ one, many }) => ({
   positions: many(position),
   baseToken: one(token, {
-    fields: [pool.baseToken],
-    references: [token.address],
+    fields: [pool.baseToken, pool.chainId],
+    references: [token.address, token.chainId],
   }),
   quoteToken: one(token, {
-    fields: [pool.quoteToken],
-    references: [token.address],
+    fields: [pool.quoteToken, pool.chainId],
+    references: [token.address, token.chainId],
   }),
   asset: one(asset, {
     fields: [pool.asset],
