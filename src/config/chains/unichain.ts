@@ -52,6 +52,10 @@ export const unichainConfig: ChainConfig = {
         fxhAddress: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
         fxhWethPool: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
       },
+      noice: {
+        noiceAddress: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
+        noiceWethPool: COMMON_ADDRESSES.ZERO_ADDRESS as Address
+      }
     },
     zora: {
       zoraFactory: COMMON_ADDRESSES.ZERO_ADDRESS,

@@ -67,6 +67,10 @@ export const baseSepoliaConfig: ChainConfig = {
         fxhAddress: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
         fxhWethPool: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
       },
+      noice: {
+        noiceAddress: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
+        noiceWethPool: COMMON_ADDRESSES.ZERO_ADDRESS as Address
+      }
     },
     oracle: ORACLE_ADDRESSES,
   },
@@ -131,6 +135,10 @@ export const baseConfig: ChainConfig = {
         fxhAddress: "0x5fc2843838e65eb0b5d33654628f446d54602791" as Address,
         fxhWethPool: "0xC3e7433ae4d929092F8dFf62F7E2f15f23bC3E63" as Address,
       },
+      noice: {
+        noiceAddress: "0x9cb41fd9dc6891bae8187029461bfaadf6cc0c69" as Address,
+        noiceWethPool: "0x9ea86aa9f7203da077371bb2f82ec555e6e22f81" as Address
+      }
     },
     stables: {
       usdc: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" as Address,
