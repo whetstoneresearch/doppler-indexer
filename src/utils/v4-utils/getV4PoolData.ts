@@ -73,7 +73,7 @@ export const getV4PoolData = async ({
     ...multicallOptions,
   });
 
-  if (!slot0.result?.[3]) {
+  if (slot0.result?.[3] !== undefined) {
     console.error("Failed to get slot0 data");
   }
 
