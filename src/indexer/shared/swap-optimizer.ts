@@ -10,6 +10,7 @@ import {
   fetchEthPrice,
   fetchZoraPrice,
   fetchFxhPrice,
+  fetchNoicePrice,
 } from "./oracle";
 import { updatePool } from "./entities";
 import { chainConfigs } from "@app/config";
@@ -53,6 +54,7 @@ export async function getPoolUsdPrice(
   poolEntity: typeof pool.$inferSelect,
   zoraPrice: bigint,
   fxhPrice: bigint,
+  noicePrice: bigint,
   ethPrice: bigint,
   context: Context
 ): Promise<bigint | null> {
@@ -60,6 +62,7 @@ export async function getPoolUsdPrice(
   const zoraToken = chainConfigs[chain.name].addresses.zora.zoraToken;
   const wethToken = chainConfigs[chain.name].addresses.shared.weth;
   const fxhToken = chainConfigs[chain.name].addresses.shared.fxHash.fxhAddress;
+  const noiceToken = chainConfigs[chain.name].addresses.shared.noice.noiceAddress;
 
   const isQuoteZora =
     poolEntity.quoteToken.toLowerCase() === zoraToken.toLowerCase();
@@ -67,6 +70,8 @@ export async function getPoolUsdPrice(
     poolEntity.quoteToken.toLowerCase() === wethToken.toLowerCase();
   const isQuoteFxh =
     poolEntity.quoteToken.toLowerCase() === fxhToken.toLowerCase();
+  const isQuoteNoice =
+    poolEntity.quoteToken.toLowerCase() === noiceToken.toLowerCase();
 
   if (isQuoteZora) {
     return zoraPrice;
@@ -74,6 +79,10 @@ export async function getPoolUsdPrice(
 
   if (isQuoteFxh) {
     return fxhPrice * ethPrice / 10n ** 8n;
+  }
+
+  if (isQuoteNoice) {
+    return noicePrice * ethPrice / 10n ** 8n;
   }
 
   if (isQuoteEth) {
@@ -199,12 +208,13 @@ export async function handleOptimizedSwap(
   params: SwapHandlerParams,
   isZora?: boolean,
   isFxh?: boolean,
+  isNoice?: boolean,
 ): Promise<void> {
   const { context, timestamp } = params;
   const { db, chain } = context;
   const poolAddress = params.poolAddress;
 
-  let zoraPrice, ethPrice, fxhWethPrice, poolEntity;
+  let zoraPrice, ethPrice, fxhWethPrice, noiceWethPrice, poolEntity;
   if (isZora) {
     [zoraPrice, ethPrice, poolEntity] = await Promise.all([
       fetchZoraPrice(timestamp, context),
@@ -223,6 +233,15 @@ export async function handleOptimizedSwap(
         chainId: chain.id,
       }),
     ]);
+  } else if (isNoice) {
+    [noiceWethPrice, ethPrice, poolEntity] = await Promise.all([
+      fetchNoicePrice(timestamp, context),
+      fetchEthPrice(timestamp, context),
+      db.find(pool, {
+        address: poolAddress,
+        chainId: chain.id,
+      }),
+    ]);
   } else {
     [ethPrice, poolEntity] = await Promise.all([
       fetchEthPrice(timestamp, context),
@@ -233,16 +252,17 @@ export async function handleOptimizedSwap(
     ]);
   }
 
-  
+
   if (!poolEntity) {
     return;
   }
-  
+
   // Get USD price efficiently
   const usdPrice = await getPoolUsdPrice(
     poolEntity,
     zoraPrice ?? 1n,
     fxhWethPrice ?? 1n,
+    noiceWethPrice ?? 1n,
     ethPrice,
     context,
   );
