@@ -5,6 +5,7 @@ import {
   computeMarketCap,
   fetchEthPrice,
   fetchFxhPrice,
+  fetchNoicePrice,
 } from "./shared/oracle";
 import { insertPoolIfNotExistsV4, updatePool } from "./shared/entities/pool";
 import { insertAssetIfNotExists } from "./shared/entities/asset";
@@ -328,12 +329,21 @@ ponder.on(
       quoteToken != zeroAddress &&
       quoteToken ===
         chainConfigs[context.chain.name].addresses.shared.fxHash.fxhAddress.toLowerCase();
+    const isQuoteNoice =
+      quoteToken != zeroAddress &&
+      quoteToken ===
+        chainConfigs[context.chain.name].addresses.shared.noice.noiceAddress.toLowerCase();
 
-    var ethPrice, fxhWethPrice;
+    var ethPrice, fxhWethPrice, noiceWethPrice;
     if (isQuoteFxh) {
       [ethPrice, fxhWethPrice] = await Promise.all([
         fetchEthPrice(timestamp, context),
         fetchFxhPrice(timestamp, context),
+      ]);
+    } else if (isQuoteNoice) {
+      [ethPrice, noiceWethPrice] = await Promise.all([
+        fetchEthPrice(timestamp, context),
+        fetchNoicePrice(timestamp, context),
       ]);
     } else {
       ethPrice = await fetchEthPrice(timestamp, context);
@@ -377,10 +387,17 @@ ponder.on(
       });
     }
 
-    let fxhUsdPrice;
+    let fxhUsdPrice, noiceUsdPrice;
     var price;
     if (isQuoteFxh) {
       fxhUsdPrice = fxhWethPrice! * ethPrice / 10n ** 8n;
+      price = computeV3Price({
+        sqrtPriceX96: sqrtPrice,
+        isToken0: poolEntity.isToken0,
+        decimals: 18,
+      });
+    } else if (isQuoteNoice) {
+      noiceUsdPrice = noiceWethPrice! * ethPrice / 10n ** 8n;
       price = computeV3Price({
         sqrtPriceX96: sqrtPrice,
         isToken0: poolEntity.isToken0,
@@ -395,7 +412,7 @@ ponder.on(
     }
     const marketCapUsd = computeMarketCap({
       price,
-      ethPrice: isQuoteFxh ? fxhUsdPrice! : ethPrice,
+      ethPrice: isQuoteFxh ? fxhUsdPrice! : isQuoteNoice ? noiceUsdPrice! : ethPrice,
       totalSupply: baseTokenEntity!.totalSupply,
       decimals: poolEntity.isQuoteEth ? 8 : 18,
     });
@@ -404,7 +421,7 @@ ponder.on(
       assetBalance: poolEntity.isToken0 ? token0Reserve : token1Reserve,
       quoteBalance: poolEntity.isToken0 ? token1Reserve : token0Reserve,
       price,
-      ethPrice: isQuoteFxh ? fxhUsdPrice! : ethPrice,
+      ethPrice: isQuoteFxh ? fxhUsdPrice! : isQuoteNoice ? noiceUsdPrice! : ethPrice,
       decimals: poolEntity.isQuoteEth ? 8 : 18,
     });
 
@@ -449,6 +466,10 @@ ponder.on(
       poolEntity!.quoteToken != zeroAddress &&
       poolEntity!.quoteToken ===
         chainConfigs[context.chain.name].addresses.shared.fxHash.fxhAddress.toLowerCase();
+    const isQuoteNoice =
+      poolEntity!.quoteToken != zeroAddress &&
+      poolEntity!.quoteToken ===
+        chainConfigs[context.chain.name].addresses.shared.noice.noiceAddress.toLowerCase();
 
     const sqrtPriceX96 = slot0?.[0] ?? 0n;
 
@@ -472,6 +493,7 @@ ponder.on(
       },
       false,
       isQuoteFxh,
+      isQuoteNoice,
     );
   },
 );
