@@ -63,11 +63,17 @@ export interface SharedAddresses {
   weth: Address;
   chainlinkEthOracle: Address;
   fxHash: FxHashAddresses;
+  noice: NoiceAddresses;
 }
 
 export interface FxHashAddresses {
   fxhAddress: Address;
   fxhWethPool: Address;
+}
+
+export interface NoiceAddresses {
+  noiceAddress: Address;
+  noiceWethPool: Address;
 }
 
 /**

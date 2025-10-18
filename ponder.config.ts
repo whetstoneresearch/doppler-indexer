@@ -21,6 +21,8 @@ import { UniswapV3MigratorAbi } from "@app/abis/v3-abis/UniswapV3Migrator";
 import { UniswapV2FactoryABI } from "@app/abis/UniswapV2Factory";
 import { UniswapV4MulticurveInitializerHookABI } from "@app/abis/multicurve-abis/UniswapV4MulticurveInitializerHookABI";
 import { UniswapV4MulticurveInitializerABI } from "@app/abis/multicurve-abis/UniswapV4MulticurveInitializerABI";
+import { UniswapV4ScheduledMulticurveInitializerHookABI } from "@app/abis/multicurve-abis/UniswapV4ScheduledMulticurveInitializerHookABI";
+import { UniswapV4ScheduledMulticurveInitializerABI } from "@app/abis/multicurve-abis/UniswapV4ScheduledMulticurveInitializerABI";
 
 const { base, unichain, ink, baseSepolia } = chainConfigs;
 
@@ -80,6 +82,11 @@ export default createConfig({
     FxhWethPrice: {
       chain: "base",
       startBlock: 36178538,
+      interval: BLOCK_INTERVALS.FIVE_MINUTES, // every 5 minutes
+    },
+    NoiceWethPrice: {
+      chain: "base",
+      startBlock: 30530166,
       interval: BLOCK_INTERVALS.FIVE_MINUTES, // every 5 minutes
     },
   },
@@ -330,19 +337,19 @@ export default createConfig({
         },
       },
     },
-    // ZoraCoinV4: {
-    //   abi: ZoraCoinABI,
-    //   chain: {
-    //     base: {
-    //       startBlock: 31058549,
-    //       address: factory({
-    //         address: base.addresses.zora.zoraFactory,
-    //         event: getAbiItem({ abi: ZoraFactoryABI, name: "CoinCreatedV4" }),
-    //         parameter: "coin",
-    //       }),
-    //     },
-    //   },
-    // },
+    ZoraCoinV4: {
+      abi: ZoraCoinABI,
+      chain: {
+        base: {
+          startBlock: 31058549,
+          address: factory({
+            address: base.addresses.zora.zoraFactory,
+            event: getAbiItem({ abi: ZoraFactoryABI, name: "CoinCreatedV4" }),
+            parameter: "coin",
+          }),
+        },
+      },
+    },
     ZoraCreatorCoinV4: {
       abi: ZoraCreatorCoinABI,
       chain: {
@@ -359,19 +366,19 @@ export default createConfig({
         },
       },
     },
-    // ZoraV4Hook: {
-    //   abi: ZoraV4HookABI,
-    //   chain: {
-    //     base: {
-    //       startBlock: 31058549,
-    //       address: factory({
-    //         address: base.addresses.zora.zoraFactory,
-    //         event: getAbiItem({ abi: ZoraFactoryABI, name: "CoinCreatedV4" }),
-    //         parameter: "poolKey.hooks",
-    //       }),
-    //     },
-    //   },
-    // },
+    ZoraV4Hook: {
+      abi: ZoraV4HookABI,
+      chain: {
+        base: {
+          startBlock: 31058549,
+          address: factory({
+            address: base.addresses.zora.zoraFactory,
+            event: getAbiItem({ abi: ZoraFactoryABI, name: "CoinCreatedV4" }),
+            parameter: "poolKey.hooks",
+          }),
+        },
+      },
+    },
     ZoraV4CreatorCoinHook: {
       abi: ZoraV4HookABI,
       chain: {
@@ -403,6 +410,24 @@ export default createConfig({
         base: {
           startBlock: 36178538,
           address: base.addresses.v4.v4MulticurveInitializerHook,
+        },
+      },
+    },
+    UniswapV4ScheduledMulticurveInitializer: {
+      abi: UniswapV4ScheduledMulticurveInitializerABI,
+      chain: {
+        base: {
+          startBlock: 36659443,
+          address: base.addresses.v4.v4ScheduledMulticurveInitializer,
+        },
+      },
+    },
+    UniswapV4ScheduledMulticurveInitializerHook: {
+      abi: UniswapV4ScheduledMulticurveInitializerHookABI,
+      chain: {
+        base: {
+          startBlock: 36659444,
+          address: base.addresses.v4.v4ScheduledMulticurveInitializerHook,
         },
       },
     },

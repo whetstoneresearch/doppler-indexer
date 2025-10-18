@@ -92,6 +92,20 @@ export const fxhWethPrice = onchainTable(
   })
 );
 
+export const noiceWethPrice = onchainTable(
+  "noice_weth_price",
+  (t) => ({
+    timestamp: t.bigint().notNull(),
+    chainId: t.integer().notNull(),
+    price: t.bigint().notNull(),
+  }),
+  (table) => ({
+    pk: primaryKey({
+      columns: [table.timestamp, table.chainId],
+    }),
+  })
+);
+
 export const asset = onchainTable(
   "asset",
   (t) => ({
