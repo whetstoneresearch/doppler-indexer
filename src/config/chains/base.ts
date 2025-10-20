@@ -145,7 +145,7 @@ export const baseConfig: ChainConfig = {
       },
       noice: {
         noiceAddress: "0x9cb41fd9dc6891bae8187029461bfaadf6cc0c69" as Address,
-        noiceWethPool: "0x9ea86aa9f7203da077371bb2f82ec555e6e22f81" as Address
+        noiceWethPool: "0xeff7f8fe083d7a446717b992bf84391253e54789" as Address
       }
     },
     stables: {
