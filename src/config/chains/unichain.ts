@@ -38,6 +38,8 @@ export const unichainConfig: ChainConfig = {
       v4MigratorHook: COMMON_ADDRESSES.ZERO_ADDRESS,
       v4MulticurveInitializer: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
       v4MulticurveInitializerHook: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
+      v4ScheduledMulticurveInitializer: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
+      v4ScheduledMulticurveInitializerHook: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
     },
     shared: {
       airlock: "0x77EbfBAE15AD200758E9E2E61597c0B07d731254" as Address,
@@ -52,6 +54,10 @@ export const unichainConfig: ChainConfig = {
         fxhAddress: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
         fxhWethPool: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
       },
+      noice: {
+        noiceAddress: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
+        noiceWethPool: COMMON_ADDRESSES.ZERO_ADDRESS as Address
+      }
     },
     zora: {
       zoraFactory: COMMON_ADDRESSES.ZERO_ADDRESS,

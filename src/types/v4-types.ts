@@ -13,6 +13,8 @@ export interface V4Addresses {
   v4MigratorHook: Address;
   v4MulticurveInitializer: Address;
   v4MulticurveInitializerHook: Address;
+  v4ScheduledMulticurveInitializer: Address;
+  v4ScheduledMulticurveInitializerHook: Address;
 }
 
 /**

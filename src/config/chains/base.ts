@@ -53,6 +53,10 @@ export const baseSepoliaConfig: ChainConfig = {
         "0x359b5952a254baaa0105381825daedb8986bb55c" as Address,
       v4MulticurveInitializerHook:
         "0x06f5bbb7e503c87d78b6811077d6572fd8a3ed40" as Address,
+      v4ScheduledMulticurveInitializer:
+        "0x5c10d3e14aae2ef95619b25e907e013260e832e4" as Address,
+      v4ScheduledMulticurveInitializerHook:
+        "0x5d663f9c993deff2d17ce4232d75f347df7dadc0" as Address,
     },
     shared: {
       airlock: "0x3411306ce66c9469bff1535ba955503c4bde1c6e" as Address,
@@ -67,6 +71,10 @@ export const baseSepoliaConfig: ChainConfig = {
         fxhAddress: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
         fxhWethPool: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
       },
+      noice: {
+        noiceAddress: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
+        noiceWethPool: COMMON_ADDRESSES.ZERO_ADDRESS as Address
+      }
     },
     oracle: ORACLE_ADDRESSES,
   },
@@ -110,6 +118,10 @@ export const baseConfig: ChainConfig = {
         "0x65de470da664a5be139a5d812be5fda0d76cc951" as Address,
       v4MulticurveInitializerHook:
         "0x892d3c2b4abeaaf67d52a7b29783e2161b7cad40" as Address,
+      v4ScheduledMulticurveInitializer:
+        "0xa36715da46ddf4a769f3290f49af58bf8132ed8e" as Address,
+      v4ScheduledMulticurveInitializerHook:
+        "0x3e342a06f9592459d75721d6956b570f02ef2dc0" as Address,
     },
     zora: {
       zoraFactory: "0x777777751622c0d3258f214F9DF38E35BF45baF3" as Address,
@@ -131,6 +143,10 @@ export const baseConfig: ChainConfig = {
         fxhAddress: "0x5fc2843838e65eb0b5d33654628f446d54602791" as Address,
         fxhWethPool: "0xC3e7433ae4d929092F8dFf62F7E2f15f23bC3E63" as Address,
       },
+      noice: {
+        noiceAddress: "0x9cb41fd9dc6891bae8187029461bfaadf6cc0c69" as Address,
+        noiceWethPool: "0x9ea86aa9f7203da077371bb2f82ec555e6e22f81" as Address
+      }
     },
     stables: {
       usdc: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" as Address,

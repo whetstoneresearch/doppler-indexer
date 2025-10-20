@@ -1,4 +1,4 @@
-import { ethPrice, zoraUsdcPrice, fxhWethPrice } from "ponder.schema";
+import { ethPrice, zoraUsdcPrice, fxhWethPrice, noiceWethPrice } from "ponder.schema";
 import { Context } from "ponder:registry";
 import { MarketDataService } from "@app/core";
 
@@ -70,6 +70,29 @@ export const fetchFxhPrice = async (
   }
 
   return fxhPriceData.price;
+};
+
+export const fetchNoicePrice = async (
+  timestamp: bigint,
+  context: Context,
+): Promise<bigint> => {
+  const { db, chain } = context;
+
+  let roundedTimestamp = BigInt(Math.floor(Number(timestamp) / 300) * 300);
+
+  let noicePriceData;
+  while (!noicePriceData) {
+    noicePriceData = await db.find(noiceWethPrice, {
+      timestamp: roundedTimestamp,
+      chainId: chain.id,
+    });
+
+    if (!noicePriceData) {
+      roundedTimestamp -= 300n;
+    }
+  }
+
+  return noicePriceData.price;
 };
 
 export const computeMarketCap = ({

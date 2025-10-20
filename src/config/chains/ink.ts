@@ -38,6 +38,8 @@ export const inkConfig: ChainConfig = {
       v4MigratorHook: COMMON_ADDRESSES.ZERO_ADDRESS,
       v4MulticurveInitializer: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
       v4MulticurveInitializerHook: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
+      v4ScheduledMulticurveInitializer: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
+      v4ScheduledMulticurveInitializerHook: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
     },
     shared: {
       airlock: "0x660eAaEdEBc968f8f3694354FA8EC0b4c5Ba8D12" as Address,
@@ -52,6 +54,10 @@ export const inkConfig: ChainConfig = {
         fxhAddress: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
         fxhWethPool: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
       },
+      noice: {
+        noiceAddress: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
+        noiceWethPool: COMMON_ADDRESSES.ZERO_ADDRESS as Address
+      }
     },
     zora: {
       zoraFactory: COMMON_ADDRESSES.ZERO_ADDRESS,

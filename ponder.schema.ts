@@ -92,6 +92,20 @@ export const fxhWethPrice = onchainTable(
   })
 );
 
+export const noiceWethPrice = onchainTable(
+  "noice_weth_price",
+  (t) => ({
+    timestamp: t.bigint().notNull(),
+    chainId: t.integer().notNull(),
+    price: t.bigint().notNull(),
+  }),
+  (table) => ({
+    pk: primaryKey({
+      columns: [table.timestamp, table.chainId],
+    }),
+  })
+);
+
 export const asset = onchainTable(
   "asset",
   (t) => ({
@@ -428,6 +442,20 @@ export const v4pools = onchainTable(
     lastSwapTimestampIdx: index().on(table.lastSwapTimestamp),
   })
 );
+
+export const scheduledPools = onchainTable(
+  "scheduled_pool",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    poolId: t.hex().notNull(),
+    startingTime: t.bigint().notNull()
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.chainId, table.poolId] }),
+    poolIdIdx: index().on(table.poolId),
+    startingTimeIdx: index().on(table.startingTime)
+  })
+)
 
 export const userAsset = onchainTable(
   "user_asset",
