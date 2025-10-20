@@ -83,6 +83,11 @@ export default createConfig({
       startBlock: 36175538,
       interval: BLOCK_INTERVALS.FIVE_MINUTES, // every 5 minutes
     },
+    NoiceWethPrice: {
+      chain: "base",
+      startBlock: 30530166,
+      interval: BLOCK_INTERVALS.FIVE_MINUTES, // every 5 minutes
+    },
   },
   contracts: {
     Airlock: {
