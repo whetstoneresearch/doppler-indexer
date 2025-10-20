@@ -443,6 +443,20 @@ export const v4pools = onchainTable(
   })
 );
 
+export const scheduledPools = onchainTable(
+  "scheduled_pool",
+  (t) => ({
+    chainId: t.integer().notNull(),
+    poolId: t.hex().notNull(),
+    startingTime: t.bigint().notNull()
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.chainId, table.poolId] }),
+    poolIdIdx: index().on(table.poolId),
+    startingTimeIdx: index().on(table.startingTime)
+  })
+)
+
 export const userAsset = onchainTable(
   "user_asset",
   (t) => ({
