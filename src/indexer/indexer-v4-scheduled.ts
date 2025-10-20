@@ -1,6 +1,7 @@
 import { ponder } from "ponder:registry";
 import { getPoolId, getV4PoolData } from "@app/utils/v4-utils";
 import { insertTokenIfNotExists } from "./shared/entities/token";
+import { insertScheduledPool } from "./shared/entities/multicurve/scheduledPool";
 import {
   computeMarketCap,
   fetchEthPrice,
@@ -66,6 +67,10 @@ ponder.on(
       marketCapUsd: poolEntity.marketCapUsd,
       poolAddress,
     });
+    await insertScheduledPool({
+      poolId,
+      context
+    })
     await updatePool({
       poolAddress: poolAddress,
       context,
