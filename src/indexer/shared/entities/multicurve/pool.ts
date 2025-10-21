@@ -25,7 +25,7 @@ export const insertMulticurvePoolV4Optimized = async ({
   timestamp: bigint;
   context: Context;
   creatorAddress: Address;
-}): Promise<typeof pool.$inferSelect> => {
+}): Promise<typeof pool.$inferSelect | null>=> {
   const { db, chain, client } = context;
   const address = poolAddress.toLowerCase() as `0x${string}`;
   const chainId = chain.id;
@@ -130,6 +130,10 @@ export const insertMulticurvePoolV4Optimized = async ({
   });
 
   const sqrtPriceX96 = slot0Result?.[0] ?? 0n;
+  if (sqrtPriceX96 === 0n) {
+    return null;
+  }
+  
   const tick = slot0Result?.[1] ?? 0;
 
   var price;

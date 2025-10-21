@@ -60,6 +60,8 @@ ponder.on(
       context,
       creatorAddress,
     });
+    if (!poolEntity) return;
+    
     const assetEntity = await insertAssetIfNotExists({
       assetAddress: assetAddress,
       timestamp,
@@ -101,9 +103,7 @@ ponder.on(
       context,
     });
 
-    if (!poolEntity) {
-      return;
-    }
+    if (!poolEntity) return;
 
     const baseTokenEntity = await context.db.find(token, {
       address: poolEntity.baseToken,
