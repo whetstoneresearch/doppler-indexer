@@ -134,7 +134,8 @@ export const insertMulticurvePoolV4Optimized = async ({
     console.log("sqrtPriceX96 not found for:");
     console.log("chain: ", context.chain.name);
     console.log("timestamp: ", timestamp);
-    console.log("pool: ", poolKey);
+    console.log("poolId: ", poolId)
+    console.log("poolKey: ", poolKey);
     console.log("slot0Result: ", slot0Result);
     
     return null;

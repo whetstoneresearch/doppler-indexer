@@ -43,6 +43,8 @@ ponder.on(
       functionName: "getState",
       args: [assetId],
     });
+    
+    console.log("poolState:", poolState)
 
     const poolKey = poolState[2];
 
