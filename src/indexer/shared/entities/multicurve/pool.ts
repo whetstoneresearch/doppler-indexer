@@ -40,25 +40,12 @@ export const insertMulticurvePoolV4Optimized = async ({
     return existingPool;
   }
 
-  let poolState;
   let baseToken;
   let quoteToken;
-  poolState = await client.readContract({
-    abi: UniswapV4MulticurveInitializerABI,
-    address: chainConfigs[chain.name].addresses.v4.v4MulticurveInitializer,
-    functionName: "getState",
-    args: [poolKey.currency0],
-  });
 
-  if (poolState[2].hooks === zeroAddress) {
+  if (poolKey.hooks === zeroAddress) {
     baseToken = poolKey.currency1;
     quoteToken = poolKey.currency0;
-    poolState = await client.readContract({
-      abi: UniswapV4MulticurveInitializerABI,
-      address: chainConfigs[chain.name].addresses.v4.v4MulticurveInitializer,
-      functionName: "getState",
-      args: [poolKey.currency1],
-    });
   } else {
     baseToken = poolKey.currency0;
     quoteToken = poolKey.currency1;
@@ -115,9 +102,6 @@ export const insertMulticurvePoolV4Optimized = async ({
     quoteToken === zeroAddress ||
     quoteToken === chainConfigs[chain.name].addresses.shared.weth;
 
-  if (!poolKey) {
-    poolKey = poolState[2];
-  }
   // Optimized contract calls - single multicall instead of multiple calls
   const stateView = chainConfigs[chain.name].addresses.v4.stateView;
   const poolId = getPoolId(poolKey);
