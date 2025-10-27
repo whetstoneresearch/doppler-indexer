@@ -43,7 +43,7 @@ export const insertMulticurvePoolV4Optimized = async ({
   let baseToken;
   let quoteToken;
 
-  if (poolKey.hooks === zeroAddress) {
+  if (poolKey.hooks === zeroAddress || poolKey.currency0 === chainConfigs[context.chain.name].addresses.shared.fxHash.fxhAddress) {
     baseToken = poolKey.currency1;
     quoteToken = poolKey.currency0;
   } else {
