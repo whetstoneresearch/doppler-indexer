@@ -277,6 +277,7 @@ ponder.on(
       poolKey,
       context,
       creatorAddress,
+      scheduled: false
     });
     if (!poolEntity) return;
     const assetEntity = await insertAssetIfNotExists({
@@ -314,6 +315,7 @@ ponder.on(
       timestamp,
       poolKey: key,
       context,
+      scheduled: false
     });
 
     if (!poolEntity) return;

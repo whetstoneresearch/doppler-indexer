@@ -19,12 +19,14 @@ export const insertMulticurvePoolV4Optimized = async ({
   timestamp,
   context,
   creatorAddress,
+  scheduled
 }: {
   poolAddress: Address;
   poolKey: PoolKey;
   timestamp: bigint;
   context: Context;
   creatorAddress: Address;
+  scheduled: boolean;
 }): Promise<typeof pool.$inferSelect | null>=> {
   const { db, chain, client } = context;
   const address = poolAddress.toLowerCase() as `0x${string}`;
@@ -45,7 +47,7 @@ export const insertMulticurvePoolV4Optimized = async ({
   let quoteToken;
   poolState = await client.readContract({
     abi: UniswapV4MulticurveInitializerABI,
-    address: chainConfigs[chain.name].addresses.v4.v4MulticurveInitializer,
+    address: scheduled ? chainConfigs[chain.name].addresses.v4.v4ScheduledMulticurveInitializer : chainConfigs[chain.name].addresses.v4.v4MulticurveInitializer,
     functionName: "getState",
     args: [poolKey.currency0],
   });
@@ -55,7 +57,7 @@ export const insertMulticurvePoolV4Optimized = async ({
     quoteToken = poolKey.currency0;
     poolState = await client.readContract({
       abi: UniswapV4MulticurveInitializerABI,
-      address: chainConfigs[chain.name].addresses.v4.v4MulticurveInitializer,
+      address: scheduled ? chainConfigs[chain.name].addresses.v4.v4ScheduledMulticurveInitializer : chainConfigs[chain.name].addresses.v4.v4MulticurveInitializer,
       functionName: "getState",
       args: [poolKey.currency1],
     });
@@ -179,7 +181,7 @@ export const insertMulticurvePoolV4Optimized = async ({
     baseToken,
     quoteToken,
     price,
-    type: "multicurve",
+    type: scheduled ? "scheduled-multicurve" : "multicurve",
     chainId,
     fee: poolKey.fee,
     dollarLiquidity: 0n,

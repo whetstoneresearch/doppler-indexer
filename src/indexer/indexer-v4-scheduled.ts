@@ -39,7 +39,7 @@ ponder.on(
     const poolState = await context.client.readContract({
       abi: UniswapV4ScheduledMulticurveInitializerABI,
       address:
-        chainConfigs[context.chain.name].addresses.v4.v4MulticurveInitializer,
+        chainConfigs[context.chain.name].addresses.v4.v4ScheduledMulticurveInitializer,
       functionName: "getState",
       args: [assetId],
     });
@@ -59,6 +59,7 @@ ponder.on(
       poolKey,
       context,
       creatorAddress,
+      scheduled: true
     });
     if (!poolEntity) return;
     
@@ -101,6 +102,7 @@ ponder.on(
       timestamp,
       poolKey: key,
       context,
+      scheduled: true
     });
 
     if (!poolEntity) return;
