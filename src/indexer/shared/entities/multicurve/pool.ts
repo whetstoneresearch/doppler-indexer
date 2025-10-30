@@ -95,7 +95,7 @@ export const insertMulticurvePoolV4Optimized = async ({
       isDerc20: false,
       isCreatorCoin: false,
       isContentCoin: false,
-      poolAddress,
+      poolAddress: null,
       context,
       creatorAddress: zeroAddress,
       creatorCoinPid: null,
