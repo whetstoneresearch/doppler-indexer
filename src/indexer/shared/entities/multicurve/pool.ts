@@ -43,6 +43,15 @@ export const insertMulticurvePoolV4Optimized = async ({
   let poolState;
   let baseToken;
   let quoteToken;
+  
+  const DEBUG_ASSET = '0x9645a79068746bc8c37a2b7363168D4126bF1491'.toLowerCase();
+  const isDebugAsset = poolKey.currency0.toLowerCase() === DEBUG_ASSET || poolKey.currency1.toLowerCase() === DEBUG_ASSET;
+  
+  if (isDebugAsset) {
+    console.log('DEBUG: Input poolKey =', JSON.stringify(poolKey));
+    console.log('DEBUG: Calling getState with currency0 =', poolKey.currency0);
+  }
+  
   poolState = await client.readContract({
     abi: UniswapV4MulticurveInitializerABI,
     address: chainConfigs[chain.name].addresses.v4.v4MulticurveInitializer,
@@ -50,7 +59,14 @@ export const insertMulticurvePoolV4Optimized = async ({
     args: [poolKey.currency0],
   });
 
+  if (isDebugAsset) {
+    console.log('DEBUG: poolState[2].hooks =', poolState[2].hooks);
+    console.log('DEBUG: zeroAddress =', zeroAddress);
+    console.log('DEBUG: hooks === zeroAddress ?', poolState[2].hooks === zeroAddress);
+  }
+
   if (poolState[2].hooks === zeroAddress) {
+    if (isDebugAsset) console.log('DEBUG: Swapping tokens - baseToken = currency1, quoteToken = currency0');
     baseToken = poolKey.currency1;
     quoteToken = poolKey.currency0;
     poolState = await client.readContract({
@@ -60,8 +76,14 @@ export const insertMulticurvePoolV4Optimized = async ({
       args: [poolKey.currency1],
     });
   } else {
+    if (isDebugAsset) console.log('DEBUG: NOT swapping - baseToken = currency0, quoteToken = currency1');
     baseToken = poolKey.currency0;
     quoteToken = poolKey.currency1;
+  }
+  
+  if (isDebugAsset) {
+    console.log('DEBUG: After assignment - baseToken =', baseToken);
+    console.log('DEBUG: After assignment - quoteToken =', quoteToken);
   }
 
   let fxhWethPrice, noiceWethPrice;
@@ -167,6 +189,13 @@ export const insertMulticurvePoolV4Optimized = async ({
     totalSupply: baseTokenEntity.totalSupply,
     decimals: isQuoteEth ? 8 : 18,
   });
+
+  if (isDebugAsset) {
+    console.log('DEBUG insertMulticurvePoolV4Optimized: baseToken =', baseToken);
+    console.log('DEBUG insertMulticurvePoolV4Optimized: quoteToken =', quoteToken);
+    console.log('DEBUG insertMulticurvePoolV4Optimized: poolKey =', JSON.stringify(poolKey));
+    console.log('DEBUG insertMulticurvePoolV4Optimized: poolAddress =', address);
+  }
 
   // Insert new pool with all data at once
   return await db.insert(pool).values({
