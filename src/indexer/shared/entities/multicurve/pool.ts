@@ -6,6 +6,7 @@ import { Address, parseUnits, zeroAddress } from "viem";
 import { StateViewABI } from "@app/abis";
 import { getPoolId } from "@app/utils/v4-utils/getPoolId";
 import { chainConfigs } from "@app/config";
+import { CHAINLINK_ETH_DECIMALS } from "@app/utils/constants";
 import { computeMarketCap, fetchEthPrice, fetchFxhPrice, fetchNoicePrice } from "../../oracle";
 import { UniswapV4MulticurveInitializerABI } from "@app/abis/multicurve-abis/UniswapV4MulticurveInitializerABI";
 import { upsertTokenWithPool } from "../token-optimized";
@@ -138,36 +139,30 @@ export const insertMulticurvePoolV4Optimized = async ({
   
   const tick = slot0Result?.[1] ?? 0;
 
-  var price;
-  if (isQuoteFxh) {
-    price =
-      fxhWethPrice! *
-      computeV3Price({
-        sqrtPriceX96,
-        isToken0,
-        decimals: 18,
-      });
-  } else if (isQuoteNoice) {
-    price =
-      noiceWethPrice! *
-      computeV3Price({
-        sqrtPriceX96,
-        isToken0,
-        decimals: 18,
-      });
-  } else {
-    price = computeV3Price({
-      sqrtPriceX96,
-      isToken0,
-      decimals: 18,
-    });
-  }
+  const price = computeV3Price({
+    sqrtPriceX96,
+    isToken0,
+    decimals: 18,
+  });
+
+  const fxhUsdPrice = isQuoteFxh
+    ? (fxhWethPrice! * ethPrice) / CHAINLINK_ETH_DECIMALS
+    : undefined;
+  const noiceUsdPrice = isQuoteNoice
+    ? (noiceWethPrice! * ethPrice) / CHAINLINK_ETH_DECIMALS
+    : undefined;
+  const quoteUsdPrice = isQuoteFxh
+    ? fxhUsdPrice!
+    : isQuoteNoice
+    ? noiceUsdPrice!
+    : ethPrice;
+  const quoteDecimals = isQuoteFxh || isQuoteNoice ? 18 : 8;
 
   const marketCapUsd = computeMarketCap({
     price,
-    ethPrice,
+    ethPrice: quoteUsdPrice,
     totalSupply: baseTokenEntity.totalSupply,
-    decimals: isQuoteEth ? 8 : 18,
+    decimals: quoteDecimals,
   });
 
   // Insert new pool with all data at once
