@@ -229,6 +229,10 @@ export default createConfig({
     UniswapV4ScheduledMulticurveInitializer: {
       abi: UniswapV4ScheduledMulticurveInitializerABI,
       chain: {
+        baseSepolia: {
+          startBlock: 32169922,
+          address: baseSepolia.addresses.v4.v4ScheduledMulticurveInitializer,
+        },
         base: {
           startBlock: 36659443,
           address: base.addresses.v4.v4ScheduledMulticurveInitializer,
@@ -238,6 +242,10 @@ export default createConfig({
     UniswapV4ScheduledMulticurveInitializerHook: {
       abi: UniswapV4ScheduledMulticurveInitializerHookABI,
       chain: {
+        baseSepolia: {
+          startBlock: 32169922,
+          address: baseSepolia.addresses.v4.v4ScheduledMulticurveInitializerHook,
+        },
         base: {
           startBlock: 36659444,
           address: base.addresses.v4.v4ScheduledMulticurveInitializerHook,
