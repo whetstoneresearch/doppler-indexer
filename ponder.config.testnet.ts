@@ -18,7 +18,12 @@ import { BLOCK_INTERVALS } from "./src/config/chains/constants";
 import { chainConfigs, CHAIN_IDS } from "./src/config/chains";
 import { LockableUniswapV3InitializerABI } from "@app/abis/v3-abis/LockableUniswapV3InitializerABI";
 import { UniswapV3MigratorAbi } from "@app/abis/v3-abis/UniswapV3Migrator";
-import { UniswapV4MulticurveInitializerABI, UniswapV4MulticurveInitializerHookABI } from "@app/abis/multicurve-abis";
+import {
+  UniswapV4MulticurveInitializerABI,
+  UniswapV4MulticurveInitializerHookABI,
+  UniswapV4ScheduledMulticurveInitializerABI,
+  UniswapV4ScheduledMulticurveInitializerHookABI,
+} from "@app/abis/multicurve-abis";
 
 const { base, unichain, ink, baseSepolia } = chainConfigs;
 
@@ -288,6 +293,25 @@ export default createConfig({
         baseSepolia: {
           startBlock: baseSepolia.startBlock,
           address: baseSepolia.addresses.v4.v4MulticurveInitializerHook,
+        },
+      },
+    },
+    UniswapV4ScheduledMulticurveInitializer: {
+      abi: UniswapV4ScheduledMulticurveInitializerABI,
+      chain: {
+        baseSepolia: {
+          startBlock: baseSepolia.startBlock,
+          address: baseSepolia.addresses.v4.v4ScheduledMulticurveInitializer,
+        },
+      },
+    },
+    UniswapV4ScheduledMulticurveInitializerHook: {
+      abi: UniswapV4ScheduledMulticurveInitializerHookABI,
+      chain: {
+        baseSepolia: {
+          startBlock: baseSepolia.startBlock,
+          address:
+            baseSepolia.addresses.v4.v4ScheduledMulticurveInitializerHook,
         },
       },
     },
