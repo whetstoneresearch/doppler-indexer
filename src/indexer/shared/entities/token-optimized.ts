@@ -103,7 +103,7 @@ export const upsertTokenWithPool = async ({
       .insert(token)
       .values(tokenData as typeof token.$inferInsert)
       .onConflictDoUpdate((existing) => ({
-        pool: poolAddress,
+        pool: existing.pool === null ? poolAddress : existing.pool,
         isDerc20,
         isCreatorCoin,
         isContentCoin,
