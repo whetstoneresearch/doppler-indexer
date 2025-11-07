@@ -1,6 +1,6 @@
 import { Context } from "ponder:registry";
 import { pool, token } from "ponder:schema";
-import { Address } from "viem";
+import { Address, zeroAddress } from "viem";
 import { SwapOrchestrator } from "@app/core";
 import { SwapService } from "@app/core";
 import { computeV3Price } from "@app/utils";
@@ -59,30 +59,35 @@ export async function getPoolUsdPrice(
   context: Context
 ): Promise<bigint | null> {
   const { db, chain } = context;
-  const zoraToken = chainConfigs[chain.name].addresses.zora.zoraToken;
-  const wethToken = chainConfigs[chain.name].addresses.shared.weth;
-  const fxhToken = chainConfigs[chain.name].addresses.shared.fxHash.fxhAddress;
-  const noiceToken = chainConfigs[chain.name].addresses.shared.noice.noiceAddress;
+  const quoteToken = poolEntity.quoteToken.toLowerCase();
+  const zoraToken =
+    chainConfigs[chain.name].addresses.zora.zoraToken.toLowerCase();
+  const wethToken =
+    chainConfigs[chain.name].addresses.shared.weth.toLowerCase();
+  const fxhToken =
+    chainConfigs[chain.name].addresses.shared.fxHash.fxhAddress.toLowerCase();
+  const noiceToken =
+    chainConfigs[chain.name].addresses.shared.noice.noiceAddress.toLowerCase();
+  const zeroAddressLower = zeroAddress;
 
-  const isQuoteZora =
-    poolEntity.quoteToken.toLowerCase() === zoraToken.toLowerCase();
+  const isQuoteZora = quoteToken === zoraToken;
   const isQuoteEth =
-    poolEntity.quoteToken.toLowerCase() === wethToken.toLowerCase();
-  const isQuoteFxh =
-    poolEntity.quoteToken.toLowerCase() === fxhToken.toLowerCase();
-  const isQuoteNoice =
-    poolEntity.quoteToken.toLowerCase() === noiceToken.toLowerCase();
+    poolEntity.isQuoteEth ||
+    quoteToken === zeroAddressLower ||
+    quoteToken === wethToken;
+  const isQuoteFxh = quoteToken === fxhToken;
+  const isQuoteNoice = quoteToken === noiceToken;
 
   if (isQuoteZora) {
     return zoraPrice;
   }
 
   if (isQuoteFxh) {
-    return fxhPrice * ethPrice / 10n ** 8n;
+    return (fxhPrice * ethPrice) / 10n ** 8n;
   }
 
   if (isQuoteNoice) {
-    return noicePrice * ethPrice / 10n ** 8n;
+    return (noicePrice * ethPrice) / 10n ** 8n;
   }
 
   if (isQuoteEth) {
@@ -267,10 +272,23 @@ export async function handleOptimizedSwap(
     context,
   );
 
-  const isQuoteEth = poolEntity.quoteToken.toLowerCase() === 
+  const wethLower =
     chainConfigs[chain.name].addresses.shared.weth.toLowerCase();
+  const zeroAddressLower = zeroAddress.toLowerCase();
+  const quoteLower = poolEntity.quoteToken.toLowerCase();
+  const isQuoteEth =
+    poolEntity.isQuoteEth ||
+    quoteLower === zeroAddressLower ||
+    quoteLower === wethLower;
+
+  const resolvedUsdPrice = usdPrice ?? (isQuoteEth ? ethPrice : WAD);
   
-  const swapData = processSwapCalculations(poolEntity, params, usdPrice ?? WAD, isQuoteEth);
+  const swapData = processSwapCalculations(
+    poolEntity,
+    params,
+    resolvedUsdPrice,
+    isQuoteEth
+  );
 
   const tokenEntity = await db.find(token, {
     address: poolEntity.baseToken,
@@ -284,7 +302,7 @@ export async function handleOptimizedSwap(
   // Calculate market cap
   const marketCapUsd = computeMarketCap({
     price: swapData.price,
-    ethPrice: usdPrice ?? WAD,
+    ethPrice: resolvedUsdPrice,
     totalSupply: tokenEntity.totalSupply,
     decimals: isQuoteEth ? 8 : 18,
   });
@@ -305,7 +323,7 @@ export async function handleOptimizedSwap(
     amountIn: swapData.amountIn,
     amountOut: swapData.amountOut,
     price: swapData.price,
-    usdPrice: usdPrice ?? WAD,
+    usdPrice: resolvedUsdPrice,
   });
 
   // Create metrics
