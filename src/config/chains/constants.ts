@@ -7,6 +7,7 @@ export const CHAIN_IDS = {
   baseSepolia: 84532,
   ink: 57073,
   base: 8453,
+  monad: 143
 } as const;
 
 // Block numbers organized by purpose
@@ -16,6 +17,7 @@ export const START_BLOCKS = {
   baseSepolia: 28109000,
   ink: 9508011,
   base: 28415520,
+  monad: 34746370
 } as const;
 
 export const V4_START_BLOCKS = {
@@ -23,11 +25,14 @@ export const V4_START_BLOCKS = {
   baseSepolia: 26638492,
   ink: 14937170,
   base: 30822164,
+  monad: 34746371
+
 } as const;
 
 export const LOCKABLE_V3_INITIALIZER_START_BLOCKS = {
   baseSepolia: 28150553,
   base: 32640102,
+  monad: 34746370
 } as const;
 
 export const SELF_CORRECTING_V4_INITIALIZER_START_BLOCKS = {
@@ -56,6 +61,7 @@ export const RPC_ENV_VARS = {
   baseSepolia: "PONDER_RPC_URL_84532",
   ink: "PONDER_RPC_URL_57073",
   base: "PONDER_RPC_URL_8453",
+  monad: "PONDER_RPC_URL_143"
 } as const;
 
 export const BLOCK_INTERVALS = {

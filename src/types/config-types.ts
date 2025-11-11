@@ -10,7 +10,8 @@ export type Network =
   | "unichain"
   | "baseSepolia"
   | "ink"
-  | "base";
+  | "base"
+  | "monad";
 
 /**
  * Chain configuration
