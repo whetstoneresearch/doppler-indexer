@@ -66,6 +66,9 @@ export const unichainConfig: ChainConfig = {
       creatorCoinHook: COMMON_ADDRESSES.ZERO_ADDRESS,
       contentCoinHook: COMMON_ADDRESSES.ZERO_ADDRESS,
     },
+    stables: {
+      usdc: "0x078d782b760474a361dda0af3839290b0ef57ad6" as Address,
+    },
     oracle: ORACLE_ADDRESSES,
   },
 };

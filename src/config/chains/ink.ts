@@ -66,6 +66,9 @@ export const inkConfig: ChainConfig = {
       creatorCoinHook: COMMON_ADDRESSES.ZERO_ADDRESS,
       contentCoinHook: COMMON_ADDRESSES.ZERO_ADDRESS,
     },
+    stables: {
+      usdc: "0x2d270e6886d130d724215a266106e6832161eaed" as Address,
+    },
     oracle: ORACLE_ADDRESSES,
   },
 };

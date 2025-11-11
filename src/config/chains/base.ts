@@ -76,6 +76,9 @@ export const baseSepoliaConfig: ChainConfig = {
         noiceWethPool: COMMON_ADDRESSES.ZERO_ADDRESS as Address
       }
     },
+    stables: {
+      usdc: "0xaf33add7918f685b2a82c1077bd8c07d220ffa04" as Address
+    },
     oracle: ORACLE_ADDRESSES,
   },
 };
