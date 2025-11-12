@@ -2,6 +2,7 @@ import { IndexerConfigs } from "./types";
 import { unichainConfig } from "./unichain";
 import { baseSepoliaConfig, baseConfig } from "./base";
 import { inkConfig } from "./ink";
+import { monadConfig } from "./monad";
 
 export * from "./types";
 export * from "./constants";
@@ -12,6 +13,7 @@ export const chainConfigs: IndexerConfigs = {
   baseSepolia: baseSepoliaConfig,
   base: baseConfig,
   ink: inkConfig,
+  monad: monadConfig,
 };
 
 // Utility functions
