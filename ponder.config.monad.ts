@@ -200,19 +200,11 @@ export default createConfig({
     UniswapV4MulticurveInitializer: {
       abi: UniswapV4MulticurveInitializerABI,
       chain: {
-        monad: {
-          startBlock: 34746368,
-          address: monad.addresses.v4.v4MulticurveInitializer,
-        },
       },
     },
     UniswapV4MulticurveInitializerHook: {
       abi: UniswapV4MulticurveInitializerHookABI,
       chain: {
-        monad: {
-          startBlock: 34746368,
-          address: monad.addresses.v4.v4MulticurveInitializerHook,
-        },
       },
     },
     UniswapV4ScheduledMulticurveInitializer: {
