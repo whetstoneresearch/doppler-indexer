@@ -81,6 +81,31 @@ ponder.on("InkChainlinkEthPriceFeed:block", async ({ event, context }) => {
     .onConflictDoNothing();
 });
 
+ponder.on("MonadChainlinkEthPriceFeed:block", async ({ event, context }) => {
+  const { db, client, chain } = context;
+  const { timestamp } = event.block;
+
+  const latestAnswer = await client.readContract({
+    abi: ChainlinkOracleABI,
+    address: chainConfigs["monad"].addresses.shared.chainlinkEthOracle,
+    functionName: "latestAnswer",
+  });
+
+  const price = latestAnswer;
+
+  const roundedTimestamp = BigInt(Math.floor(Number(timestamp) / 300) * 300);
+  const adjustedTimestamp = roundedTimestamp + 300n;
+
+  await db
+    .insert(ethPrice)
+    .values({
+      timestamp: adjustedTimestamp,
+      chainId: chain.id,
+      price,
+    })
+    .onConflictDoNothing();
+});
+
 ponder.on("ZoraUsdcPrice:block", async ({ event, context }) => {
   const { db, client, chain } = context;
   const { timestamp } = event.block;

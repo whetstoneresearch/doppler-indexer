@@ -24,7 +24,7 @@ import { UniswapV4MulticurveInitializerABI } from "@app/abis/multicurve-abis/Uni
 import { UniswapV4ScheduledMulticurveInitializerHookABI } from "@app/abis/multicurve-abis/UniswapV4ScheduledMulticurveInitializerHookABI";
 import { UniswapV4ScheduledMulticurveInitializerABI } from "@app/abis/multicurve-abis/UniswapV4ScheduledMulticurveInitializerABI";
 
-const { base, unichain, ink, baseSepolia } = chainConfigs;
+const { base, unichain, ink, baseSepolia, monad } = chainConfigs;
 
 export default createConfig({
   database: {
@@ -52,6 +52,10 @@ export default createConfig({
       id: CHAIN_IDS.baseSepolia,
       rpc: http(process.env.PONDER_RPC_URL_84532),
     },
+    monad: {
+      id: CHAIN_IDS.monad,
+      rpc: http(process.env.PONDER_RPC_URL_143),
+    }
   },
   blocks: {
     BaseChainlinkEthPriceFeed: {
@@ -78,6 +82,11 @@ export default createConfig({
       chain: "baseSepolia",
       startBlock: baseSepolia.startBlock,
       interval: 99999999999999, // every 5 minutes
+    },
+    MonadChainlinkEthPriceFeed: {
+      chain: "monad",
+      startBlock: monad.startBlock,
+      interval: BLOCK_INTERVALS.FIVE_MINUTES,
     },
     FxhWethPrice: {
       chain: "base",

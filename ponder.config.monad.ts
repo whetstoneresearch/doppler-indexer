@@ -60,12 +60,12 @@ export default createConfig({
     BaseSepoliaChainlinkEthPriceFeed: {
       chain: "baseSepolia",
       startBlock: 31000617,
-      interval: BLOCK_INTERVALS.FIVE_MINUTES, // every 5 minutes
+      interval: 99999999999, // every 5 minutes
     },
     BaseChainlinkEthPriceFeed: {
       chain: "base",
       startBlock: 36175538,
-      interval: BLOCK_INTERVALS.FIVE_MINUTES, // every 5 minutes
+      interval: 99999999999, // every 5 minutes
     },
     UnichainChainlinkEthPriceFeed: {
       chain: "unichain",
@@ -77,6 +77,11 @@ export default createConfig({
       startBlock: ink.startBlock,
       interval: 99999999999, // never run on testnet, just need this otherwise build fails...
     },
+    MonadChainlinkEthPriceFeed: {
+      chain: "monad",
+      startBlock: monad.startBlock,
+      interval: BLOCK_INTERVALS.FIVE_MINUTES,
+    },
     ZoraUsdcPrice: {
       chain: "base",
       startBlock: 31058549,
@@ -85,12 +90,12 @@ export default createConfig({
     FxhWethPrice: {
       chain: "base",
       startBlock: 36175538,
-      interval: BLOCK_INTERVALS.FIVE_MINUTES, // every 5 minutes
+      interval: 99999999999, // every 5 minutes
     },
     NoiceWethPrice: {
       chain: "base",
       startBlock: 30530166,
-      interval: BLOCK_INTERVALS.FIVE_MINUTES, // every 5 minutes
+      interval: 99999999999, // every 5 minutes
     },
   },
   contracts: {
