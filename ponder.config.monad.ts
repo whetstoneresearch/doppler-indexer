@@ -64,17 +64,17 @@ export default createConfig({
     },
     BaseChainlinkEthPriceFeed: {
       chain: "base",
-      startBlock: 36175538,
+      startBlock: 38094491,
       interval: 99999999999, // every 5 minutes
     },
     UnichainChainlinkEthPriceFeed: {
       chain: "unichain",
-      startBlock: unichain.startBlock,
+      startBlock: 32239964,
       interval: 99999999999, // never run on testnet, just need this otherwise build fails...
     },
     InkChainlinkEthPriceFeed: {
       chain: "ink",
-      startBlock: ink.startBlock,
+      startBlock: 29489923,
       interval: 99999999999, // never run on testnet, just need this otherwise build fails...
     },
     MonadChainlinkEthPriceFeed: {
@@ -84,17 +84,17 @@ export default createConfig({
     },
     ZoraUsdcPrice: {
       chain: "base",
-      startBlock: 31058549,
+      startBlock: 38094491,
       interval: 99999999999, // never run on testnet, just need this otherwise build fails...
     },
     FxhWethPrice: {
       chain: "base",
-      startBlock: 36175538,
+      startBlock: 38094491,
       interval: 99999999999, // every 5 minutes
     },
     NoiceWethPrice: {
       chain: "base",
-      startBlock: 30530166,
+      startBlock: 38094491,
       interval: 99999999999, // every 5 minutes
     },
   },
