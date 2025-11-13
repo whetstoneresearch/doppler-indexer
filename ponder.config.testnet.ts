@@ -75,6 +75,11 @@ export default createConfig({
       startBlock: ink.startBlock,
       interval: 99999999999, // never run on testnet, just need this otherwise build fails...
     },
+    MonadChainlinkEthPriceFeed: {
+      chain: "monad",
+      startBlock: monad.startBlock,
+      interval: BLOCK_INTERVALS.FIVE_MINUTES,
+    },
     ZoraUsdcPrice: {
       chain: "base",
       startBlock: 31058549,
