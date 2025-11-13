@@ -25,7 +25,7 @@ import {
   UniswapV4ScheduledMulticurveInitializerHookABI,
 } from "@app/abis/multicurve-abis";
 
-const { base, unichain, ink, baseSepolia } = chainConfigs;
+const { base, unichain, ink, baseSepolia, monad } = chainConfigs;
 
 export default createConfig({
   database: {
@@ -53,6 +53,10 @@ export default createConfig({
       id: CHAIN_IDS.ink,
       rpc: http(process.env.PONDER_RPC_URL_130),
     },
+    monad: {
+      id: CHAIN_IDS.monad,
+      rpc: http(process.env.PONDER_RPC_URL_143),
+    }
   },
   blocks: {
     BaseSepoliaChainlinkEthPriceFeed: {
