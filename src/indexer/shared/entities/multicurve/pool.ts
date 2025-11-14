@@ -1,5 +1,4 @@
 import { PoolKey } from "@app/types";
-import { computeV3Price } from "@app/utils/v3-utils";
 import { Context } from "ponder:registry";
 import { pool } from "ponder:schema";
 import { Address, parseUnits, zeroAddress } from "viem";
@@ -8,7 +7,7 @@ import { getPoolId } from "@app/utils/v4-utils/getPoolId";
 import { chainConfigs } from "@app/config";
 import { CHAINLINK_ETH_DECIMALS } from "@app/utils/constants";
 import { fetchEthPrice, fetchFxhPrice, fetchNoicePrice } from "../../oracle";
-import { MarketDataService } from "@app/core/market";
+import { PriceService, MarketDataService } from "@app/core";
 import { UniswapV4MulticurveInitializerABI } from "@app/abis/multicurve-abis/UniswapV4MulticurveInitializerABI";
 import { upsertTokenWithPool } from "../token-optimized";
 
@@ -140,7 +139,7 @@ export const insertMulticurvePoolV4Optimized = async ({
   
   const tick = slot0Result?.[1] ?? 0;
 
-  const price = computeV3Price({
+  const price = PriceService.computePriceFromSqrtPriceX96({
     sqrtPriceX96,
     isToken0,
     decimals: 18,

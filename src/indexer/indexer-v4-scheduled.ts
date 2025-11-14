@@ -23,7 +23,6 @@ import { chainConfigs } from "@app/config/chains";
 import { insertMulticurvePoolV4Optimized } from "./shared/entities/multicurve/pool";
 import { getAmount1Delta } from "@app/utils/v3-utils/computeGraduationThreshold";
 import { getAmount0Delta } from "@app/utils/v3-utils/computeGraduationThreshold";
-import { computeV3Price } from "@app/utils/v3-utils/computeV3Price";
 import { pool, token } from "ponder:schema";
 import { handleOptimizedSwap } from "./shared/swap-optimizer";
 import { StateViewABI } from "@app/abis";
@@ -179,20 +178,20 @@ ponder.on(
     var price;
     if (isQuoteFxh) {
       fxhUsdPrice = fxhWethPrice! * ethPrice / 10n ** 8n;
-      price = computeV3Price({
+      price = PriceService.computePriceFromSqrtPriceX96({
         sqrtPriceX96: sqrtPrice,
         isToken0: poolEntity.isToken0,
         decimals: 18,
       });
     } else if (isQuoteNoice) {
       noiceUsdPrice = noiceWethPrice! * ethPrice / 10n ** 8n;
-      price = computeV3Price({
+      price = PriceService.computePriceFromSqrtPriceX96({
         sqrtPriceX96: sqrtPrice,
         isToken0: poolEntity.isToken0,
         decimals: 18,
       });
     } else {
-      price = computeV3Price({
+      price = PriceService.computePriceFromSqrtPriceX96({
         sqrtPriceX96: sqrtPrice,
         isToken0: poolEntity.isToken0,
         decimals: 18,
