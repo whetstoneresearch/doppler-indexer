@@ -8,7 +8,8 @@ import { getReservesV4 } from "@app/utils/v4-utils/getV4PoolData";
 import { Context } from "ponder:registry";
 import { pool, token } from "ponder:schema";
 import { Address } from "viem";
-import { computeMarketCap, fetchZoraPrice } from "../oracle";
+import { fetchZoraPrice } from "../oracle";
+import { MarketDataService } from "@app/core/market";
 import { getLockableV3PoolData } from "@app/utils/v3-utils/getV3PoolData";
 import { chainConfigs } from "@app/config";
 import { AssetData } from "@app/types";
@@ -85,9 +86,9 @@ export const insertPoolIfNotExists = async ({
     getAssetData(assetAddr, context),
   ]);
 
-  const marketCapUsd = computeMarketCap({
+  const marketCapUsd = MarketDataService.calculateMarketCap({
     price,
-    ethPrice,
+    ethPriceUSD: ethPrice,
     totalSupply: assetTotalSupply,
   });
 
@@ -217,9 +218,9 @@ export const insertPoolIfNotExistsV4 = async ({
     ethPrice,
   });
 
-  const marketCapUsd = computeMarketCap({
+  const marketCapUsd = MarketDataService.calculateMarketCap({
     price,
-    ethPrice,
+    ethPriceUSD: ethPrice,
     totalSupply,
   });
 
@@ -338,18 +339,18 @@ export const insertLockableV3PoolIfNotExists = async ({
   let creatorCoinUsdPrice;
   if (isQuoteCreatorCoin && quotePool) {
     creatorCoinUsdPrice = quotePool.price * zoraPrice! / 10n ** 18n;
-    marketCapUsd = computeMarketCap(
+    marketCapUsd = MarketDataService.calculateMarketCap(
       {
         price,
-        ethPrice: creatorCoinUsdPrice,
+        ethPriceUSD: creatorCoinUsdPrice,
         totalSupply: assetTotalSupply,
         decimals: quoteToken!.decimals
       }
     )
   } else {
-    marketCapUsd = computeMarketCap({
+    marketCapUsd = MarketDataService.calculateMarketCap({
       price,
-      ethPrice,
+      ethPriceUSD: ethPrice,
       totalSupply: assetTotalSupply,
     });
   }

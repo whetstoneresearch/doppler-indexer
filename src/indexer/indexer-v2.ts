@@ -1,7 +1,8 @@
 import { ponder } from "ponder:registry";
 import { v2Pool } from "ponder.schema";
 import { getPairData } from "@app/utils/v2-utils/getPairData";
-import { computeMarketCap, fetchEthPrice } from "./shared/oracle";
+import { fetchEthPrice } from "./shared/oracle";
+import { MarketDataService } from "@app/core/market";
 import {
   insertPoolIfNotExists,
   insertTokenIfNotExists,
@@ -213,9 +214,9 @@ ponder.on("UniswapV2PairUnichain:Swap", async ({ event, context }) => {
     isDerc20: true,
   });
 
-  const marketCapUsd = computeMarketCap({
+  const marketCapUsd = MarketDataService.calculateMarketCap({
     price,
-    ethPrice,
+    ethPriceUSD: ethPrice,
     totalSupply,
   });
 

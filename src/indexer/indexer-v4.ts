@@ -2,11 +2,11 @@ import { ponder } from "ponder:registry";
 import { getPoolId, getV4PoolData } from "@app/utils/v4-utils";
 import { insertTokenIfNotExists } from "./shared/entities/token";
 import {
-  computeMarketCap,
   fetchEthPrice,
   fetchFxhPrice,
   fetchNoicePrice,
 } from "./shared/oracle";
+import { MarketDataService } from "@app/core/market";
 import { insertPoolIfNotExistsV4, updatePool } from "./shared/entities/pool";
 import { insertAssetIfNotExists } from "./shared/entities/asset";
 import { computeDollarLiquidity } from "@app/utils/computeDollarLiquidity";
@@ -79,9 +79,9 @@ ponder.on("UniswapV4Initializer:Create", async ({ event, context }) => {
   ]);
 
   const price = poolEntity.price;
-  const marketCapUsd = computeMarketCap({
+  const marketCapUsd = MarketDataService.calculateMarketCap({
     price,
-    ethPrice,
+    ethPriceUSD: ethPrice,
     totalSupply,
   });
 
@@ -174,9 +174,9 @@ ponder.on("UniswapV4Pool:Swap", async ({ event, context }) => {
   if (price == 340256786698763678858396856460488307819979090561464864775n) {
     marketCapUsd = marketCapUsdPrev;
   } else {
-    marketCapUsd = computeMarketCap({
+    marketCapUsd = MarketDataService.calculateMarketCap({
       price,
-      ethPrice,
+      ethPriceUSD: ethPrice,
       totalSupply,
     });
   }
@@ -411,9 +411,9 @@ ponder.on(
         decimals: 18,
       });
     }
-    const marketCapUsd = computeMarketCap({
+    const marketCapUsd = MarketDataService.calculateMarketCap({
       price,
-      ethPrice: isQuoteFxh ? fxhUsdPrice! : isQuoteNoice ? noiceUsdPrice! : ethPrice,
+      ethPriceUSD: isQuoteFxh ? fxhUsdPrice! : isQuoteNoice ? noiceUsdPrice! : ethPrice,
       totalSupply: baseTokenEntity!.totalSupply,
       decimals: poolEntity.isQuoteEth ? 8 : 18,
     });

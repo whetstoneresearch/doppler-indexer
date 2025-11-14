@@ -6,12 +6,12 @@ import { SwapService } from "@app/core";
 import { computeV3Price } from "@app/utils";
 import { computeDollarLiquidity } from "@app/utils/computeDollarLiquidity";
 import {
-  computeMarketCap,
   fetchEthPrice,
   fetchZoraPrice,
   fetchFxhPrice,
   fetchNoicePrice,
 } from "./oracle";
+import { MarketDataService } from "@app/core/market";
 import { updatePool } from "./entities";
 import { chainConfigs } from "@app/config";
 import { updateFifteenMinuteBucketUsd } from "@app/utils/time-buckets";
@@ -300,9 +300,9 @@ export async function handleOptimizedSwap(
   }
   
   // Calculate market cap
-  const marketCapUsd = computeMarketCap({
+  const marketCapUsd = MarketDataService.calculateMarketCap({
     price: swapData.price,
-    ethPrice: resolvedUsdPrice,
+    ethPriceUSD: resolvedUsdPrice,
     totalSupply: tokenEntity.totalSupply,
     decimals: isQuoteEth ? 8 : 18,
   });
