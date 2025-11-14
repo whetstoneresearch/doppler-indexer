@@ -6,6 +6,7 @@ import { Chain } from "viem";
  */
 const MULTICALL_ADDRESSES: Record<string, `0x${string}`> = {
   ink: "0xcA11bde05977b3631167028862bE2a173976CA11",
+  monad: "0xcA11bde05977b3631167028862bE2a173976CA11"
 };
 
 /**
