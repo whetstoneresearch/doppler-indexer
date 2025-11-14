@@ -1,5 +1,4 @@
 import { PoolKey } from "@app/types";
-import { computeDollarLiquidity } from "@app/utils/computeDollarLiquidity";
 import { PriceService } from "@app/core";
 import { Context } from "ponder:registry";
 import { pool } from "ponder:schema";
@@ -141,11 +140,11 @@ export const insertZoraPoolV4Optimized = async ({
     decimals: isQuoteEth ? 8 : 18,
   });
 
-  const dollarLiquidity = computeDollarLiquidity({
+  const dollarLiquidity = MarketDataService.calculateLiquidity({
     assetBalance: isToken0 ? token0Reserve : token1Reserve,
     quoteBalance: isToken0 ? token1Reserve : token0Reserve,
     price,
-    ethPrice,
+    ethPriceUSD: ethPrice,
     decimals: isQuoteEth ? 8 : 18,
   });
 

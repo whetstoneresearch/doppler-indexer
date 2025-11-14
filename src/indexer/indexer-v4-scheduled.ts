@@ -10,7 +10,6 @@ import {
 import { MarketDataService } from "@app/core/market";
 import { insertPoolIfNotExistsV4, updatePool } from "./shared/entities/pool";
 import { insertAssetIfNotExists } from "./shared/entities/asset";
-import { computeDollarLiquidity } from "@app/utils/computeDollarLiquidity";
 import { insertV4ConfigIfNotExists } from "./shared/entities/v4Config";
 import { getReservesV4 } from "@app/utils/v4-utils/getV4PoolData";
 import { CHAINLINK_ETH_DECIMALS } from "@app/utils/constants";
@@ -204,11 +203,11 @@ ponder.on(
       decimals: poolEntity.isQuoteEth ? 8 : 18,
     });
 
-    const dollarLiquidity = computeDollarLiquidity({
+    const dollarLiquidity = MarketDataService.calculateLiquidity({
       assetBalance: poolEntity.isToken0 ? token0Reserve : token1Reserve,
       quoteBalance: poolEntity.isToken0 ? token1Reserve : token0Reserve,
       price,
-      ethPrice: isQuoteFxh ? fxhUsdPrice! : isQuoteNoice ? noiceUsdPrice! : ethPrice,
+      ethPriceUSD: isQuoteFxh ? fxhUsdPrice! : isQuoteNoice ? noiceUsdPrice! : ethPrice,
       decimals: poolEntity.isQuoteEth ? 8 : 18,
     });
 

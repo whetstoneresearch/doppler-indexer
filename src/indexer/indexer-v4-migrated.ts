@@ -7,7 +7,6 @@
 // import { computeV4Price } from "@app/utils/v4-utils/computeV4Price";
 // import { Address } from "viem";
 // import { SwapService, SwapOrchestrator } from "@app/core";
-// import { computeDollarLiquidity } from "@app/utils/computeDollarLiquidity";
 // import { tryAddActivePool } from "./shared/scheduledJobs";
 // import { insertTokenIfNotExists } from "./shared/entities/token";
 // import { CHAINLINK_ETH_DECIMALS } from "@app/utils/constants";
@@ -274,7 +273,7 @@
 //     : v4pool.liquidity - BigInt(-liquidityDelta);
 
 //   // Calculate dollar liquidity
-//   const dollarLiquidity = computeDollarLiquidity({
+//   const dollarLiquidity = MarketDataService.calculateLiquidity({
 //     assetBalance: v4pool.reserves0,
 //     quoteBalance: v4pool.reserves1,
 //     price: v4pool.price,

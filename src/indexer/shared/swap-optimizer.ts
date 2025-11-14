@@ -4,7 +4,6 @@ import { Address, zeroAddress } from "viem";
 import { SwapOrchestrator } from "@app/core";
 import { SwapService } from "@app/core";
 import { PriceService } from "@app/core";
-import { computeDollarLiquidity } from "@app/utils/computeDollarLiquidity";
 import {
   fetchEthPrice,
   fetchZoraPrice,
@@ -180,11 +179,11 @@ export function processSwapCalculations(
   });
   
   // Calculate dollar values
-  const dollarLiquidity = computeDollarLiquidity({
+  const dollarLiquidity = MarketDataService.calculateLiquidity({
     assetBalance: nextReservesAsset,
     quoteBalance: nextReservesQuote,
     price,
-    ethPrice: usdPrice,
+    ethPriceUSD: usdPrice,
     decimals: isQuoteEth ? 8 : 18,
   });
   

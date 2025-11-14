@@ -13,7 +13,6 @@ import { CHAINLINK_ETH_DECIMALS } from "@app/utils/constants";
 import { zeroAddress } from "viem";
 import { chainConfigs } from "@app/config";
 import { SwapService, SwapOrchestrator, PriceService } from "@app/core";
-import { computeDollarLiquidity } from "@app/utils/computeDollarLiquidity";
 import { updateFifteenMinuteBucketUsd } from "@app/utils/time-buckets";
 
 ponder.on("MigrationPool:Swap(address indexed sender, uint256 amount0In, uint256 amount1In, uint256 amount0Out, uint256 amount1Out, address indexed to)", async ({ event, context }) => {
@@ -223,11 +222,11 @@ ponder.on("UniswapV2PairUnichain:Swap", async ({ event, context }) => {
   // Price change is now calculated in scheduled jobs using buckets
   const priceChange = 0;
 
-  const liquidityUsd = await computeDollarLiquidity({
+  const liquidityUsd = MarketDataService.calculateLiquidity({
     assetBalance,
     quoteBalance,
     price,
-    ethPrice,
+    ethPriceUSD: ethPrice,
   });
 
   let quoteDelta = 0n;
