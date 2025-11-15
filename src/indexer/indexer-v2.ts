@@ -76,17 +76,20 @@ ponder.on("MigrationPool:Swap(address indexed sender, uint256 amount0In, uint256
     isDerc20: true,
   });
 
-  const metrics = SwapService.calculateMarketMetrics({
-    totalSupply,
-    price,
-    swapAmountIn: amount0In > 0 ? amount0In : amount1In,
-    swapAmountOut: amount0Out > 0 ? amount0Out : amount1Out,
-    ethPriceUSD: ethPrice,
-    assetDecimals: 18,
+  const liquidityUsd = MarketDataService.calculateLiquidity({
     assetBalance,
     quoteBalance,
+    price,
+    ethPriceUSD: ethPrice,
     isQuoteETH: true,
-  });
+  })
+  
+  const marketCapUsd = MarketDataService.calculateMarketCap({
+    price,
+    totalSupply,
+    ethPriceUSD: ethPrice,    
+    isQuoteETH: true,
+  })
 
   let quoteDelta = 0n;
   if (v2isToken0) {
@@ -123,8 +126,8 @@ ponder.on("MigrationPool:Swap(address indexed sender, uint256 amount0In, uint256
 
   // Create market metrics
   const marketMetrics = {
-    liquidityUsd: metrics.liquidityUsd,
-    marketCapUsd: metrics.marketCapUsd,
+    liquidityUsd: liquidityUsd,
+    marketCapUsd: marketCapUsd,
     swapValueUsd,
     percentDayChange: 0,
   };

@@ -72,52 +72,6 @@ export class SwapService {
   }
 
   /**
-   * Calculates market metrics from swap data
-   * Delegates to MarketDataService for consistency
-   */
-  static calculateMarketMetrics(params: {
-    totalSupply: bigint;
-    price: bigint;
-    swapAmountIn: bigint;
-    swapAmountOut: bigint;
-    ethPriceUSD: bigint;
-    assetDecimals: number;
-    assetBalance: bigint;
-    quoteBalance: bigint;
-    isQuoteETH?: boolean;
-  }): SwapMarketMetrics {
-    const {
-      totalSupply,
-      price,
-      swapAmountIn,
-      swapAmountOut,
-      ethPriceUSD,
-      assetDecimals,
-      assetBalance,
-      quoteBalance,
-      isQuoteETH = true,
-    } = params;
-
-    const metrics = MarketDataService.calculateMarketMetrics({
-      price,
-      totalSupply,
-      assetBalance,
-      quoteBalance,
-      ethPriceUSD,
-      swapAmountIn,
-      swapAmountOut,
-      assetDecimals,
-      isQuoteETH,
-    });
-
-    return {
-      liquidityUsd: metrics.liquidityUsd,
-      marketCapUsd: metrics.marketCapUsd,
-      swapValueUsd: metrics.volumeUsd || 0n,
-    };
-  }
-
-  /**
    * Formats swap data for database insertion
    */
   static formatSwapEntity(params: {
