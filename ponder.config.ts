@@ -98,6 +98,11 @@ export default createConfig({
       startBlock: 30530166,
       interval: BLOCK_INTERVALS.FIVE_MINUTES, // every 5 minutes
     },
+    MonadUsdcPrice: {
+      chain: "monad",
+      startBlock: monad.startBlock,
+      interval: BLOCK_INTERVALS.FIVE_MINUTES,
+    }
   },
   contracts: {
     Airlock: {
