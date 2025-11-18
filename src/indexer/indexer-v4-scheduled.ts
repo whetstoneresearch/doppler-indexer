@@ -7,6 +7,7 @@ import {
   fetchEthPrice,
   fetchFxhPrice,
   fetchNoicePrice,
+  fetchMonadPrice,
 } from "./shared/oracle";
 import { insertPoolIfNotExistsV4, updatePool } from "./shared/entities/pool";
 import { insertAssetIfNotExists } from "./shared/entities/asset";
@@ -121,8 +122,12 @@ ponder.on(
       quoteToken != zeroAddress &&
       quoteToken ===
         chainConfigs[context.chain.name].addresses.shared.noice.noiceAddress.toLowerCase();
-
-    var ethPrice, fxhWethPrice, noiceWethPrice;
+    const isQuoteMon =
+      quoteToken != zeroAddress &&
+      quoteToken ===
+        chainConfigs[context.chain.name].addresses.shared.monad.monAddress.toLowerCase();
+    
+    var ethPrice, fxhWethPrice, noiceWethPrice, monUsdcPrice;
     if (isQuoteFxh) {
       [ethPrice, fxhWethPrice] = await Promise.all([
         fetchEthPrice(timestamp, context),
@@ -132,6 +137,11 @@ ponder.on(
       [ethPrice, noiceWethPrice] = await Promise.all([
         fetchEthPrice(timestamp, context),
         fetchNoicePrice(timestamp, context),
+      ]);
+    } else if (isQuoteMon) {
+      [ethPrice, monUsdcPrice] = await Promise.all([
+        fetchEthPrice(timestamp, context),
+        fetchMonadPrice(timestamp, context),
       ]);
     } else {
       ethPrice = await fetchEthPrice(timestamp, context);
@@ -200,7 +210,10 @@ ponder.on(
     }
     const marketCapUsd = computeMarketCap({
       price,
-      ethPrice: isQuoteFxh ? fxhUsdPrice! : isQuoteNoice ? noiceUsdPrice! : ethPrice,
+      ethPrice: isQuoteFxh ? fxhUsdPrice!
+        : isQuoteNoice ? noiceUsdPrice!
+        : isQuoteMon ? monUsdcPrice!
+        : ethPrice,
       totalSupply: baseTokenEntity!.totalSupply,
       decimals: poolEntity.isQuoteEth ? 8 : 18,
     });
@@ -209,7 +222,10 @@ ponder.on(
       assetBalance: poolEntity.isToken0 ? token0Reserve : token1Reserve,
       quoteBalance: poolEntity.isToken0 ? token1Reserve : token0Reserve,
       price,
-      ethPrice: isQuoteFxh ? fxhUsdPrice! : isQuoteNoice ? noiceUsdPrice! : ethPrice,
+      ethPrice: isQuoteFxh ? fxhUsdPrice!
+        : isQuoteNoice ? noiceUsdPrice!
+        : isQuoteMon ? monUsdcPrice!
+        : ethPrice,
       decimals: poolEntity.isQuoteEth ? 8 : 18,
     });
 
@@ -258,6 +274,10 @@ ponder.on(
       poolEntity!.quoteToken != zeroAddress &&
       poolEntity!.quoteToken ===
         chainConfigs[context.chain.name].addresses.shared.noice.noiceAddress.toLowerCase();
+    const isQuoteMon =
+      poolEntity!.quoteToken != zeroAddress &&
+      poolEntity!.quoteToken ===
+        chainConfigs[context.chain.name].addresses.shared.monad.monAddress.toLowerCase();
 
     const sqrtPriceX96 = slot0?.[0] ?? 0n;
 
@@ -282,6 +302,7 @@ ponder.on(
       false,
       isQuoteFxh,
       isQuoteNoice,
+      isQuoteMon
     );
   },
 );
