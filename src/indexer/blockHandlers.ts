@@ -4,7 +4,7 @@ import { ethPrice, zoraUsdcPrice, fxhWethPrice, noiceWethPrice, monadUsdcPrice }
 import { UniswapV3PoolABI } from "@app/abis/v3-abis/UniswapV3PoolABI";
 import { computeV3Price } from "@app/utils/v3-utils";
 import { chainConfigs } from "@app/config";
-import { parseUnits } from "viem";
+import { parseUnits, zeroAddress } from "viem";
 
 ponder.on("BaseChainlinkEthPriceFeed:block", async ({ event, context }) => {
   const { db, client, chain } = context;
@@ -233,7 +233,11 @@ ponder.on("NoiceWethPrice:block", async ({ event, context }) => {
 ponder.on("MonadUsdcPrice:block", async ({ event, context }) => {
   const { db, client, chain } = context;
   const { timestamp } = event.block;
-
+  
+  if (chainConfigs[chain.name].addresses.shared.monad.monUsdcPool === zeroAddress) {
+    return;
+  }
+  
   const slot0 = await client.readContract({
     abi: UniswapV3PoolABI,
     address: chainConfigs[chain.name].addresses.shared.monad.monUsdcPool,
