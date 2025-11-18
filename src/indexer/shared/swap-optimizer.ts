@@ -11,6 +11,7 @@ import {
   fetchZoraPrice,
   fetchFxhPrice,
   fetchNoicePrice,
+  fetchMonadPrice,
 } from "./oracle";
 import { updatePool } from "./entities";
 import { chainConfigs } from "@app/config";
@@ -55,6 +56,7 @@ export async function getPoolUsdPrice(
   zoraPrice: bigint,
   fxhPrice: bigint,
   noicePrice: bigint,
+  monadPrice: bigint,
   ethPrice: bigint,
   context: Context
 ): Promise<bigint | null> {
@@ -68,6 +70,8 @@ export async function getPoolUsdPrice(
     chainConfigs[chain.name].addresses.shared.fxHash.fxhAddress.toLowerCase();
   const noiceToken =
     chainConfigs[chain.name].addresses.shared.noice.noiceAddress.toLowerCase();
+  const monToken =
+    chainConfigs[chain.name].addresses.shared.monad.monAddress.toLowerCase();
   const zeroAddressLower = zeroAddress;
 
   const isQuoteZora = quoteToken === zoraToken;
@@ -77,6 +81,7 @@ export async function getPoolUsdPrice(
     quoteToken === wethToken;
   const isQuoteFxh = quoteToken === fxhToken;
   const isQuoteNoice = quoteToken === noiceToken;
+  const isQuoteMon = quoteToken === monToken;
 
   if (isQuoteZora) {
     return zoraPrice;
@@ -88,6 +93,10 @@ export async function getPoolUsdPrice(
 
   if (isQuoteNoice) {
     return (noicePrice * ethPrice) / 10n ** 8n;
+  }
+  
+  if (isQuoteMon) {
+    return monadPrice;
   }
 
   if (isQuoteEth) {
@@ -214,12 +223,13 @@ export async function handleOptimizedSwap(
   isZora?: boolean,
   isFxh?: boolean,
   isNoice?: boolean,
+  isMon?: boolean,
 ): Promise<void> {
   const { context, timestamp } = params;
   const { db, chain } = context;
   const poolAddress = params.poolAddress;
 
-  let zoraPrice, ethPrice, fxhWethPrice, noiceWethPrice, poolEntity;
+  let zoraPrice, ethPrice, fxhWethPrice, noiceWethPrice, monUsdcPrice, poolEntity;
   if (isZora) {
     [zoraPrice, ethPrice, poolEntity] = await Promise.all([
       fetchZoraPrice(timestamp, context),
@@ -247,6 +257,15 @@ export async function handleOptimizedSwap(
         chainId: chain.id,
       }),
     ]);
+  } else if (isMon) { 
+    [monUsdcPrice, ethPrice, poolEntity] = await Promise.all([
+      fetchMonadPrice(timestamp, context),
+      fetchEthPrice(timestamp, context),
+      db.find(pool, {
+        address: poolAddress,
+        chainId: chain.id,
+      })
+    ])
   } else {
     [ethPrice, poolEntity] = await Promise.all([
       fetchEthPrice(timestamp, context),
@@ -268,6 +287,7 @@ export async function handleOptimizedSwap(
     zoraPrice ?? 1n,
     fxhWethPrice ?? 1n,
     noiceWethPrice ?? 1n,
+    monUsdcPrice ?? 1n,
     ethPrice,
     context,
   );
@@ -286,7 +306,7 @@ export async function handleOptimizedSwap(
   const swapData = processSwapCalculations(
     poolEntity,
     params,
-    resolvedUsdPrice,
+    resolvedUsdPrice!,
     isQuoteEth
   );
 

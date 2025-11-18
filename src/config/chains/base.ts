@@ -74,6 +74,10 @@ export const baseSepoliaConfig: ChainConfig = {
       noice: {
         noiceAddress: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
         noiceWethPool: COMMON_ADDRESSES.ZERO_ADDRESS as Address
+      },
+      monad: {
+        monAddress: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
+        monUsdcPool: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
       }
     },
     stables: {
@@ -149,6 +153,10 @@ export const baseConfig: ChainConfig = {
       noice: {
         noiceAddress: "0x9cb41fd9dc6891bae8187029461bfaadf6cc0c69" as Address,
         noiceWethPool: "0xeff7f8fe083d7a446717b992bf84391253e54789" as Address
+      },
+      monad: {
+        monAddress: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
+        monUsdcPool: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
       }
     },
     stables: {

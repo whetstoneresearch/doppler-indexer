@@ -57,6 +57,10 @@ export const unichainConfig: ChainConfig = {
       noice: {
         noiceAddress: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
         noiceWethPool: COMMON_ADDRESSES.ZERO_ADDRESS as Address
+      },
+      monad: {
+        monAddress: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
+        monUsdcPool: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
       }
     },
     zora: {

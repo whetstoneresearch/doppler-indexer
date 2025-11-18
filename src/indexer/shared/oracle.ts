@@ -1,6 +1,8 @@
-import { ethPrice, zoraUsdcPrice, fxhWethPrice, noiceWethPrice } from "ponder.schema";
+import { ethPrice, zoraUsdcPrice, fxhWethPrice, noiceWethPrice, monadUsdcPrice } from "ponder.schema";
 import { Context } from "ponder:registry";
 import { MarketDataService } from "@app/core";
+import { chainConfigs } from "@app/config";
+import { zeroAddress } from "viem";
 
 export const fetchEthPrice = async (
   timestamp: bigint,
@@ -93,6 +95,33 @@ export const fetchNoicePrice = async (
   }
 
   return noicePriceData.price;
+};
+
+export const fetchMonadPrice = async (
+  timestamp: bigint,
+  context: Context,
+): Promise<bigint> => {
+  const { db, chain } = context;
+
+  let roundedTimestamp = BigInt(Math.floor(Number(timestamp) / 300) * 300);
+
+  if (chainConfigs[chain.name].addresses.shared.monad.monUsdcPool == zeroAddress) {
+    return BigInt(2) * (BigInt(10 ** 20));
+  }
+  
+  let monadPriceData;
+  while (!monadPriceData) {
+    monadPriceData = await db.find(monadUsdcPrice, {
+      timestamp: roundedTimestamp,
+      chainId: chain.id,
+    });
+
+    if (!monadPriceData) {
+      roundedTimestamp -= 300n;
+    }
+  }
+
+  return monadPriceData.price;
 };
 
 export const computeMarketCap = ({
