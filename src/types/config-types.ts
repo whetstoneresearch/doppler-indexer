@@ -65,6 +65,12 @@ export interface SharedAddresses {
   chainlinkEthOracle: Address;
   fxHash: FxHashAddresses;
   noice: NoiceAddresses;
+  monad: MonadAddresses;
+}
+
+export interface MonadAddresses {
+  monAddress: Address;
+  monUsdcPool: Address;
 }
 
 export interface FxHashAddresses {
