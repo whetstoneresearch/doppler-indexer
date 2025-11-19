@@ -136,7 +136,19 @@ ponder.on("LockableUniswapV3Pool:Mint", async ({ event, context }) => {
     return;
   }
 
-  const [{ isToken0, price, liquidity, reserves0, reserves1 }, isQuoteCreator, creatorCoinUsdPrice] = result;
+  const [{
+    isToken0,
+    price,
+    liquidity,
+    reserves0,
+    reserves1,
+  }, quoteContext] = result;
+  const {
+    isQuoteCreatorCoin,
+    creatorCoinUsdPrice,
+    isQuoteMon,
+    monUsdPrice,
+  } = quoteContext;
 
   const reserveAssetBefore = isToken0 ? reserves0 : reserves1;
   const reserveQuoteBefore = isToken0 ? reserves1 : reserves0;
@@ -148,13 +160,21 @@ ponder.on("LockableUniswapV3Pool:Mint", async ({ event, context }) => {
   const nextReservesQuote = reserveQuoteBefore + reserveQuoteDelta;
 
   let liquidityUsd;
-  if (isQuoteCreator) {
+  if (isQuoteCreatorCoin && creatorCoinUsdPrice) {
     liquidityUsd = computeDollarLiquidity({
       assetBalance: nextReservesAsset,
       quoteBalance: nextReservesQuote,
       price,
-      ethPrice: creatorCoinUsdPrice
-    })
+      ethPrice: creatorCoinUsdPrice,
+    });
+  } else if (isQuoteMon && monUsdPrice) {
+    liquidityUsd = computeDollarLiquidity({
+      assetBalance: nextReservesAsset,
+      quoteBalance: nextReservesQuote,
+      price,
+      ethPrice: monUsdPrice,
+      decimals: 18,
+    });
   } else {
     liquidityUsd = computeDollarLiquidity({
       assetBalance: nextReservesAsset,
@@ -218,7 +238,19 @@ ponder.on("LockableUniswapV3Pool:Burn", async ({ event, context }) => {
     return;
   }
 
-  const [{ isToken0, price, liquidity, reserves0, reserves1 }, isQuoteCreator, creatorCoinUsdPrice] = result;
+  const [{
+    isToken0,
+    price,
+    liquidity,
+    reserves0,
+    reserves1,
+  }, quoteContext] = result;
+  const {
+    isQuoteCreatorCoin,
+    creatorCoinUsdPrice,
+    isQuoteMon,
+    monUsdPrice,
+  } = quoteContext;
 
   const reserveAssetBefore = isToken0 ? reserves0 : reserves1;
   const reserveQuoteBefore = isToken0 ? reserves1 : reserves0;
@@ -230,13 +262,21 @@ ponder.on("LockableUniswapV3Pool:Burn", async ({ event, context }) => {
   const nextReservesQuote = reserveQuoteBefore - reserveQuoteDelta;
 
   let liquidityUsd;
-  if (isQuoteCreator) {
+  if (isQuoteCreatorCoin && creatorCoinUsdPrice) {
     liquidityUsd = computeDollarLiquidity({
       assetBalance: nextReservesAsset,
       quoteBalance: nextReservesQuote,
       price,
-      ethPrice: creatorCoinUsdPrice
-    })
+      ethPrice: creatorCoinUsdPrice,
+    });
+  } else if (isQuoteMon && monUsdPrice) {
+    liquidityUsd = computeDollarLiquidity({
+      assetBalance: nextReservesAsset,
+      quoteBalance: nextReservesQuote,
+      price,
+      ethPrice: monUsdPrice,
+      decimals: 18,
+    });
   } else {
     liquidityUsd = computeDollarLiquidity({
       assetBalance: nextReservesAsset,
@@ -307,7 +347,13 @@ ponder.on("LockableUniswapV3Pool:Swap", async ({ event, context }) => {
     totalFee0,
     totalFee1,
     graduationBalance,
-  }, isQuoteCreator, creatorCoinUsdPrice] = result;
+  }, quoteContext] = result;
+  const {
+    isQuoteCreatorCoin,
+    creatorCoinUsdPrice,
+    isQuoteMon,
+    monUsdPrice,
+  } = quoteContext;
 
   const price = PriceService.computePriceFromSqrtPriceX96({
     sqrtPriceX96,
@@ -350,13 +396,21 @@ ponder.on("LockableUniswapV3Pool:Swap", async ({ event, context }) => {
   const quoteDelta = isToken0 ? amount1 - fee1 : amount0 - fee0;
 
   let liquidityUsd;
-  if (isQuoteCreator) {
+  if (isQuoteCreatorCoin && creatorCoinUsdPrice) {
     liquidityUsd = computeDollarLiquidity({
       assetBalance: nextReservesAsset,
       quoteBalance: nextReservesQuote,
       price,
-      ethPrice: creatorCoinUsdPrice
-    })
+      ethPrice: creatorCoinUsdPrice,
+    });
+  } else if (isQuoteMon && monUsdPrice) {
+    liquidityUsd = computeDollarLiquidity({
+      assetBalance: nextReservesAsset,
+      quoteBalance: nextReservesQuote,
+      price,
+      ethPrice: monUsdPrice,
+      decimals: 18,
+    });
   } else {
     liquidityUsd = computeDollarLiquidity({
       assetBalance: nextReservesAsset,
@@ -377,19 +431,29 @@ ponder.on("LockableUniswapV3Pool:Swap", async ({ event, context }) => {
 
   let marketCapUsd;
   let swapValueUsd;
-  if (isQuoteCreator) {    
-    marketCapUsd = computeMarketCap(
-      {
-        price,
-        ethPrice: creatorCoinUsdPrice,
-        totalSupply: totalSupply,
-        decimals: 18
-      }
-    )
-    
+  if (isQuoteCreatorCoin && creatorCoinUsdPrice) {
+    marketCapUsd = computeMarketCap({
+      price,
+      ethPrice: creatorCoinUsdPrice,
+      totalSupply: totalSupply,
+      decimals: 18,
+    });
+
     swapValueUsd =
       ((reserveQuoteDelta < 0n ? -reserveQuoteDelta : reserveQuoteDelta) *
         creatorCoinUsdPrice) /
+      WAD;
+  } else if (isQuoteMon && monUsdPrice) {
+    marketCapUsd = computeMarketCap({
+      price,
+      ethPrice: monUsdPrice,
+      totalSupply: totalSupply,
+      decimals: 18,
+    });
+
+    swapValueUsd =
+      ((reserveQuoteDelta < 0n ? -reserveQuoteDelta : reserveQuoteDelta) *
+        monUsdPrice) /
       WAD;
   } else {
     marketCapUsd = computeMarketCap({
