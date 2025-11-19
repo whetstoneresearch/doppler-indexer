@@ -106,7 +106,7 @@ export const fetchMonadPrice = async (
   let roundedTimestamp = BigInt(Math.floor(Number(timestamp) / 300) * 300);
 
   if (chainConfigs[chain.name].addresses.shared.monad.monUsdcPool == zeroAddress) {
-    return BigInt(2) * (BigInt(10 ** 20));
+    return BigInt(2) * (BigInt(10 ** 16));
   }
   
   let monadPriceData;
