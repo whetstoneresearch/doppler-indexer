@@ -275,6 +275,8 @@ ponder.on(
       functionName: "getSlot0",
       args: [poolId],
     });
+    
+    const tick = slot0[1];
 
     const isQuoteFxh =
       poolEntity!.quoteToken != zeroAddress &&
@@ -308,6 +310,7 @@ ponder.on(
         transactionFrom: event.transaction.from,
         blockNumber: event.block.number,
         context,
+        tick
       },
       false,
       isQuoteFxh,

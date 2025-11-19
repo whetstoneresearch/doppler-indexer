@@ -17,6 +17,7 @@ import { computeMarketCap, fetchEthPrice, fetchZoraPrice } from "./shared/oracle
 import { updateFifteenMinuteBucketUsd } from "@app/utils/time-buckets";
 import { fetchV3MigrationPool, updateMigrationPool } from "./shared/entities/migrationPool";
 import { insertAssetIfNotExists } from "./shared/entities";
+import { LockableUniswapV3InitializerABI, UniswapV3PoolABI } from "@app/abis";
 
 ponder.on("UniswapV3Initializer:Create", async ({ event, context }) => {
   const { poolOrHook, asset, numeraire } = event.args;
@@ -324,6 +325,15 @@ ponder.on("LockableUniswapV3Pool:Swap", async ({ event, context }) => {
   const timestamp = event.block.timestamp;
   const { amount0, amount1, sqrtPriceX96 } = event.args;
 
+  const slot0 = await context.client.readContract({
+    abi: UniswapV3PoolABI,
+    address: address,
+    functionName: "slot0",
+    args: [],
+  });
+  
+  const tick = slot0[1];
+  
   const ethPrice = await fetchEthPrice(event.block.timestamp, context);
 
   const result = await insertLockableV3PoolIfNotExists({
@@ -509,6 +519,10 @@ ponder.on("LockableUniswapV3Pool:Swap", async ({ event, context }) => {
         poolData: {
           parentPoolAddress: address,
           price,
+          tickLower: 0,
+          currentTick: tick,
+          graduationTick: 0,
+          type: 'v3'
         },
         chainId: context.chain.id,
         context,
@@ -702,6 +716,15 @@ ponder.on("UniswapV3Pool:Swap", async ({ event, context }) => {
   const timestamp = event.block.timestamp;
   const { amount0, amount1, sqrtPriceX96 } = event.args;
 
+  const slot0 = await context.client.readContract({
+    abi: UniswapV3PoolABI,
+    address: address,
+    functionName: "slot0",
+    args: [],
+  });
+  
+  const tick = slot0[1];
+  
   const ethPrice = await fetchEthPrice(event.block.timestamp, context);
 
   const {
@@ -834,6 +857,10 @@ ponder.on("UniswapV3Pool:Swap", async ({ event, context }) => {
         poolData: {
           parentPoolAddress: address,
           price,
+          tickLower: 0,
+          currentTick: tick,
+          graduationTick: 0,
+          type: 'v3'
         },
         chainId: context.chain.id,
         context,
@@ -860,9 +887,18 @@ ponder.on("UniswapV3Pool:Swap", async ({ event, context }) => {
 ponder.on("MigrationPool:Swap(address indexed sender, address indexed recipient, int256 amount0, int256 amount1, uint160 sqrtPriceX96, uint128 liquidity, int24 tick)", async ({ event, context }) => {
   const { timestamp } = event.block;
   const { amount0, amount1, sqrtPriceX96 } = event.args;
-
+  
   const address = event.log.address.toLowerCase() as `0x${string}`;
 
+  const slot0 = await context.client.readContract({
+    abi: UniswapV3PoolABI,
+    address: address,
+    functionName: "slot0",
+    args: [],
+  });
+  
+  const tick = slot0[1];
+  
   const [ethPrice, v3MigrationPool] = await Promise.all([
     fetchEthPrice(timestamp, context),
     fetchV3MigrationPool({
@@ -994,6 +1030,10 @@ ponder.on("MigrationPool:Swap(address indexed sender, address indexed recipient,
         poolData: {
           parentPoolAddress: parentPool,
           price,
+          tickLower: 0,
+          currentTick: tick,
+          graduationTick: 0,
+          type: 'v3'
         },
         chainId: context.chain.id,
         context,

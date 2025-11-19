@@ -218,6 +218,10 @@ ponder.on("UniswapV4Pool:Swap", async ({ event, context }) => {
       poolData: {
         parentPoolAddress: address,
         price,
+        tickLower: 0,
+        currentTick: currentTick,
+        graduationTick: 0,
+        type: 'multicurve'
       },
       chainId: chain.id,
       context,
@@ -462,6 +466,8 @@ ponder.on(
       functionName: "getSlot0",
       args: [poolId],
     });
+    
+    const tick = slot0[1];
 
     const isQuoteFxh =
       poolEntity!.quoteToken != zeroAddress &&
@@ -491,6 +497,7 @@ ponder.on(
         transactionFrom: event.transaction.from,
         blockNumber: event.block.number,
         context,
+        tick
       },
       false,
       isQuoteFxh,

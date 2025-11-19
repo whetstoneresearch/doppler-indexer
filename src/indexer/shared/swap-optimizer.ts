@@ -32,6 +32,7 @@ interface SwapHandlerParams {
   transactionFrom: Address;
   blockNumber: bigint;
   context: Context;
+  tick: number;
 }
 
 interface ProcessedSwapData {
@@ -371,7 +372,7 @@ export async function handleOptimizedSwap(
           price: swapData.price,
           isQuoteEth,
           tickLower: poolEntity.tickLower,
-          currentTick: poolEntity.tick,
+          currentTick: params.tick,
           graduationTick: poolEntity.graduationTick,
           type: poolEntity.type,
         },

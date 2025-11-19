@@ -167,8 +167,16 @@ export class SwapService {
           tickLower: params.tickLower,
           graduationTick: params.graduationTick,
           currentTick: params.currentTick
-        })
+        }),
+        tick: params.currentTick
       }
+    } else if (params.type == 'v2') {
+      return {
+        price: params.price,
+        dollarLiquidity: params.liquidityUsd, // Pool entity uses 'dollarLiquidity' field
+        marketCapUsd: params.marketCapUsd,
+        lastSwapTimestamp: params.timestamp
+      };
     }
     
     return {
@@ -176,6 +184,7 @@ export class SwapService {
       dollarLiquidity: params.liquidityUsd, // Pool entity uses 'dollarLiquidity' field
       marketCapUsd: params.marketCapUsd,
       lastSwapTimestamp: params.timestamp,
+      tick: params.currentTick
     };
   }
 

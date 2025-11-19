@@ -7,7 +7,7 @@ import {
 import { fetchEthPrice, fetchZoraPrice } from "./shared/oracle";
 import { batchUpsertUsersAndAssets, batchUpdateHolderCounts } from "./shared/entities/user-optimized";
 import { handleOptimizedSwap } from "./shared/swap-optimizer";
-
+import { StateViewABI } from "@app/abis";
 import { zeroAddress } from "viem";
 import { computeV3Price } from "@app/utils";
 import { chainConfigs } from "@app/config";
@@ -220,6 +220,15 @@ ponder.on("ZoraV4CreatorCoinHook:Swapped", async ({ event, context }) => {
   const { poolKeyHash, swapSender, amount0, amount1, sqrtPriceX96, isCoinBuy } = event.args;
   const timestamp = event.block.timestamp;
 
+  const slot0 = await context.client.readContract({
+    abi: StateViewABI,
+    address: chainConfigs[context.chain.name].addresses.v4.stateView,
+    functionName: "getSlot0",
+    args: [poolKeyHash],
+  });
+  
+  const tick = slot0[1];
+  
   await handleOptimizedSwap(
     {
       poolAddress: poolKeyHash,
@@ -233,6 +242,7 @@ ponder.on("ZoraV4CreatorCoinHook:Swapped", async ({ event, context }) => {
       transactionFrom: event.transaction.from,
       blockNumber: event.block.number,
       context,
+      tick
     },
     true,
   );
