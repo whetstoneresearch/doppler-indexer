@@ -185,7 +185,16 @@ export default createConfig({
     },
     UniswapV4Pool: {
       abi: DopplerABI,
-      chain: {},
+      chain: {
+        monad: {
+          startBlock: monad.startBlock,
+          address: factory({
+            address: monad.addresses.v4.v4ScheduledMulticurveInitializer,
+            event: getAbiItem({ abi: UniswapV4ScheduledMulticurveInitializerABI, name: "Create"}),
+            parameter: "poolOrHook"
+          })
+        }
+      },
     },
     UniswapV4Pool2: {
       abi: DopplerABI,
