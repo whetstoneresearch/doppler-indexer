@@ -7,7 +7,7 @@ import { StateViewABI } from "@app/abis";
 import { getPoolId } from "@app/utils/v4-utils/getPoolId";
 import { chainConfigs } from "@app/config";
 import { CHAINLINK_ETH_DECIMALS } from "@app/utils/constants";
-import { computeMarketCap, fetchEthPrice, fetchFxhPrice, fetchNoicePrice } from "../../oracle";
+import { computeMarketCap, fetchEthPrice, fetchFxhPrice, fetchMonadPrice, fetchNoicePrice } from "../../oracle";
 import { UniswapV4MulticurveInitializerABI } from "@app/abis/multicurve-abis/UniswapV4MulticurveInitializerABI";
 import { upsertTokenWithPool } from "../token-optimized";
 
@@ -67,12 +67,14 @@ export const insertMulticurvePoolV4Optimized = async ({
     quoteToken = poolKey.currency1;
   }
 
-  let fxhWethPrice, noiceWethPrice;
+  let fxhWethPrice, noiceWethPrice, monUsdcPrice;
   if (chain.name === "base") {
     [fxhWethPrice, noiceWethPrice] = await Promise.all([
       fetchFxhPrice(timestamp, context),
       fetchNoicePrice(timestamp, context),
     ]);
+  } else if (chain.name === "monad") {
+    monUsdcPrice = await fetchMonadPrice(timestamp, context);
   } else {
     fxhWethPrice = parseUnits("1", 18);
     noiceWethPrice = parseUnits("1", 18);
@@ -114,6 +116,10 @@ export const insertMulticurvePoolV4Optimized = async ({
     quoteToken != zeroAddress &&
     quoteToken ===
       chainConfigs[context.chain.name].addresses.shared.noice.noiceAddress;
+  const isQuoteMon =
+    quoteToken != zeroAddress &&
+    quoteToken ===
+      chainConfigs[context.chain.name].addresses.shared.monad.monAddress;
   const isQuoteEth =
     quoteToken === zeroAddress ||
     quoteToken === chainConfigs[chain.name].addresses.shared.weth;
@@ -155,8 +161,10 @@ export const insertMulticurvePoolV4Optimized = async ({
     ? fxhUsdPrice!
     : isQuoteNoice
     ? noiceUsdPrice!
+    : isQuoteMon
+    ? monUsdcPrice!
     : ethPrice;
-  const quoteDecimals = isQuoteFxh || isQuoteNoice ? 18 : 8;
+  const quoteDecimals = isQuoteFxh || isQuoteNoice || isQuoteMon ? 18 : 8;
 
   const marketCapUsd = computeMarketCap({
     price,
