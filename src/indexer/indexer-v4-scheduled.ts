@@ -229,6 +229,16 @@ ponder.on(
       decimals: poolEntity.isQuoteEth ? 8 : 18,
     });
 
+    let newGraduationTick = poolEntity.graduationTick;
+    if (poolEntity.isToken0) {
+      if (poolEntity.graduationTick == 0 || poolEntity.graduationTick > tickUpper) {
+        newGraduationTick = tickUpper;
+      }
+    } else {
+      if (poolEntity.graduationTick == 0 || poolEntity.graduationTick < tickUpper) {
+        newGraduationTick = tickUpper;
+      }
+    }
 
     await updatePool({
       poolAddress: poolAddress,
@@ -239,6 +249,7 @@ ponder.on(
         reserves1: token1Reserve,
         dollarLiquidity,
         marketCapUsd,
+        graduationTick: newGraduationTick
       },
     });
   }
