@@ -82,7 +82,7 @@ export default createConfig({
     MonadChainlinkEthPriceFeed: {
       chain: "monad",
       startBlock: monad.startBlock,
-      interval: BLOCK_INTERVALS.FIVE_MINUTES,
+      interval: 99999999999
     },
     ZoraUsdcPrice: {
       chain: "base",
