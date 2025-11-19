@@ -156,7 +156,19 @@ export default createConfig({
     },
     LockableUniswapV3Pool: {
       abi: UniswapV3PoolABI,
-      chain: {},
+      chain: {
+        monad: {
+          startBlock: 34746370,
+          address: factory({
+            address: monad.addresses.v3.lockableV3Initializer,
+            event: getAbiItem({
+              abi: LockableUniswapV3InitializerABI,
+              name: "Create"
+            }),
+            parameter: "poolOrHook"
+          })
+        }
+      },
     },
     UniswapV2PairUnichain: {
       abi: UniswapV2PairABI,
@@ -164,7 +176,12 @@ export default createConfig({
     },
     PoolManager: {
       abi: PoolManagerABI,
-      chain: {},
+      chain: {
+        monad: {
+          startBlock: monad.startBlock,
+          address: base.addresses.v4.poolManager
+        }
+      },
     },
     UniswapV4Pool: {
       abi: DopplerABI,
@@ -180,7 +197,12 @@ export default createConfig({
     },
     LockableUniswapV3Initializer: {
       abi: LockableUniswapV3InitializerABI,
-      chain: {},
+      chain: {
+        monad: {
+          startBlock: 34746370,
+          address: monad.addresses.v3.lockableV3Initializer
+        }
+      },
     },
     ZoraFactory: {
       abi: ZoraFactoryABI,
