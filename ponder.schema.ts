@@ -333,7 +333,9 @@ export const pool = onchainTable(
     isStreaming: t.boolean().notNull().default(false),
     isContentCoin: t.boolean().notNull().default(false),
     isCreatorCoin: t.boolean().notNull().default(false),
-    poolKey: t.jsonb().notNull().default("{}"),
+    poolKey: t.jsonb().notNull().default("{}"),    
+    tickLower: t.integer().notNull().default(0),
+    graduationTick: t.integer().notNull().default(0)
   }),
   (table) => ({
     pk: primaryKey({

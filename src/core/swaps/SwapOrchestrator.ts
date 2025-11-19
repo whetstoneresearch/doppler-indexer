@@ -16,6 +16,10 @@ export interface SwapUpdateParams {
     parentPoolAddress: Address;
     price: bigint;
     isQuoteEth?: boolean;
+    tickLower: number;
+    currentTick: number;
+    graduationTick: number;
+    type: string;
   };
   chainId: number;
   context: Context;
@@ -57,6 +61,10 @@ export class SwapOrchestrator {
           liquidityUsd: metrics.liquidityUsd,
           marketCapUsd: metrics.marketCapUsd,
           timestamp: swapData.timestamp,
+          tickLower: poolData.tickLower,
+          currentTick: poolData.currentTick,
+          graduationTick: poolData.graduationTick,
+          type: poolData.type
         }),
       }),
       updateFifteenMinuteBucketUsd(context, {

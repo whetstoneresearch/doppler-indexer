@@ -1,6 +1,7 @@
 import { Address } from "viem";
 import { SwapType } from "@app/types/shared-types";
 import { MarketDataService } from "@app/core/market";
+import { computeGraduationPercentageFromTicks } from "@app/utils/v4-utils";
 
 /**
  * Common swap data structure across all protocols
@@ -151,7 +152,25 @@ export class SwapService {
     liquidityUsd: bigint;
     marketCapUsd: bigint;
     timestamp: bigint;
+    tickLower: number;
+    currentTick: number;
+    graduationTick: number;
+    type: string;
   }) {
+    if (params.type == "scheduled-multicurve") {
+      return {
+        price: params.price,
+        dollarLiquidity: params.liquidityUsd, // Pool entity uses 'dollarLiquidity' field
+        marketCapUsd: params.marketCapUsd,
+        lastSwapTimestamp: params.timestamp,
+        graduationPercentage: computeGraduationPercentageFromTicks({
+          tickLower: params.tickLower,
+          graduationTick: params.graduationTick,
+          currentTick: params.currentTick
+        })
+      }
+    }
+    
     return {
       price: params.price,
       dollarLiquidity: params.liquidityUsd, // Pool entity uses 'dollarLiquidity' field

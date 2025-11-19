@@ -205,5 +205,6 @@ export const insertMulticurvePoolV4Optimized = async ({
     lastSwapTimestamp: timestamp,
     lastRefreshed: timestamp,
     poolKey,
+    tickLower: tick    
   });
 };

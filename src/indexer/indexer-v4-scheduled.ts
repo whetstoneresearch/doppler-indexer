@@ -17,7 +17,6 @@ import { getReservesV4 } from "@app/utils/v4-utils/getV4PoolData";
 import { CHAINLINK_ETH_DECIMALS } from "@app/utils/constants";
 import { SwapService, SwapOrchestrator, PriceService } from "@app/core";
 import { TickMath } from "@uniswap/v3-sdk";
-import { computeGraduationPercentage } from "@app/utils/v4-utils";
 import { updateFifteenMinuteBucketUsd } from "@app/utils/time-buckets";
 import { UniswapV4ScheduledMulticurveInitializerABI } from "@app/abis/multicurve-abis/UniswapV4ScheduledMulticurveInitializerABI";
 import { chainConfigs } from "@app/config/chains";
@@ -229,6 +228,16 @@ ponder.on(
       decimals: poolEntity.isQuoteEth ? 8 : 18,
     });
 
+    let newGraduationTick = poolEntity.graduationTick;
+    if (poolEntity.isToken0) {
+      if (poolEntity.graduationTick == 0 || poolEntity.graduationTick < tickUpper) {
+        newGraduationTick = tickUpper;
+      }
+    } else {
+      if (poolEntity.graduationTick == 0 || poolEntity.graduationTick > tickUpper) {
+        newGraduationTick = tickUpper;
+      }
+    }
 
     await updatePool({
       poolAddress: poolAddress,
@@ -239,6 +248,7 @@ ponder.on(
         reserves1: token1Reserve,
         dollarLiquidity,
         marketCapUsd,
+        graduationTick: newGraduationTick
       },
     });
   }

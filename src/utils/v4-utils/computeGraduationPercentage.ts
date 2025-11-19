@@ -25,3 +25,18 @@ export const computeGraduationPercentage = ({
   // Ensure percentage is between 0 and 100
   return Math.max(0, Math.min(100, percentage));
 };
+
+export const computeGraduationPercentageFromTicks = ({
+  tickLower,
+  graduationTick,
+  currentTick
+}: {
+  tickLower: number;
+  graduationTick: number;
+  currentTick: number;
+}): number => {
+  const tickDelta = graduationTick - tickLower;
+  const currentDelta = currentTick - tickLower;
+  
+  return currentDelta / tickDelta;
+}

@@ -369,7 +369,11 @@ export async function handleOptimizedSwap(
         poolData: {
           parentPoolAddress: poolAddress,
           price: swapData.price,
-          isQuoteEth
+          isQuoteEth,
+          tickLower: poolEntity.tickLower,
+          currentTick: poolEntity.tick,
+          graduationTick: poolEntity.graduationTick,
+          type: poolEntity.type,
         },
         chainId: chain.id,
         context,
