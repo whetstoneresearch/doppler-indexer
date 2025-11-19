@@ -120,6 +120,10 @@ export default createConfig({
           startBlock: ink.startBlock,
           address: ink.addresses.shared.airlock,
         },
+        monad: {
+          startBlock: 34746368,
+          address: monad.addresses.shared.airlock,
+        },
       },
     },
     MigrationPool: {
@@ -215,6 +219,14 @@ export default createConfig({
             parameter: "asset",
           }),
         },
+        monad: {
+          startBlock: 34746368,
+          address: factory({
+            address: monad.addresses.shared.airlock,
+            event: getAbiItem({ abi: AirlockABI, name: "Create" }),
+            parameter: "asset",
+          }),
+        },
       },
     },
     UniswapV3Migrator: {
@@ -269,6 +281,17 @@ export default createConfig({
             parameter: "poolOrHook",
           }),
         },
+        monad: {
+          startBlock: 34746370,
+          address: factory({
+            address: monad.addresses.v3.lockableV3Initializer,
+            event: getAbiItem({
+              abi: LockableUniswapV3InitializerABI,
+              name: "Create"
+            }),
+            parameter: "poolOrHook"
+          })
+        }
       },
     },
     UniswapV2PairUnichain: {
@@ -302,6 +325,10 @@ export default createConfig({
           startBlock: ink.v4StartBlock,
           address: ink.addresses.v4.poolManager,
         },
+        monad: {
+          startBlock: monad.startBlock,
+          address: base.addresses.v4.poolManager
+        }
       },
     },
     UniswapV4Pool: {
@@ -331,6 +358,14 @@ export default createConfig({
             parameter: "poolOrHook",
           }),
         },
+        monad: {
+          startBlock: monad.startBlock,
+          address: factory({
+            address: monad.addresses.v4.v4ScheduledMulticurveInitializer,
+            event: getAbiItem({ abi: UniswapV4ScheduledMulticurveInitializerABI, name: "Create"}),
+            parameter: "poolOrHook"
+          }),
+        },
       },
     },
     LockableUniswapV3Initializer: {
@@ -340,6 +375,10 @@ export default createConfig({
           startBlock: base.startBlock,
           address: base.addresses.v3.lockableV3Initializer,
         },
+        monad: {
+          startBlock: 34746370,
+          address: monad.addresses.v3.lockableV3Initializer
+        }
       },
     },
     ZoraFactory: {
@@ -434,6 +473,10 @@ export default createConfig({
           startBlock: 36659443,
           address: base.addresses.v4.v4ScheduledMulticurveInitializer,
         },
+        monad: {
+          startBlock: 34746368,
+          address: monad.addresses.v4.v4ScheduledMulticurveInitializer,
+        },
       },
     },
     UniswapV4ScheduledMulticurveInitializerHook: {
@@ -442,6 +485,10 @@ export default createConfig({
         base: {
           startBlock: 36659444,
           address: base.addresses.v4.v4ScheduledMulticurveInitializerHook,
+        },
+        monad: {
+          startBlock: 34746368,
+          address: monad.addresses.v4.v4ScheduledMulticurveInitializerHook,
         },
       },
     },
