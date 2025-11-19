@@ -231,11 +231,11 @@ ponder.on(
 
     let newGraduationTick = poolEntity.graduationTick;
     if (poolEntity.isToken0) {
-      if (poolEntity.graduationTick == 0 || poolEntity.graduationTick > tickUpper) {
+      if (poolEntity.graduationTick == 0 || poolEntity.graduationTick < tickUpper) {
         newGraduationTick = tickUpper;
       }
     } else {
-      if (poolEntity.graduationTick == 0 || poolEntity.graduationTick < tickUpper) {
+      if (poolEntity.graduationTick == 0 || poolEntity.graduationTick > tickUpper) {
         newGraduationTick = tickUpper;
       }
     }
