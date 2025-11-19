@@ -37,6 +37,6 @@ export const computeGraduationPercentageFromTicks = ({
 }): number => {
   const tickDelta = graduationTick - tickLower;
   const currentDelta = currentTick - tickLower;
-  
+  console.log(tickDelta, currentDelta, currentDelta / tickDelta)
   return currentDelta / tickDelta;
 }
