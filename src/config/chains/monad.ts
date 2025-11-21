@@ -60,7 +60,7 @@ export const monadConfig: ChainConfig = {
       },
       monad: {
         monAddress: "0x3bd359C1119dA7Da1D913D1C4D2B7c461115433A" as Address,
-        monUsdcPool: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
+        monUsdcPool: "0x659bD0BC4167BA25c62E05656F78043E7eD4a9da" as Address,
       }
     },
     zora: {
