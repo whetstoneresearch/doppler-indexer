@@ -69,13 +69,13 @@ export class SwapOrchestrator {
     if ("migrated" in poolUpdate) {
       assetUpdate = {
         marketCapUsd: metrics.marketCapUsd,
-        liquidityUsd: metrics.liquidityUsd,
+        dollarLiquidity: metrics.liquidityUsd,
         migrated: poolUpdate.migrated
       }
     } else {
       assetUpdate = {
         marketCapUsd: metrics.marketCapUsd,
-        liquidityUsd: metrics.liquidityUsd
+        dollarLiquidity: metrics.liquidityUsd
       }
     }
     
