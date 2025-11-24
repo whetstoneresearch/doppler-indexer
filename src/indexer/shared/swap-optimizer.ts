@@ -397,4 +397,13 @@ export async function handleOptimizedSwap(
       swapValueUsd: swapData.swapValueUsd,
     }),
   ]);
+
+  await updatePool({
+    poolAddress: poolAddress,
+    context,
+    update: {
+      reserves0: swapData.nextReserves0,
+      reserves1: swapData.nextReserves1,
+    },
+  });
 }
