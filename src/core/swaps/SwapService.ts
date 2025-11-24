@@ -163,7 +163,7 @@ export class SwapService {
         graduationTick: params.graduationTick,
         currentTick: params.currentTick
       })
-      if (gradPercentage >= 100) {
+      if (gradPercentage >= 1) {
         return {
           price: params.price,
           dollarLiquidity: params.liquidityUsd, // Pool entity uses 'dollarLiquidity' field
