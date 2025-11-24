@@ -158,17 +158,30 @@ export class SwapService {
     type: string;
   }) {
     if (params.type == "scheduled-multicurve") {
-      return {
-        price: params.price,
-        dollarLiquidity: params.liquidityUsd, // Pool entity uses 'dollarLiquidity' field
-        marketCapUsd: params.marketCapUsd,
-        lastSwapTimestamp: params.timestamp,
-        graduationPercentage: computeGraduationPercentageFromTicks({
-          tickLower: params.tickLower,
-          graduationTick: params.graduationTick,
-          currentTick: params.currentTick
-        }),
-        tick: params.currentTick
+      const gradPercentage = computeGraduationPercentageFromTicks({
+        tickLower: params.tickLower,
+        graduationTick: params.graduationTick,
+        currentTick: params.currentTick
+      })
+      if (gradPercentage >= 100) {
+        return {
+          price: params.price,
+          dollarLiquidity: params.liquidityUsd, // Pool entity uses 'dollarLiquidity' field
+          marketCapUsd: params.marketCapUsd,
+          lastSwapTimestamp: params.timestamp,
+          graduationPercentage: gradPercentage,
+          tick: params.currentTick,
+          migrated: true
+        }
+      } else {
+        return {
+          price: params.price,
+          dollarLiquidity: params.liquidityUsd, // Pool entity uses 'dollarLiquidity' field
+          marketCapUsd: params.marketCapUsd,
+          lastSwapTimestamp: params.timestamp,
+          graduationPercentage: gradPercentage,
+          tick: params.currentTick
+        }
       }
     } else if (params.type == 'v2') {
       return {

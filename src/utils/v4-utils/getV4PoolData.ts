@@ -74,7 +74,7 @@ export const getV4PoolData = async ({
   });
 
   if (!slot0.result?.[3]) {
-    console.error("Failed to get slot0 data");
+    console.error("Failed to get slot0 data on: ", context.chain.name, hook);
   }
 
   const slot0Data: Slot0Data = {
