@@ -230,12 +230,16 @@ ponder.on(
 
     let newGraduationTick = poolEntity.graduationTick;
     if (poolEntity.isToken0) {
-      if (poolEntity.graduationTick == 0 || poolEntity.graduationTick < tickUpper) {
-        newGraduationTick = tickUpper;
+      if (poolEntity.graduationTick == 0 || poolEntity.graduationTick > tickUpper) {
+        if (tickUpper != 887200) {
+          newGraduationTick = tickUpper;
+        }
       }
     } else {
-      if (poolEntity.graduationTick == 0 || poolEntity.graduationTick > tickUpper) {
-        newGraduationTick = tickUpper;
+      if (poolEntity.graduationTick == 0 || poolEntity.graduationTick < tickUpper) {
+        if (tickUpper != -887200) {
+          newGraduationTick = tickUpper;
+        }
       }
     }
 
