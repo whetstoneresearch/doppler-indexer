@@ -13,6 +13,7 @@ import {
   getAmount1Delta 
 } from "@app/utils/v3-utils/computeGraduationThreshold";
 import { computeMarketCap } from "../../oracle";
+import { insertAssetIfNotExists } from "../asset";
 
 /**
  * Optimized version with caching and reduced contract calls
@@ -149,6 +150,14 @@ export const insertZoraPoolV4Optimized = async ({
     decimals: isQuoteEth ? 8 : 18,
   });
 
+  await insertAssetIfNotExists({
+    assetAddress: baseToken,
+    timestamp,
+    context,
+    marketCapUsd,
+    poolAddress: address
+  })
+  
   // Insert new pool with all data at once
   return await db.insert(pool).values({
     address,
