@@ -13,7 +13,7 @@ import {
   fetchNoicePrice,
   fetchMonadPrice,
 } from "./oracle";
-import { updatePool } from "./entities";
+import { updateAsset, updatePool } from "./entities";
 import { chainConfigs } from "@app/config";
 import { updateFifteenMinuteBucketUsd } from "@app/utils/time-buckets";
 import { SwapType } from "@app/types";
@@ -358,6 +358,7 @@ export async function handleOptimizedSwap(
   const entityUpdaters = {
     updatePool,
     updateFifteenMinuteBucketUsd,
+    updateAsset
   };
 
   // Execute all updates in parallel
@@ -375,6 +376,7 @@ export async function handleOptimizedSwap(
           currentTick: params.tick,
           graduationTick: poolEntity.graduationTick,
           type: poolEntity.type,
+          baseToken: poolEntity.baseToken
         },
         chainId: chain.id,
         context,

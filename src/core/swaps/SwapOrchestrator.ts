@@ -20,6 +20,7 @@ export interface SwapUpdateParams {
     currentTick: number;
     graduationTick: number;
     type: string;
+    baseToken: Address;
   };
   chainId: number;
   context: Context;
@@ -31,6 +32,7 @@ export interface SwapUpdateParams {
 export interface EntityUpdaters {
   updatePool: (params: any) => Promise<any>;
   updateFifteenMinuteBucketUsd: (context: Context, params: any) => Promise<any>;
+  updateAsset: (params: any) => Promise<any>;
 }
 
 /**
@@ -49,23 +51,40 @@ export class SwapOrchestrator {
     const {
       updatePool,
       updateFifteenMinuteBucketUsd,
+      updateAsset
     } = updaters;
 
+    const poolUpdate = SwapService.formatPoolUpdate({
+      price: poolData.price,
+      liquidityUsd: metrics.liquidityUsd,
+      marketCapUsd: metrics.marketCapUsd,
+      timestamp: swapData.timestamp,
+      tickLower: poolData.tickLower,
+      currentTick: poolData.currentTick,
+      graduationTick: poolData.graduationTick,
+      type: poolData.type
+    })
+    
+    let assetUpdate;
+    if ("migrated" in poolUpdate) {
+      assetUpdate = {
+        marketCapUsd: metrics.marketCapUsd,
+        liquidityUsd: metrics.liquidityUsd,
+        migrated: poolUpdate.migrated
+      }
+    } else {
+      assetUpdate = {
+        marketCapUsd: metrics.marketCapUsd,
+        liquidityUsd: metrics.liquidityUsd
+      }
+    }
+    
     const updates = [
       // Update pool entity
       updatePool({
         poolAddress: poolData.parentPoolAddress,
         context,
-        update: SwapService.formatPoolUpdate({
-          price: poolData.price,
-          liquidityUsd: metrics.liquidityUsd,
-          marketCapUsd: metrics.marketCapUsd,
-          timestamp: swapData.timestamp,
-          tickLower: poolData.tickLower,
-          currentTick: poolData.currentTick,
-          graduationTick: poolData.graduationTick,
-          type: poolData.type
-        }),
+        update: poolUpdate,
       }),
       updateFifteenMinuteBucketUsd(context, {
         poolAddress: poolData.parentPoolAddress,
@@ -74,6 +93,11 @@ export class SwapOrchestrator {
         priceUsd: swapData.price * swapData.usdPrice / (poolData.isQuoteEth ? CHAINLINK_ETH_DECIMALS : WAD),
         volumeUsd: metrics.swapValueUsd,
       }),
+      updateAsset({
+        assetAddress: poolData.baseToken,
+        context,
+        update: assetUpdate
+      })
     ];
 
     // Execute all updates in parallel

@@ -8,7 +8,7 @@ import {
   fetchNoicePrice,
 } from "./shared/oracle";
 import { insertPoolIfNotExistsV4, updatePool } from "./shared/entities/pool";
-import { insertAssetIfNotExists } from "./shared/entities/asset";
+import { insertAssetIfNotExists, updateAsset } from "./shared/entities/asset";
 import { computeDollarLiquidity } from "@app/utils/computeDollarLiquidity";
 import { insertV4ConfigIfNotExists } from "./shared/entities/v4Config";
 import { getReservesV4 } from "@app/utils/v4-utils/getV4PoolData";
@@ -208,6 +208,7 @@ ponder.on("UniswapV4Pool:Swap", async ({ event, context }) => {
   const entityUpdaters = {
     updatePool,
     updateFifteenMinuteBucketUsd,
+    updateAsset
   };
 
   await SwapOrchestrator.performSwapUpdates(
@@ -221,7 +222,8 @@ ponder.on("UniswapV4Pool:Swap", async ({ event, context }) => {
         tickLower: 0,
         currentTick: currentTick,
         graduationTick: 0,
-        type: 'multicurve'
+        type: 'multicurve',
+        baseToken: poolEntity.baseToken
       },
       chainId: chain.id,
       context,

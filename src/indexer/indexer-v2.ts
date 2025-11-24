@@ -5,6 +5,7 @@ import { computeMarketCap, fetchEthPrice } from "./shared/oracle";
 import {
   insertPoolIfNotExists,
   insertTokenIfNotExists,
+  updateAsset,
   updatePool,
   updateV2Pool,
 } from "./shared/entities";
@@ -133,6 +134,7 @@ ponder.on("MigrationPool:Swap(address indexed sender, uint256 amount0In, uint256
   const entityUpdaters = {
     updatePool,
     updateFifteenMinuteBucketUsd,
+    updateAsset
   };
 
   // Perform common updates via orchestrator
@@ -148,7 +150,8 @@ ponder.on("MigrationPool:Swap(address indexed sender, uint256 amount0In, uint256
           tickLower: 0,
           currentTick: 0,
           graduationTick: 0,
-          type: 'v2'
+          type: 'v2',
+          baseToken: baseToken
         },
         chainId: chain.id,
         context,
@@ -278,6 +281,7 @@ ponder.on("UniswapV2PairUnichain:Swap", async ({ event, context }) => {
   const entityUpdaters = {
     updatePool,
     updateFifteenMinuteBucketUsd,
+    updateAsset
   };
 
   // Perform common updates via orchestrator
@@ -292,7 +296,8 @@ ponder.on("UniswapV2PairUnichain:Swap", async ({ event, context }) => {
         tickLower: 0,
         currentTick: 0,
         graduationTick: 0,
-        type: 'v2'
+        type: 'v2',
+        baseToken: v2PoolData.baseToken 
       },
       chainId: chain.id,
       context,
