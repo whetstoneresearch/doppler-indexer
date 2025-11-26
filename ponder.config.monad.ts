@@ -22,6 +22,7 @@ import { UniswapV4MulticurveInitializerHookABI } from "@app/abis/multicurve-abis
 import { UniswapV4MulticurveInitializerABI } from "@app/abis/multicurve-abis/UniswapV4MulticurveInitializerABI";
 import { UniswapV4ScheduledMulticurveInitializerHookABI } from "@app/abis/multicurve-abis/UniswapV4ScheduledMulticurveInitializerHookABI";
 import { UniswapV4ScheduledMulticurveInitializerABI } from "@app/abis/multicurve-abis/UniswapV4ScheduledMulticurveInitializerABI";
+import { monadFallbackTransport } from "./src/utils/monadFallbackTransport";
 
 const { base, unichain, ink, monad } = chainConfigs;
 
@@ -53,7 +54,10 @@ export default createConfig({
     },
     monad: {
       id: CHAIN_IDS.monad,
-      rpc: http(process.env.PONDER_RPC_URL_143),
+      rpc: monadFallbackTransport({
+        primaryUrl: process.env.PONDER_RPC_URL_143!,
+        fallbackUrl: process.env.PONDER_RPC_URL_143_FALLBACK || "https://rpc-mainnet.monadinfra.com",
+      }),
     }
   },
   blocks: {
