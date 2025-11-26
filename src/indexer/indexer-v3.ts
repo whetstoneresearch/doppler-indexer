@@ -93,6 +93,13 @@ ponder.on("LockableUniswapV3Initializer:Create", async ({ event, context }) => {
   });
 
   if (!result) {
+    await insertAssetIfNotExists({
+      assetAddress: assetId,
+      timestamp,
+      context,
+      marketCapUsd: 0n,
+    });
+    
     return;
   }
 
