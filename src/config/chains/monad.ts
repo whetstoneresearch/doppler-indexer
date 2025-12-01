@@ -47,7 +47,7 @@ export const monadConfig: ChainConfig = {
       universalRouter: "0x0d97dc33264bfc1c226207428a79b26757fb9dc3" as Address,
       governanceFactory:
         "0xfaafde6a5b658684cc5eb0c5c2c755b00a246f45" as Address,
-      weth: "0xEE8c0E9f1BFFb4Eb878d8f15f368A02a35481242" as Address,
+      weth: "0xee8c0e9f1bffb4eb878d8f15f368a02a35481242" as Address,
       chainlinkEthOracle:
         "0x1B1414782B859871781bA3E4B0979b9ca57A0A04" as Address,
       fxHash: {
