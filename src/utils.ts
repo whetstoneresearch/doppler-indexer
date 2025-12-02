@@ -90,5 +90,4 @@ export { getPoolId, getV4PoolData } from "./utils/v4-utils";
 export { getAssetData } from "./utils/getAssetData";
 export { secondsInHour, Q192 } from "./utils/constants";
 export { computeV3Price, getV3PoolData } from "./utils/v3-utils";
-export { computeV2Price } from "./utils/v2-utils/computeV2Price";
 export { getPairData } from "./utils/v2-utils/getPairData";
