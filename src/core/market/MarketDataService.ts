@@ -109,6 +109,9 @@ export class MarketDataService {
       isQuoteETH = true,
       quoteDecimals = 18,
     } = params;
+    if (amountIn == 0n && amountOut ==0n){
+      return 0n;
+    }
 
     // Use the larger amount as volume indicator
     const swapAmount = amountIn > 0n ? amountIn : amountOut;
@@ -119,76 +122,4 @@ export class MarketDataService {
 
     return swapAmount;
   }
-
-  /**
-   * Calculate comprehensive market metrics
-   * Combines market cap, liquidity, and volume calculations
-   */
-  static calculateMarketMetrics(params: {
-    price: bigint;
-    totalSupply: bigint;
-    assetBalance: bigint;
-    quoteBalance: bigint;
-    ethPriceUSD: bigint;
-    swapAmountIn?: bigint;
-    swapAmountOut?: bigint;
-    assetDecimals?: number;
-    isQuoteETH?: boolean;
-  }): MarketMetrics {
-    const {
-      price,
-      totalSupply,
-      assetBalance,
-      quoteBalance,
-      ethPriceUSD,
-      swapAmountIn = 0n,
-      swapAmountOut = 0n,
-      assetDecimals = 18,
-      isQuoteETH = true,
-    } = params;
-
-    // Calculate market cap
-    const marketCapUsd = MarketDataService.calculateMarketCap({
-      price,
-      totalSupply,
-      ethPriceUSD,
-      assetDecimals,
-      isQuoteETH,
-    });
-
-    // Calculate liquidity
-    const liquidityUsd = MarketDataService.calculateLiquidity({
-      assetBalance,
-      quoteBalance,
-      price,
-      ethPriceUSD,
-      isQuoteETH,
-    });
-
-    // Calculate volume if swap amounts provided
-    let volumeUsd: bigint | undefined;
-    if (swapAmountIn > 0n || swapAmountOut > 0n) {
-      volumeUsd = MarketDataService.calculateVolume({
-        amountIn: swapAmountIn,
-        amountOut: swapAmountOut,
-        ethPriceUSD,
-        isQuoteETH,
-      });
-    }
-
-    // Calculate price in USD
-    const priceUsd = PriceService.computePriceUSD({
-      price,
-      ethPriceUSD,
-      isQuoteETH,
-    });
-
-    return {
-      marketCapUsd,
-      liquidityUsd,
-      volumeUsd,
-      priceUsd,
-    };
-  }
 }
-
