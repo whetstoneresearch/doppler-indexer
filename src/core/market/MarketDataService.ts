@@ -41,8 +41,8 @@ export interface MarketCapParams {
 export interface VolumeParams {
   amountIn: bigint;
   amountOut: bigint;
-  ethPriceUSD: bigint;
-  isQuoteETH?: boolean;
+  quotePriceUSD: bigint;
+  isQuoteUSD?: boolean;
   quoteDecimals?: number;
 }
 
@@ -104,8 +104,8 @@ export class MarketDataService {
     const {
       amountIn,
       amountOut,
-      ethPriceUSD,
-      isQuoteETH = true,
+      quotePriceUSD,
+      isQuoteUSD = false,
       quoteDecimals = 18,
     } = params;
     if (amountIn == 0n && amountOut ==0n){
@@ -115,8 +115,8 @@ export class MarketDataService {
     // Use the larger amount as volume indicator
     const swapAmount = amountIn > 0n ? amountIn : amountOut;
 
-    if (isQuoteETH) {
-      return (swapAmount * ethPriceUSD) / BigInt(10 ** quoteDecimals);
+    if (!isQuoteUSD) {
+      return (swapAmount * quotePriceUSD) / BigInt(10 ** quoteDecimals);
     }
 
     return swapAmount;
