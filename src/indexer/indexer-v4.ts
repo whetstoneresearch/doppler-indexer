@@ -79,7 +79,7 @@ ponder.on("UniswapV4Initializer:Create", async ({ event, context }) => {
   const price = poolEntity.price;
   const marketCapUsd = MarketDataService.calculateMarketCap({
     price,
-    ethPriceUSD: ethPrice,
+    quotePriceUSD: ethPrice,
     totalSupply,
   });
 
@@ -174,7 +174,7 @@ ponder.on("UniswapV4Pool:Swap", async ({ event, context }) => {
   } else {
     marketCapUsd = MarketDataService.calculateMarketCap({
       price,
-      ethPriceUSD: ethPrice,
+      quotePriceUSD: ethPrice,
       totalSupply,
     });
   }
@@ -417,7 +417,7 @@ ponder.on(
     }
     const marketCapUsd = MarketDataService.calculateMarketCap({
       price,
-      ethPriceUSD: isQuoteFxh ? fxhUsdPrice! : isQuoteNoice ? noiceUsdPrice! : ethPrice,
+      quotePriceUSD: isQuoteFxh ? fxhUsdPrice! : isQuoteNoice ? noiceUsdPrice! : ethPrice,
       totalSupply: baseTokenEntity!.totalSupply,
       decimals: poolEntity.isQuoteEth ? 8 : 18,
     });

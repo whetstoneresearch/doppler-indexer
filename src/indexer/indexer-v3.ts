@@ -450,7 +450,7 @@ ponder.on("LockableUniswapV3Pool:Swap", async ({ event, context }) => {
   if (isQuoteCreatorCoin && creatorCoinUsdPrice) {
     marketCapUsd = MarketDataService.calculateMarketCap({
       price,
-      ethPriceUSD: creatorCoinUsdPrice,
+      quotePriceUSD: creatorCoinUsdPrice,
       totalSupply: totalSupply,
       decimals: 18,
     });
@@ -462,7 +462,7 @@ ponder.on("LockableUniswapV3Pool:Swap", async ({ event, context }) => {
   } else if (isQuoteMon && monUsdPrice) {
     marketCapUsd = MarketDataService.calculateMarketCap({
       price,
-      ethPriceUSD: monUsdPrice,
+      quotePriceUSD: monUsdPrice,
       totalSupply: totalSupply,
       decimals: 18,
     });
@@ -474,7 +474,7 @@ ponder.on("LockableUniswapV3Pool:Swap", async ({ event, context }) => {
   } else {
     marketCapUsd = MarketDataService.calculateMarketCap({
       price,
-      ethPriceUSD: ethPrice,
+      quotePriceUSD: ethPrice,
       totalSupply: totalSupply,
     });
     
@@ -815,7 +815,7 @@ ponder.on("UniswapV3Pool:Swap", async ({ event, context }) => {
 
   const marketCapUsd = MarketDataService.calculateMarketCap({
     price,
-    ethPriceUSD: ethPrice,
+    quotePriceUSD: ethPrice,
     totalSupply,
   });
 
@@ -989,7 +989,7 @@ ponder.on("MigrationPool:Swap(address indexed sender, address indexed recipient,
 
   const marketCapUsd = MarketDataService.calculateMarketCap({
     price,
-    ethPriceUSD: ethPrice,
+    quotePriceUSD: ethPrice,
     totalSupply,
   });
 

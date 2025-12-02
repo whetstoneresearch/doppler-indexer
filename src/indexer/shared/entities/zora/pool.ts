@@ -136,7 +136,7 @@ export const insertZoraPoolV4Optimized = async ({
 
   const marketCapUsd = MarketDataService.calculateMarketCap({
     price,
-    ethPriceUSD: ethPrice,
+    quotePriceUSD: ethPrice,
     totalSupply,
     decimals: isQuoteEth ? 8 : 18,
   });

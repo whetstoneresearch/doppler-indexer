@@ -87,7 +87,7 @@ export const insertPoolIfNotExists = async ({
 
   const marketCapUsd = MarketDataService.calculateMarketCap({
     price,
-    ethPriceUSD: ethPrice,
+    quotePriceUSD: ethPrice,
     totalSupply: assetTotalSupply,
   });
 
@@ -219,7 +219,7 @@ export const insertPoolIfNotExistsV4 = async ({
 
   const marketCapUsd = MarketDataService.calculateMarketCap({
     price,
-    ethPriceUSD: ethPrice,
+    quotePriceUSD: ethPrice,
     totalSupply,
   });
 
@@ -353,7 +353,7 @@ export const insertLockableV3PoolIfNotExists = async ({
     marketCapUsd = MarketDataService.calculateMarketCap(
       {
         price,
-        ethPriceUSD: creatorCoinUsdPrice,
+        quotePriceUSD: creatorCoinUsdPrice,
         totalSupply: assetTotalSupply,
         decimals: quoteToken!.decimals
       }
@@ -361,14 +361,14 @@ export const insertLockableV3PoolIfNotExists = async ({
   } else if (isQuoteMon && monUsdPrice) {
     marketCapUsd = MarketDataService.calculateMarketCap({
       price,
-      ethPriceUSD: monUsdPrice,
+      quotePriceUSD: monUsdPrice,
       totalSupply: assetTotalSupply,
       decimals: 18,
     });
   } else {
     marketCapUsd = MarketDataService.calculateMarketCap({
       price,
-      ethPriceUSD: ethPrice,
+      quotePriceUSD: ethPrice,
       totalSupply: assetTotalSupply,
     });
   }

@@ -169,7 +169,7 @@ export const insertMulticurvePoolV4Optimized = async ({
 
   const marketCapUsd = MarketDataService.calculateMarketCap({
     price,
-    ethPriceUSD: quoteUsdPrice,
+    quotePriceUSD: quoteUsdPrice,
     totalSupply: baseTokenEntity.totalSupply,
     decimals: quoteDecimals,
   });

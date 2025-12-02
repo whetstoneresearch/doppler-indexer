@@ -79,9 +79,8 @@ ponder.on("MigrationPool:Swap(address indexed sender, uint256 amount0In, uint256
   const marketCapUsd = MarketDataService.calculateMarketCap({
     price,
     totalSupply,
-    ethPriceUSD: ethPrice,
-    assetDecimals: 18,
-    isQuoteETH: true
+    quotePriceUSD: ethPrice,
+    assetDecimals: 18,    
   });
   
   const liquidityUsd = MarketDataService.calculateLiquidity({
@@ -225,7 +224,7 @@ ponder.on("UniswapV2PairUnichain:Swap", async ({ event, context }) => {
 
   const marketCapUsd = MarketDataService.calculateMarketCap({
     price,
-    ethPriceUSD: ethPrice,
+    quotePriceUSD: ethPrice,
     totalSupply,
   });
 

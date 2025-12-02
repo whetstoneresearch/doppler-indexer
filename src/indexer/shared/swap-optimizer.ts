@@ -321,7 +321,7 @@ export async function handleOptimizedSwap(
   // Calculate market cap
   const marketCapUsd = MarketDataService.calculateMarketCap({
     price: swapData.price,
-    ethPriceUSD: resolvedUsdPrice,
+    quotePriceUSD: resolvedUsdPrice,
     totalSupply: tokenEntity.totalSupply,
     decimals: isQuoteEth ? 8 : 18,
   });

@@ -30,9 +30,8 @@ export interface LiquidityParams {
 export interface MarketCapParams {
   price: bigint;
   totalSupply: bigint;
-  ethPriceUSD: bigint;
-  assetDecimals?: number;
-  isQuoteETH?: boolean;
+  quotePriceUSD: bigint;
+  assetDecimals?: number;  
   decimals?: number;
 }
 
@@ -60,14 +59,14 @@ export class MarketDataService {
     const {
       price,
       totalSupply,
-      ethPriceUSD,
+      quotePriceUSD,
       assetDecimals = 18,
       decimals = 8,
     } = params;
     // Calculate market cap in quote currency
     const marketCap = (price * totalSupply) / BigInt(10 ** assetDecimals);
 
-    return (marketCap * ethPriceUSD) / BigInt(10 ** decimals);
+    return (marketCap * quotePriceUSD) / BigInt(10 ** decimals);
   }
 
   /**

@@ -206,7 +206,7 @@ ponder.on(
     }
     const marketCapUsd = MarketDataService.calculateMarketCap({
       price,
-      ethPriceUSD: isQuoteFxh ? fxhUsdPrice!
+      quotePriceUSD: isQuoteFxh ? fxhUsdPrice!
         : isQuoteNoice ? noiceUsdPrice!
         : isQuoteMon ? monUsdcPrice!
         : ethPrice,
