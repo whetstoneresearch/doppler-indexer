@@ -5,7 +5,6 @@ import { SwapOrchestrator } from "@app/core";
 import { SwapService, MarketDataService, PriceService } from "@app/core";
 
 import {
-  computeMarketCap,
   fetchEthPrice,
   fetchZoraPrice,
   fetchFxhPrice,
@@ -320,9 +319,9 @@ export async function handleOptimizedSwap(
   }
   
   // Calculate market cap
-  const marketCapUsd = computeMarketCap({
+  const marketCapUsd = MarketDataService.calculateMarketCap({
     price: swapData.price,
-    ethPrice: resolvedUsdPrice,
+    ethPriceUSD: resolvedUsdPrice,
     totalSupply: tokenEntity.totalSupply,
     decimals: isQuoteEth ? 8 : 18,
   });

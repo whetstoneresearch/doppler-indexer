@@ -123,23 +123,3 @@ export const fetchMonadPrice = async (
 
   return monadPriceData.price;
 };
-
-export const computeMarketCap = ({
-  price,
-  ethPrice,
-  totalSupply,
-  decimals,
-}: {
-  price: bigint;
-  ethPrice: bigint;
-  totalSupply: bigint;
-  decimals?: number;
-}) => {
-  return MarketDataService.calculateMarketCap({
-    price,
-    totalSupply,
-    ethPriceUSD: ethPrice,
-    assetDecimals: 18,
-    decimals,
-  });
-};

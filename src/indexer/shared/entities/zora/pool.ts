@@ -11,7 +11,7 @@ import {
   getAmount0Delta, 
   getAmount1Delta 
 } from "@app/utils/v3-utils/computeGraduationThreshold";
-import { computeMarketCap } from "../../oracle";
+
 import { insertAssetIfNotExists } from "../asset";
 
 /**
@@ -134,9 +134,9 @@ export const insertZoraPoolV4Optimized = async ({
     decimals: 18,
   });
 
-  const marketCapUsd = computeMarketCap({
+  const marketCapUsd = MarketDataService.calculateMarketCap({
     price,
-    ethPrice,
+    ethPriceUSD: ethPrice,
     totalSupply,
     decimals: isQuoteEth ? 8 : 18,
   });

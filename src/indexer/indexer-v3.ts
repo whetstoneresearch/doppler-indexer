@@ -12,7 +12,7 @@ import {
   updatePosition,
 } from "./shared/entities/position";
 import { insertTokenIfNotExists } from "./shared/entities/token";
-import { computeMarketCap, fetchEthPrice, fetchZoraPrice } from "./shared/oracle";
+import { fetchEthPrice, fetchZoraPrice } from "./shared/oracle";
 import { updateFifteenMinuteBucketUsd } from "@app/utils/time-buckets";
 import { fetchV3MigrationPool, updateMigrationPool } from "./shared/entities/migrationPool";
 import { insertAssetIfNotExists, updateAsset } from "./shared/entities";
@@ -448,9 +448,9 @@ ponder.on("LockableUniswapV3Pool:Swap", async ({ event, context }) => {
   let marketCapUsd;
   let swapValueUsd;
   if (isQuoteCreatorCoin && creatorCoinUsdPrice) {
-    marketCapUsd = computeMarketCap({
+    marketCapUsd = MarketDataService.calculateMarketCap({
       price,
-      ethPrice: creatorCoinUsdPrice,
+      ethPriceUSD: creatorCoinUsdPrice,
       totalSupply: totalSupply,
       decimals: 18,
     });
@@ -460,9 +460,9 @@ ponder.on("LockableUniswapV3Pool:Swap", async ({ event, context }) => {
         creatorCoinUsdPrice) /
       WAD;
   } else if (isQuoteMon && monUsdPrice) {
-    marketCapUsd = computeMarketCap({
+    marketCapUsd = MarketDataService.calculateMarketCap({
       price,
-      ethPrice: monUsdPrice,
+      ethPriceUSD: monUsdPrice,
       totalSupply: totalSupply,
       decimals: 18,
     });
@@ -472,9 +472,9 @@ ponder.on("LockableUniswapV3Pool:Swap", async ({ event, context }) => {
         monUsdPrice) /
       WAD;
   } else {
-    marketCapUsd = computeMarketCap({
+    marketCapUsd = MarketDataService.calculateMarketCap({
       price,
-      ethPrice,
+      ethPriceUSD: ethPrice,
       totalSupply: totalSupply,
     });
     
@@ -813,9 +813,9 @@ ponder.on("UniswapV3Pool:Swap", async ({ event, context }) => {
     poolAddress: address,
   });
 
-  const marketCapUsd = computeMarketCap({
+  const marketCapUsd = MarketDataService.calculateMarketCap({
     price,
-    ethPrice,
+    ethPriceUSD: ethPrice,
     totalSupply,
   });
 
@@ -987,9 +987,9 @@ ponder.on("MigrationPool:Swap(address indexed sender, address indexed recipient,
     poolAddress: address,
   });
 
-  const marketCapUsd = computeMarketCap({
+  const marketCapUsd = MarketDataService.calculateMarketCap({
     price,
-    ethPrice,
+    ethPriceUSD: ethPrice,
     totalSupply,
   });
 

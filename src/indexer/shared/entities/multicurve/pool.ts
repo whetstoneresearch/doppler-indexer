@@ -7,9 +7,10 @@ import { StateViewABI } from "@app/abis";
 import { getPoolId } from "@app/utils/v4-utils/getPoolId";
 import { chainConfigs } from "@app/config";
 import { CHAINLINK_ETH_DECIMALS } from "@app/utils/constants";
-import { computeMarketCap, fetchEthPrice, fetchFxhPrice, fetchMonadPrice, fetchNoicePrice } from "../../oracle";
+import { fetchEthPrice, fetchFxhPrice, fetchMonadPrice, fetchNoicePrice } from "../../oracle";
 import { UniswapV4MulticurveInitializerABI } from "@app/abis/multicurve-abis/UniswapV4MulticurveInitializerABI";
 import { upsertTokenWithPool } from "../token-optimized";
+import { MarketDataService } from "@app/core";
 
 /**
  * Optimized version with caching and reduced contract calls
@@ -166,9 +167,9 @@ export const insertMulticurvePoolV4Optimized = async ({
     : ethPrice;
   const quoteDecimals = isQuoteFxh || isQuoteNoice || isQuoteMon ? 18 : 8;
 
-  const marketCapUsd = computeMarketCap({
+  const marketCapUsd = MarketDataService.calculateMarketCap({
     price,
-    ethPrice: quoteUsdPrice,
+    ethPriceUSD: quoteUsdPrice,
     totalSupply: baseTokenEntity.totalSupply,
     decimals: quoteDecimals,
   });

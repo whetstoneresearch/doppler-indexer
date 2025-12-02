@@ -3,7 +3,6 @@ import { getPoolId, getV4PoolData } from "@app/utils/v4-utils";
 import { insertTokenIfNotExists } from "./shared/entities/token";
 import { insertScheduledPool } from "./shared/entities/multicurve/scheduledPool";
 import {
-  computeMarketCap,
   fetchEthPrice,
   fetchFxhPrice,
   fetchNoicePrice,
@@ -205,9 +204,9 @@ ponder.on(
         decimals: 18,
       });
     }
-    const marketCapUsd = computeMarketCap({
+    const marketCapUsd = MarketDataService.calculateMarketCap({
       price,
-      ethPrice: isQuoteFxh ? fxhUsdPrice!
+      ethPriceUSD: isQuoteFxh ? fxhUsdPrice!
         : isQuoteNoice ? noiceUsdPrice!
         : isQuoteMon ? monUsdcPrice!
         : ethPrice,

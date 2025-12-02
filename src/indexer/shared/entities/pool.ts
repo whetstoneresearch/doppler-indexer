@@ -8,7 +8,7 @@ import { getReservesV4 } from "@app/utils/v4-utils/getV4PoolData";
 import { Context } from "ponder:registry";
 import { pool, token } from "ponder:schema";
 import { Address, zeroAddress } from "viem";
-import { computeMarketCap, fetchMonadPrice, fetchZoraPrice } from "../oracle";
+import { fetchMonadPrice, fetchZoraPrice } from "../oracle";
 import { getLockableV3PoolData } from "@app/utils/v3-utils/getV3PoolData";
 import { chainConfigs } from "@app/config";
 import { AssetData } from "@app/types";
@@ -85,9 +85,9 @@ export const insertPoolIfNotExists = async ({
     getAssetData(assetAddr, context),
   ]);
 
-  const marketCapUsd = computeMarketCap({
+  const marketCapUsd = MarketDataService.calculateMarketCap({
     price,
-    ethPrice,
+    ethPriceUSD: ethPrice,
     totalSupply: assetTotalSupply,
   });
 
@@ -217,9 +217,9 @@ export const insertPoolIfNotExistsV4 = async ({
     ethPriceUSD: ethPrice,
   });
 
-  const marketCapUsd = computeMarketCap({
+  const marketCapUsd = MarketDataService.calculateMarketCap({
     price,
-    ethPrice,
+    ethPriceUSD: ethPrice,
     totalSupply,
   });
 
@@ -350,25 +350,25 @@ export const insertLockableV3PoolIfNotExists = async ({
   let marketCapUsd;
   if (isQuoteCreatorCoin && quotePool) {
     creatorCoinUsdPrice = quotePool.price * zoraPrice! / 10n ** 18n;
-    marketCapUsd = computeMarketCap(
+    marketCapUsd = MarketDataService.calculateMarketCap(
       {
         price,
-        ethPrice: creatorCoinUsdPrice,
+        ethPriceUSD: creatorCoinUsdPrice,
         totalSupply: assetTotalSupply,
         decimals: quoteToken!.decimals
       }
     )
   } else if (isQuoteMon && monUsdPrice) {
-    marketCapUsd = computeMarketCap({
+    marketCapUsd = MarketDataService.calculateMarketCap({
       price,
-      ethPrice: monUsdPrice,
+      ethPriceUSD: monUsdPrice,
       totalSupply: assetTotalSupply,
       decimals: 18,
     });
   } else {
-    marketCapUsd = computeMarketCap({
+    marketCapUsd = MarketDataService.calculateMarketCap({
       price,
-      ethPrice,
+      ethPriceUSD: ethPrice,
       totalSupply: assetTotalSupply,
     });
   }
