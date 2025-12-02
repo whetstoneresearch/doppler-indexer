@@ -192,7 +192,7 @@ export function processSwapCalculations(
     assetBalance: nextReservesAsset,
     quoteBalance: nextReservesQuote,
     price,
-    ethPriceUSD: usdPrice,
+    quotePriceUSD: usdPrice,
     decimals: isQuoteEth ? 8 : 18,
   });
   

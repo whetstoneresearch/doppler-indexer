@@ -19,8 +19,8 @@ export interface LiquidityParams {
   assetBalance: bigint;
   quoteBalance: bigint;
   price: bigint;
-  ethPriceUSD: bigint;
-  isQuoteETH?: boolean;
+  quotePriceUSD: bigint;
+  isQuoteUSD?: boolean;
   decimals?: number;
 }
 
@@ -78,18 +78,18 @@ export class MarketDataService {
       assetBalance,
       quoteBalance,
       price,
-      ethPriceUSD,
-      isQuoteETH = true,
+      quotePriceUSD,
+      isQuoteUSD = false,
       decimals = 8,
     } = params;
 
     // Calculate asset value in quote currency
     const assetValueInQuote = (assetBalance * price) / WAD;
 
-    if (isQuoteETH) {
+    if (!isQuoteUSD) {
       // Convert both to USD
-      const assetValueUsd = (assetValueInQuote * ethPriceUSD) / BigInt(10 ** decimals);
-      const quoteValueUsd = (quoteBalance * ethPriceUSD) / BigInt(10 ** decimals);
+      const assetValueUsd = (assetValueInQuote * quotePriceUSD) / BigInt(10 ** decimals);
+      const quoteValueUsd = (quoteBalance * quotePriceUSD) / BigInt(10 ** decimals);
       return assetValueUsd + quoteValueUsd;
     }
 

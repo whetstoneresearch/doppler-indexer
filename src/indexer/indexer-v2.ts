@@ -87,8 +87,8 @@ ponder.on("MigrationPool:Swap(address indexed sender, uint256 amount0In, uint256
     assetBalance,
     quoteBalance,
     price,
-    ethPriceUSD: ethPrice,
-    isQuoteETH: true
+    quotePriceUSD: ethPrice,
+    isQuoteUSD: false
   });
   
   let quoteDelta = 0n;
@@ -235,7 +235,7 @@ ponder.on("UniswapV2PairUnichain:Swap", async ({ event, context }) => {
     assetBalance,
     quoteBalance,
     price,
-    ethPriceUSD: ethPrice,
+    quotePriceUSD: ethPrice,
   });
 
   let quoteDelta = 0n;

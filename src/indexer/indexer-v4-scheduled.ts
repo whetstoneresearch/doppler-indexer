@@ -218,7 +218,7 @@ ponder.on(
       assetBalance: poolEntity.isToken0 ? token0Reserve : token1Reserve,
       quoteBalance: poolEntity.isToken0 ? token1Reserve : token0Reserve,
       price,
-      ethPriceUSD: isQuoteFxh ? fxhUsdPrice!
+      quotePriceUSD: isQuoteFxh ? fxhUsdPrice!
         : isQuoteNoice ? noiceUsdPrice!
         : isQuoteMon ? monUsdcPrice!
         : ethPrice,

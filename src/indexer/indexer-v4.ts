@@ -165,7 +165,7 @@ ponder.on("UniswapV4Pool:Swap", async ({ event, context }) => {
     assetBalance: isToken0 ? token0Reserve : token1Reserve,
     quoteBalance: isToken0 ? token1Reserve : token0Reserve,
     price,
-    ethPriceUSD: ethPrice,
+    quotePriceUSD: ethPrice,
   });
 
   let marketCapUsd;
@@ -426,7 +426,7 @@ ponder.on(
       assetBalance: poolEntity.isToken0 ? token0Reserve : token1Reserve,
       quoteBalance: poolEntity.isToken0 ? token1Reserve : token0Reserve,
       price,
-      ethPriceUSD: isQuoteFxh ? fxhUsdPrice! : isQuoteNoice ? noiceUsdPrice! : ethPrice,
+      quotePriceUSD: isQuoteFxh ? fxhUsdPrice! : isQuoteNoice ? noiceUsdPrice! : ethPrice,
       decimals: poolEntity.isQuoteEth ? 8 : 18,
     });
 

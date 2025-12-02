@@ -172,14 +172,14 @@ ponder.on("LockableUniswapV3Pool:Mint", async ({ event, context }) => {
       assetBalance: nextReservesAsset,
       quoteBalance: nextReservesQuote,
       price,
-      ethPriceUSD: creatorCoinUsdPrice,
+      quotePriceUSD: creatorCoinUsdPrice,
     });
   } else if (isQuoteMon && monUsdPrice) {
     liquidityUsd = MarketDataService.calculateLiquidity({
       assetBalance: nextReservesAsset,
       quoteBalance: nextReservesQuote,
       price,
-      ethPriceUSD: monUsdPrice,
+      quotePriceUSD: monUsdPrice,
       decimals: 18,
     });
   } else {
@@ -187,7 +187,7 @@ ponder.on("LockableUniswapV3Pool:Mint", async ({ event, context }) => {
       assetBalance: nextReservesAsset,
       quoteBalance: nextReservesQuote,
       price,
-      ethPriceUSD: ethPrice,
+      quotePriceUSD: ethPrice,
     });
   }
 
@@ -274,14 +274,14 @@ ponder.on("LockableUniswapV3Pool:Burn", async ({ event, context }) => {
       assetBalance: nextReservesAsset,
       quoteBalance: nextReservesQuote,
       price,
-      ethPriceUSD: creatorCoinUsdPrice,
+      quotePriceUSD: creatorCoinUsdPrice,
     });
   } else if (isQuoteMon && monUsdPrice) {
     liquidityUsd = MarketDataService.calculateLiquidity({
       assetBalance: nextReservesAsset,
       quoteBalance: nextReservesQuote,
       price,
-      ethPriceUSD: monUsdPrice,
+      quotePriceUSD: monUsdPrice,
       decimals: 18,
     });
   } else {
@@ -289,7 +289,7 @@ ponder.on("LockableUniswapV3Pool:Burn", async ({ event, context }) => {
       assetBalance: nextReservesAsset,
       quoteBalance: nextReservesQuote,
       price,
-      ethPriceUSD: ethPrice,
+      quotePriceUSD: ethPrice,
     });
   }
 
@@ -417,14 +417,14 @@ ponder.on("LockableUniswapV3Pool:Swap", async ({ event, context }) => {
       assetBalance: nextReservesAsset,
       quoteBalance: nextReservesQuote,
       price,
-      ethPriceUSD: creatorCoinUsdPrice,
+      quotePriceUSD: creatorCoinUsdPrice,
     });
   } else if (isQuoteMon && monUsdPrice) {
     liquidityUsd = MarketDataService.calculateLiquidity({
       assetBalance: nextReservesAsset,
       quoteBalance: nextReservesQuote,
       price,
-      ethPriceUSD: monUsdPrice,
+      quotePriceUSD: monUsdPrice,
       decimals: 18,
     });
   } else {
@@ -432,7 +432,7 @@ ponder.on("LockableUniswapV3Pool:Swap", async ({ event, context }) => {
       assetBalance: nextReservesAsset,
       quoteBalance: nextReservesQuote,
       price,
-      ethPriceUSD: ethPrice,
+      quotePriceUSD: ethPrice,
     });
   }
 
@@ -589,7 +589,7 @@ ponder.on("UniswapV3Pool:Mint", async ({ event, context }) => {
     assetBalance: nextReservesAsset,
     quoteBalance: nextReservesQuote,
     price,
-    ethPriceUSD: ethPrice,
+    quotePriceUSD: ethPrice,
   });
 
   const graduationThresholdDelta = computeGraduationThresholdDelta({
@@ -673,7 +673,7 @@ ponder.on("UniswapV3Pool:Burn", async ({ event, context }) => {
     assetBalance: nextReservesAsset,
     quoteBalance: nextReservesQuote,
     price,
-    ethPriceUSD: ethPrice,
+    quotePriceUSD: ethPrice,
   });
 
   const graduationThresholdDelta = computeGraduationThresholdDelta({
@@ -801,7 +801,7 @@ ponder.on("UniswapV3Pool:Swap", async ({ event, context }) => {
     assetBalance: nextReservesAsset,
     quoteBalance: nextReservesQuote,
     price,
-    ethPriceUSD: ethPrice,
+    quotePriceUSD: ethPrice,
   });
 
   const { totalSupply } = await insertTokenIfNotExists({
@@ -975,7 +975,7 @@ ponder.on("MigrationPool:Swap(address indexed sender, address indexed recipient,
     assetBalance: baseTokenReserveAfter,
     quoteBalance: quoteTokenReserveAfter,
     price,
-    ethPriceUSD: ethPrice,
+    quotePriceUSD: ethPrice,
   });
 
   const { totalSupply } = await insertTokenIfNotExists({
