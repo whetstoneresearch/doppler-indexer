@@ -1,6 +1,5 @@
 import { PoolKey } from "@app/types";
-import { MarketDataService } from "@app/core";
-import { computeV3Price } from "@app/utils/v3-utils";
+import { MarketDataService, PriceService } from "@app/core";
 import { Context } from "ponder:registry";
 import { pool } from "ponder:schema";
 import { Address, zeroAddress } from "viem";
@@ -129,7 +128,7 @@ export const insertZoraPoolV4Optimized = async ({
     }
   }
 
-  const price = computeV3Price({
+  const price = PriceService.computePriceFromSqrtPriceX96({
     sqrtPriceX96,
     isToken0,
     decimals: 18,

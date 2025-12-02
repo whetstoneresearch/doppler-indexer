@@ -2,8 +2,7 @@ import { Context } from "ponder:registry";
 import { pool, token } from "ponder:schema";
 import { Address, zeroAddress } from "viem";
 import { SwapOrchestrator } from "@app/core";
-import { SwapService, MarketDataService } from "@app/core";
-import { computeV3Price } from "@app/utils";
+import { SwapService, MarketDataService, PriceService } from "@app/core";
 
 import {
   computeMarketCap,
@@ -128,7 +127,7 @@ export async function getPoolUsdPrice(
     return null;
   }
   
-  const creatorCoinPrice = computeV3Price({
+  const creatorCoinPrice = PriceService.computePriceFromSqrtPriceX96({
     sqrtPriceX96: creatorCoinPool.sqrtPrice,
     isToken0: creatorCoinPool.isToken0,
     decimals: 18,
@@ -150,7 +149,7 @@ export function processSwapCalculations(
   const { isToken0, reserves0, reserves1, fee } = poolEntity;
   
   // Calculate price
-  const price = computeV3Price({
+  const price = PriceService.computePriceFromSqrtPriceX96({
     sqrtPriceX96,
     isToken0,
     decimals: 18,

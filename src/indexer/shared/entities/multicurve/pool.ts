@@ -1,5 +1,5 @@
 import { PoolKey } from "@app/types";
-import { computeV3Price } from "@app/utils/v3-utils";
+import { PriceService } from "@app/core";
 import { Context } from "ponder:registry";
 import { pool } from "ponder:schema";
 import { Address, parseUnits, zeroAddress } from "viem";
@@ -145,7 +145,7 @@ export const insertMulticurvePoolV4Optimized = async ({
   
   const tick = slot0Result?.[1] ?? 0;
 
-  const price = computeV3Price({
+  const price = PriceService.computePriceFromSqrtPriceX96({
     sqrtPriceX96,
     isToken0,
     decimals: 18,
