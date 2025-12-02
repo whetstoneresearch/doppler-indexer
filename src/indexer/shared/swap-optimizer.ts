@@ -2,9 +2,9 @@ import { Context } from "ponder:registry";
 import { pool, token } from "ponder:schema";
 import { Address, zeroAddress } from "viem";
 import { SwapOrchestrator } from "@app/core";
-import { SwapService } from "@app/core";
+import { SwapService, MarketDataService } from "@app/core";
 import { computeV3Price } from "@app/utils";
-import { computeDollarLiquidity } from "@app/utils/computeDollarLiquidity";
+
 import {
   computeMarketCap,
   fetchEthPrice,
@@ -190,7 +190,7 @@ export function processSwapCalculations(
   });
   
   // Calculate dollar values
-  const dollarLiquidity = computeDollarLiquidity({
+  const dollarLiquidity = MarketDataService.calculateLiquidity({
     assetBalance: nextReservesAsset,
     quoteBalance: nextReservesQuote,
     price,

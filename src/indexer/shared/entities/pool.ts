@@ -1,6 +1,6 @@
 import { DERC20ABI } from "@app/abis";
 import { V4PoolData } from "@app/types";
-import { computeDollarLiquidity } from "@app/utils/computeDollarLiquidity";
+import { MarketDataService } from "@app/core";
 import { getAssetData } from "@app/utils/getAssetData";
 import { getV3PoolData } from "@app/utils/v3-utils";
 import { computeGraduationPercentage } from "@app/utils/v4-utils";
@@ -210,7 +210,7 @@ export const insertPoolIfNotExistsV4 = async ({
   const assetBalance = poolConfig.isToken0 ? token0Reserve : token1Reserve;
   const quoteBalance = poolConfig.isToken0 ? token1Reserve : token0Reserve;
 
-  const dollarLiquidity = computeDollarLiquidity({
+  const dollarLiquidity = MarketDataService.calculateLiquidity({
     assetBalance,
     quoteBalance,
     price,

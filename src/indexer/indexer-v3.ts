@@ -1,5 +1,4 @@
-import { PriceService, SwapOrchestrator, SwapService } from "@app/core";
-import { computeDollarLiquidity } from "@app/utils/computeDollarLiquidity";
+import { PriceService, SwapOrchestrator, SwapService, MarketDataService } from "@app/core";
 import { CHAINLINK_ETH_DECIMALS, WAD } from "@app/utils/constants";
 import { computeGraduationThresholdDelta } from "@app/utils/v3-utils/computeGraduationThreshold";
 import { ponder } from "ponder:registry";
@@ -169,14 +168,14 @@ ponder.on("LockableUniswapV3Pool:Mint", async ({ event, context }) => {
 
   let liquidityUsd;
   if (isQuoteCreatorCoin && creatorCoinUsdPrice) {
-    liquidityUsd = computeDollarLiquidity({
+    liquidityUsd = MarketDataService.calculateLiquidity({
       assetBalance: nextReservesAsset,
       quoteBalance: nextReservesQuote,
       price,
       ethPrice: creatorCoinUsdPrice,
     });
   } else if (isQuoteMon && monUsdPrice) {
-    liquidityUsd = computeDollarLiquidity({
+    liquidityUsd = MarketDataService.calculateLiquidity({
       assetBalance: nextReservesAsset,
       quoteBalance: nextReservesQuote,
       price,
@@ -184,7 +183,7 @@ ponder.on("LockableUniswapV3Pool:Mint", async ({ event, context }) => {
       decimals: 18,
     });
   } else {
-    liquidityUsd = computeDollarLiquidity({
+    liquidityUsd = MarketDataService.calculateLiquidity({
       assetBalance: nextReservesAsset,
       quoteBalance: nextReservesQuote,
       price,
@@ -271,14 +270,14 @@ ponder.on("LockableUniswapV3Pool:Burn", async ({ event, context }) => {
 
   let liquidityUsd;
   if (isQuoteCreatorCoin && creatorCoinUsdPrice) {
-    liquidityUsd = computeDollarLiquidity({
+    liquidityUsd = MarketDataService.calculateLiquidity({
       assetBalance: nextReservesAsset,
       quoteBalance: nextReservesQuote,
       price,
       ethPrice: creatorCoinUsdPrice,
     });
   } else if (isQuoteMon && monUsdPrice) {
-    liquidityUsd = computeDollarLiquidity({
+    liquidityUsd = MarketDataService.calculateLiquidity({
       assetBalance: nextReservesAsset,
       quoteBalance: nextReservesQuote,
       price,
@@ -286,7 +285,7 @@ ponder.on("LockableUniswapV3Pool:Burn", async ({ event, context }) => {
       decimals: 18,
     });
   } else {
-    liquidityUsd = computeDollarLiquidity({
+    liquidityUsd = MarketDataService.calculateLiquidity({
       assetBalance: nextReservesAsset,
       quoteBalance: nextReservesQuote,
       price,
@@ -414,14 +413,14 @@ ponder.on("LockableUniswapV3Pool:Swap", async ({ event, context }) => {
 
   let liquidityUsd;
   if (isQuoteCreatorCoin && creatorCoinUsdPrice) {
-    liquidityUsd = computeDollarLiquidity({
+    liquidityUsd = MarketDataService.calculateLiquidity({
       assetBalance: nextReservesAsset,
       quoteBalance: nextReservesQuote,
       price,
       ethPrice: creatorCoinUsdPrice,
     });
   } else if (isQuoteMon && monUsdPrice) {
-    liquidityUsd = computeDollarLiquidity({
+    liquidityUsd = MarketDataService.calculateLiquidity({
       assetBalance: nextReservesAsset,
       quoteBalance: nextReservesQuote,
       price,
@@ -429,7 +428,7 @@ ponder.on("LockableUniswapV3Pool:Swap", async ({ event, context }) => {
       decimals: 18,
     });
   } else {
-    liquidityUsd = computeDollarLiquidity({
+    liquidityUsd = MarketDataService.calculateLiquidity({
       assetBalance: nextReservesAsset,
       quoteBalance: nextReservesQuote,
       price,
@@ -586,7 +585,7 @@ ponder.on("UniswapV3Pool:Mint", async ({ event, context }) => {
   const nextReservesAsset = reserveAssetBefore + reserveAssetDelta;
   const nextReservesQuote = reserveQuoteBefore + reserveQuoteDelta;
 
-  const liquidityUsd = computeDollarLiquidity({
+  const liquidityUsd = MarketDataService.calculateLiquidity({
     assetBalance: nextReservesAsset,
     quoteBalance: nextReservesQuote,
     price,
@@ -670,7 +669,7 @@ ponder.on("UniswapV3Pool:Burn", async ({ event, context }) => {
   const nextReservesAsset = reserveAssetBefore - reserveAssetDelta;
   const nextReservesQuote = reserveQuoteBefore - reserveQuoteDelta;
 
-  const liquidityUsd = computeDollarLiquidity({
+  const liquidityUsd = MarketDataService.calculateLiquidity({
     assetBalance: nextReservesAsset,
     quoteBalance: nextReservesQuote,
     price,
@@ -798,7 +797,7 @@ ponder.on("UniswapV3Pool:Swap", async ({ event, context }) => {
 
   const quoteDelta = isToken0 ? amount1 - fee1 : amount0 - fee0;
 
-  const dollarLiquidity = computeDollarLiquidity({
+  const dollarLiquidity = MarketDataService.calculateLiquidity({
     assetBalance: nextReservesAsset,
     quoteBalance: nextReservesQuote,
     price,
@@ -972,7 +971,7 @@ ponder.on("MigrationPool:Swap(address indexed sender, address indexed recipient,
     amount1,
   });
 
-  const dollarLiquidity = computeDollarLiquidity({
+  const dollarLiquidity = MarketDataService.calculateLiquidity({
     assetBalance: baseTokenReserveAfter,
     quoteBalance: quoteTokenReserveAfter,
     price,
