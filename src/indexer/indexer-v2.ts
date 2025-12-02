@@ -228,11 +228,11 @@ ponder.on("UniswapV2PairUnichain:Swap", async ({ event, context }) => {
   // Price change is now calculated in scheduled jobs using buckets
   const priceChange = 0;
 
-  const liquidityUsd = await MarketDataService.calculateLiquidity({
+  const liquidityUsd = MarketDataService.calculateLiquidity({
     assetBalance,
     quoteBalance,
     price,
-    ethPrice,
+    ethPriceUSD: ethPrice,
   });
 
   let quoteDelta = 0n;

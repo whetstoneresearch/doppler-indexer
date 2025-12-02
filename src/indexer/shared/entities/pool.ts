@@ -214,7 +214,7 @@ export const insertPoolIfNotExistsV4 = async ({
     assetBalance,
     quoteBalance,
     price,
-    ethPrice,
+    ethPriceUSD: ethPrice,
   });
 
   const marketCapUsd = computeMarketCap({

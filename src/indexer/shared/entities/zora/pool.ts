@@ -145,7 +145,7 @@ export const insertZoraPoolV4Optimized = async ({
     assetBalance: isToken0 ? token0Reserve : token1Reserve,
     quoteBalance: isToken0 ? token1Reserve : token0Reserve,
     price,
-    ethPrice,
+    ethPriceUSD: ethPrice,
     decimals: isQuoteEth ? 8 : 18,
   });
 
