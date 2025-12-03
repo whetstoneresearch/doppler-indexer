@@ -291,30 +291,6 @@ ponder.on(
 );
 
 ponder.on(
-  "BaseChainlinkUsdtPriceFeed:block",
-  async ({ event, context }) => {
-    const { db, client, chain } = context;
-    const { timestamp } = event.block;
-    const latestAnswer = await client.readContract({
-      abi: ChainlinkOracleABI,
-      address: chainConfigs["base"].addresses.shared.chainlinkUsdtOracle,
-      functionName: "latestAnswer",
-    });
-    const price = latestAnswer / parseUnits("1", 10);
-    const roundedTimestamp = BigInt(Math.floor(Number(timestamp) / 300) * 300);
-    const adjustedTimestamp = roundedTimestamp + 300n;
-    await db
-      .insert(usdtPrice)
-      .values({
-        timestamp: adjustedTimestamp,
-        chainId: chain.id,
-        price,
-      })
-      .onConflictDoNothing();
-  }
-);
-
-ponder.on(
   "BaseSepoliaChainlinkUsdcPriceFeed:block",
   async ({ event, context }) => {
     const { db, client, chain } = context;
@@ -329,30 +305,6 @@ ponder.on(
     const adjustedTimestamp = roundedTimestamp + 300n;
     await db
       .insert(usdcPrice)
-      .values({
-        timestamp: adjustedTimestamp,
-        chainId: chain.id,
-        price,
-      })
-      .onConflictDoNothing();
-  }
-);
-
-ponder.on(
-  "BaseSepoliaChainlinkUsdtPriceFeed:block",
-  async ({ event, context }) => {
-    const { db, client, chain } = context;
-    const { timestamp } = event.block;
-    const latestAnswer = await client.readContract({
-      abi: ChainlinkOracleABI,
-      address: chainConfigs["baseSepolia"].addresses.shared.chainlinkUsdtOracle,
-      functionName: "latestAnswer",
-    });
-    const price = latestAnswer / parseUnits("1", 10);
-    const roundedTimestamp = BigInt(Math.floor(Number(timestamp) / 300) * 300);
-    const adjustedTimestamp = roundedTimestamp + 300n;
-    await db
-      .insert(usdtPrice)
       .values({
         timestamp: adjustedTimestamp,
         chainId: chain.id,

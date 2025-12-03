@@ -93,17 +93,7 @@ export default createConfig({
       startBlock: base.startBlock,
       interval: BLOCK_INTERVALS.FIVE_MINUTES,
     },
-    BaseChainlinkUsdtPriceFeed: {
-      chain: "base",
-      startBlock: base.startBlock,
-      interval: BLOCK_INTERVALS.FIVE_MINUTES,
-    },
     BaseSepoliaChainlinkUsdcPriceFeed: {
-      chain: "baseSepolia",
-      startBlock: baseSepolia.startBlock,
-      interval: 99999999999999,
-    },
-    BaseSepoliaChainlinkUsdtPriceFeed: {
       chain: "baseSepolia",
       startBlock: baseSepolia.startBlock,
       interval: 99999999999999,
