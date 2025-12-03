@@ -88,6 +88,56 @@ export default createConfig({
       startBlock: monad.startBlock,
       interval: BLOCK_INTERVALS.FIVE_MINUTES,
     },
+    BaseChainlinkUsdcPriceFeed: {
+      chain: "base",
+      startBlock: base.startBlock,
+      interval: BLOCK_INTERVALS.FIVE_MINUTES,
+    },
+    BaseChainlinkUsdtPriceFeed: {
+      chain: "base",
+      startBlock: base.startBlock,
+      interval: BLOCK_INTERVALS.FIVE_MINUTES,
+    },
+    BaseSepoliaChainlinkUsdcPriceFeed: {
+      chain: "baseSepolia",
+      startBlock: baseSepolia.startBlock,
+      interval: 99999999999999,
+    },
+    BaseSepoliaChainlinkUsdtPriceFeed: {
+      chain: "baseSepolia",
+      startBlock: baseSepolia.startBlock,
+      interval: 99999999999999,
+    },
+    InkChainlinkUsdcPriceFeed: {
+      chain: "ink",
+      startBlock: ink.startBlock,
+      interval: BLOCK_INTERVALS.FIVE_MINUTES,
+    },
+    InkChainlinkUsdtPriceFeed: {
+      chain: "ink",
+      startBlock: ink.startBlock,
+      interval: BLOCK_INTERVALS.FIVE_MINUTES,
+    },
+    UnichainChainlinkUsdcPriceFeed: {
+      chain: "unichain",
+      startBlock: unichain.startBlock,
+      interval: BLOCK_INTERVALS.FIVE_MINUTES,
+    },
+    UnichainChainlinkUsdtPriceFeed: {
+      chain: "unichain",
+      startBlock: unichain.startBlock,
+      interval: BLOCK_INTERVALS.FIVE_MINUTES,
+    },
+    MonadChainlinkUsdcPriceFeed: {
+      chain: "monad",
+      startBlock: monad.startBlock,
+      interval: BLOCK_INTERVALS.FIVE_MINUTES,
+    },
+    MonadChainlinkUsdtPriceFeed: {
+      chain: "monad",
+      startBlock: monad.startBlock,
+      interval: BLOCK_INTERVALS.FIVE_MINUTES,
+    },
     FxhWethPrice: {
       chain: "base",
       startBlock: 36178538,

@@ -1,6 +1,6 @@
 import { ponder } from "ponder:registry";
 import { ChainlinkOracleABI } from "@app/abis/ChainlinkOracleABI";
-import { ethPrice, zoraUsdcPrice, fxhWethPrice, noiceWethPrice, monadUsdcPrice } from "ponder.schema";
+import { ethPrice, zoraUsdcPrice, fxhWethPrice, noiceWethPrice, monadUsdcPrice, usdcPrice, usdtPrice } from "ponder.schema";
 import { UniswapV3PoolABI } from "@app/abis/v3-abis/UniswapV3PoolABI";
 import { PriceService } from "@app/core";
 import { chainConfigs } from "@app/config";
@@ -265,3 +265,243 @@ ponder.on("MonadUsdcPrice:block", async ({ event, context }) => {
     })
     .onConflictDoNothing();
 });
+
+ponder.on(
+  "BaseChainlinkUsdcPriceFeed:block",
+  async ({ event, context }) => {
+    const { db, client, chain } = context;
+    const { timestamp } = event.block;
+    const latestAnswer = await client.readContract({
+      abi: ChainlinkOracleABI,
+      address: chainConfigs["base"].addresses.shared.chainlinkUsdcOracle,
+      functionName: "latestAnswer",
+    });
+    const price = latestAnswer / parseUnits("1", 10);
+    const roundedTimestamp = BigInt(Math.floor(Number(timestamp) / 300) * 300);
+    const adjustedTimestamp = roundedTimestamp + 300n;
+    await db
+      .insert(usdcPrice)
+      .values({
+        timestamp: adjustedTimestamp,
+        chainId: chain.id,
+        price,
+      })
+      .onConflictDoNothing();
+  }
+);
+
+ponder.on(
+  "BaseChainlinkUsdtPriceFeed:block",
+  async ({ event, context }) => {
+    const { db, client, chain } = context;
+    const { timestamp } = event.block;
+    const latestAnswer = await client.readContract({
+      abi: ChainlinkOracleABI,
+      address: chainConfigs["base"].addresses.shared.chainlinkUsdtOracle,
+      functionName: "latestAnswer",
+    });
+    const price = latestAnswer / parseUnits("1", 10);
+    const roundedTimestamp = BigInt(Math.floor(Number(timestamp) / 300) * 300);
+    const adjustedTimestamp = roundedTimestamp + 300n;
+    await db
+      .insert(usdtPrice)
+      .values({
+        timestamp: adjustedTimestamp,
+        chainId: chain.id,
+        price,
+      })
+      .onConflictDoNothing();
+  }
+);
+
+ponder.on(
+  "BaseSepoliaChainlinkUsdcPriceFeed:block",
+  async ({ event, context }) => {
+    const { db, client, chain } = context;
+    const { timestamp } = event.block;
+    const latestAnswer = await client.readContract({
+      abi: ChainlinkOracleABI,
+      address: chainConfigs["baseSepolia"].addresses.shared.chainlinkUsdcOracle,
+      functionName: "latestAnswer",
+    });
+    const price = latestAnswer / parseUnits("1", 10);
+    const roundedTimestamp = BigInt(Math.floor(Number(timestamp) / 300) * 300);
+    const adjustedTimestamp = roundedTimestamp + 300n;
+    await db
+      .insert(usdcPrice)
+      .values({
+        timestamp: adjustedTimestamp,
+        chainId: chain.id,
+        price,
+      })
+      .onConflictDoNothing();
+  }
+);
+
+ponder.on(
+  "BaseSepoliaChainlinkUsdtPriceFeed:block",
+  async ({ event, context }) => {
+    const { db, client, chain } = context;
+    const { timestamp } = event.block;
+    const latestAnswer = await client.readContract({
+      abi: ChainlinkOracleABI,
+      address: chainConfigs["baseSepolia"].addresses.shared.chainlinkUsdtOracle,
+      functionName: "latestAnswer",
+    });
+    const price = latestAnswer / parseUnits("1", 10);
+    const roundedTimestamp = BigInt(Math.floor(Number(timestamp) / 300) * 300);
+    const adjustedTimestamp = roundedTimestamp + 300n;
+    await db
+      .insert(usdtPrice)
+      .values({
+        timestamp: adjustedTimestamp,
+        chainId: chain.id,
+        price,
+      })
+      .onConflictDoNothing();
+  }
+);
+
+ponder.on(
+  "InkChainlinkUsdcPriceFeed:block",
+  async ({ event, context }) => {
+    const { db, client, chain } = context;
+    const { timestamp } = event.block;
+    const latestAnswer = await client.readContract({
+      abi: ChainlinkOracleABI,
+      address: chainConfigs["ink"].addresses.shared.chainlinkUsdcOracle,
+      functionName: "latestAnswer",
+    });
+    const price = latestAnswer / parseUnits("1", 10);
+    const roundedTimestamp = BigInt(Math.floor(Number(timestamp) / 300) * 300);
+    const adjustedTimestamp = roundedTimestamp + 300n;
+    await db
+      .insert(usdcPrice)
+      .values({
+        timestamp: adjustedTimestamp,
+        chainId: chain.id,
+        price,
+      })
+      .onConflictDoNothing();
+  }
+);
+
+ponder.on(
+  "InkChainlinkUsdtPriceFeed:block",
+  async ({ event, context }) => {
+    const { db, client, chain } = context;
+    const { timestamp } = event.block;
+    const latestAnswer = await client.readContract({
+      abi: ChainlinkOracleABI,
+      address: chainConfigs["ink"].addresses.shared.chainlinkUsdtOracle,
+      functionName: "latestAnswer",
+    });
+    const price = latestAnswer / parseUnits("1", 10);
+    const roundedTimestamp = BigInt(Math.floor(Number(timestamp) / 300) * 300);
+    const adjustedTimestamp = roundedTimestamp + 300n;
+    await db
+      .insert(usdtPrice)
+      .values({
+        timestamp: adjustedTimestamp,
+        chainId: chain.id,
+        price,
+      })
+      .onConflictDoNothing();
+  }
+);
+
+ponder.on(
+  "UnichainChainlinkUsdcPriceFeed:block",
+  async ({ event, context }) => {
+    const { db, client, chain } = context;
+    const { timestamp } = event.block;
+    const latestAnswer = await client.readContract({
+      abi: ChainlinkOracleABI,
+      address: chainConfigs["unichain"].addresses.shared.chainlinkUsdcOracle,
+      functionName: "latestAnswer",
+    });
+    const price = latestAnswer / parseUnits("1", 10);
+    const roundedTimestamp = BigInt(Math.floor(Number(timestamp) / 300) * 300);
+    const adjustedTimestamp = roundedTimestamp + 300n;
+    await db
+      .insert(usdcPrice)
+      .values({
+        timestamp: adjustedTimestamp,
+        chainId: chain.id,
+        price,
+      })
+      .onConflictDoNothing();
+  }
+);
+
+ponder.on(
+  "UnichainChainlinkUsdtPriceFeed:block",
+  async ({ event, context }) => {
+    const { db, client, chain } = context;
+    const { timestamp } = event.block;
+    const latestAnswer = await client.readContract({
+      abi: ChainlinkOracleABI,
+      address: chainConfigs["unichain"].addresses.shared.chainlinkUsdtOracle,
+      functionName: "latestAnswer",
+    });
+    const price = latestAnswer / parseUnits("1", 10);
+    const roundedTimestamp = BigInt(Math.floor(Number(timestamp) / 300) * 300);
+    const adjustedTimestamp = roundedTimestamp + 300n;
+    await db
+      .insert(usdtPrice)
+      .values({
+        timestamp: adjustedTimestamp,
+        chainId: chain.id,
+        price,
+      })
+      .onConflictDoNothing();
+  }
+);
+
+ponder.on(
+  "MonadChainlinkUsdcPriceFeed:block",
+  async ({ event, context }) => {
+    const { db, client, chain } = context;
+    const { timestamp } = event.block;
+    const latestAnswer = await client.readContract({
+      abi: ChainlinkOracleABI,
+      address: chainConfigs["monad"].addresses.shared.chainlinkUsdcOracle,
+      functionName: "latestAnswer",
+    });
+    const price = latestAnswer / parseUnits("1", 10);
+    const roundedTimestamp = BigInt(Math.floor(Number(timestamp) / 300) * 300);
+    const adjustedTimestamp = roundedTimestamp + 300n;
+    await db
+      .insert(usdcPrice)
+      .values({
+        timestamp: adjustedTimestamp,
+        chainId: chain.id,
+        price,
+      })
+      .onConflictDoNothing();
+  }
+);
+
+ponder.on(
+  "MonadChainlinkUsdtPriceFeed:block",
+  async ({ event, context }) => {
+    const { db, client, chain } = context;
+    const { timestamp } = event.block;
+    const latestAnswer = await client.readContract({
+      abi: ChainlinkOracleABI,
+      address: chainConfigs["monad"].addresses.shared.chainlinkUsdtOracle,
+      functionName: "latestAnswer",
+    });
+    const price = latestAnswer / parseUnits("1", 10);
+    const roundedTimestamp = BigInt(Math.floor(Number(timestamp) / 300) * 300);
+    const adjustedTimestamp = roundedTimestamp + 300n;
+    await db
+      .insert(usdtPrice)
+      .values({
+        timestamp: adjustedTimestamp,
+        chainId: chain.id,
+        price,
+      })
+      .onConflictDoNothing();
+  }
+);

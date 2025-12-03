@@ -50,6 +50,8 @@ export const monadConfig: ChainConfig = {
       weth: "0xee8c0e9f1bffb4eb878d8f15f368a02a35481242" as Address,
       chainlinkEthOracle:
         "0x1B1414782B859871781bA3E4B0979b9ca57A0A04" as Address,
+      chainlinkUsdcOracle: "0xf5f15f188abcb0d165d1edb7f37f7d6fa2fcebec" as Address,
+      chainlinkUsdtOracle: "0x1a1be4c184923a6bff8c27cfdf6ac8bde4de00fc" as Address,
       fxHash: {
         fxhAddress: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
         fxhWethPool: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
@@ -72,6 +74,7 @@ export const monadConfig: ChainConfig = {
     },
     stables: {
       usdc: "0x754704Bc059F8C67012fEd69BC8A327a5aafb603" as Address,
+      usdt: "0xe7cd86e13AC4309349F30B3435a9d337750fC82D" as Address
     },
     oracle: ORACLE_ADDRESSES,
   },
