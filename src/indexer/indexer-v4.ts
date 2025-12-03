@@ -2,18 +2,19 @@ import { ponder } from "ponder:registry";
 import { getPoolId, getV4PoolData } from "@app/utils/v4-utils";
 import { insertTokenIfNotExists } from "./shared/entities/token";
 import {
-  computeMarketCap,
   fetchEthPrice,
   fetchFxhPrice,
   fetchNoicePrice,
+  fetchUsdcPrice,
+  fetchUsdtPrice
 } from "./shared/oracle";
 import { insertPoolIfNotExistsV4, updatePool } from "./shared/entities/pool";
 import { insertAssetIfNotExists, updateAsset } from "./shared/entities/asset";
-import { computeDollarLiquidity } from "@app/utils/computeDollarLiquidity";
+
 import { insertV4ConfigIfNotExists } from "./shared/entities/v4Config";
 import { getReservesV4 } from "@app/utils/v4-utils/getV4PoolData";
 import { CHAINLINK_ETH_DECIMALS } from "@app/utils/constants";
-import { SwapService, SwapOrchestrator, PriceService } from "@app/core";
+import { SwapService, SwapOrchestrator, PriceService, MarketDataService } from "@app/core";
 import { TickMath } from "@uniswap/v3-sdk";
 import { computeGraduationPercentage } from "@app/utils/v4-utils";
 import { updateFifteenMinuteBucketUsd } from "@app/utils/time-buckets";
@@ -22,7 +23,6 @@ import { chainConfigs } from "@app/config/chains";
 import { insertMulticurvePoolV4Optimized } from "./shared/entities/multicurve/pool";
 import { getAmount1Delta } from "@app/utils/v3-utils/computeGraduationThreshold";
 import { getAmount0Delta } from "@app/utils/v3-utils/computeGraduationThreshold";
-import { computeV3Price } from "@app/utils/v3-utils/computeV3Price";
 import { pool, token } from "ponder:schema";
 import { handleOptimizedSwap } from "./shared/swap-optimizer";
 import { StateViewABI } from "@app/abis";
@@ -79,9 +79,9 @@ ponder.on("UniswapV4Initializer:Create", async ({ event, context }) => {
   ]);
 
   const price = poolEntity.price;
-  const marketCapUsd = computeMarketCap({
+  const marketCapUsd = MarketDataService.calculateMarketCap({
     price,
-    ethPrice,
+    quotePriceUSD: ethPrice,
     totalSupply,
   });
 
@@ -163,20 +163,20 @@ ponder.on("UniswapV4Pool:Swap", async ({ event, context }) => {
 
   const { token0Reserve, token1Reserve } = reserves;
 
-  const dollarLiquidity = computeDollarLiquidity({
+  const dollarLiquidity = MarketDataService.calculateLiquidity({
     assetBalance: isToken0 ? token0Reserve : token1Reserve,
     quoteBalance: isToken0 ? token1Reserve : token0Reserve,
     price,
-    ethPrice,
+    quotePriceUSD: ethPrice,
   });
 
   let marketCapUsd;
   if (price == 340256786698763678858396856460488307819979090561464864775n) {
     marketCapUsd = marketCapUsdPrev;
   } else {
-    marketCapUsd = computeMarketCap({
+    marketCapUsd = MarketDataService.calculateMarketCap({
       price,
-      ethPrice,
+      quotePriceUSD: ethPrice,
       totalSupply,
     });
   }
@@ -340,8 +340,23 @@ ponder.on(
       quoteToken != zeroAddress &&
       quoteToken ===
         chainConfigs[context.chain.name].addresses.shared.noice.noiceAddress.toLowerCase();
-
-    var ethPrice, fxhWethPrice, noiceWethPrice;
+    let isQuoteUSDC, isQuoteUSDT;
+    if (chainConfigs[context.chain.name].addresses.stables) {
+      if (chainConfigs[context.chain.name].addresses.stables?.usdc) {
+        isQuoteUSDC =
+          quoteToken != zeroAddress &&
+          quoteToken ===
+          chainConfigs[context.chain.name].addresses.stables?.usdc?.toLowerCase();
+      }
+      if (chainConfigs[context.chain.name].addresses.stables?.usdt) {
+        isQuoteUSDT =
+          quoteToken != zeroAddress &&
+          quoteToken ===
+          chainConfigs[context.chain.name].addresses.stables?.usdt?.toLowerCase();
+      }
+    }
+    
+    var ethPrice, fxhWethPrice, noiceWethPrice, usdcPrice, usdtPrice;
     if (isQuoteFxh) {
       [ethPrice, fxhWethPrice] = await Promise.all([
         fetchEthPrice(timestamp, context),
@@ -351,6 +366,16 @@ ponder.on(
       [ethPrice, noiceWethPrice] = await Promise.all([
         fetchEthPrice(timestamp, context),
         fetchNoicePrice(timestamp, context),
+      ]);
+    } else if (isQuoteUSDC) {
+      [ethPrice, usdcPrice] = await Promise.all([
+        fetchEthPrice(timestamp, context),
+        fetchUsdcPrice(timestamp, context)
+      ]);
+    } else if (isQuoteUSDT) {
+      [ethPrice, usdtPrice] = await Promise.all([
+        fetchEthPrice(timestamp, context),
+        fetchUsdtPrice(timestamp, context)
       ]);
     } else {
       ethPrice = await fetchEthPrice(timestamp, context);
@@ -398,38 +423,46 @@ ponder.on(
     var price;
     if (isQuoteFxh) {
       fxhUsdPrice = fxhWethPrice! * ethPrice / 10n ** 8n;
-      price = computeV3Price({
+      price = PriceService.computePriceFromSqrtPriceX96({
         sqrtPriceX96: sqrtPrice,
         isToken0: poolEntity.isToken0,
         decimals: 18,
       });
     } else if (isQuoteNoice) {
       noiceUsdPrice = noiceWethPrice! * ethPrice / 10n ** 8n;
-      price = computeV3Price({
+      price = PriceService.computePriceFromSqrtPriceX96({
         sqrtPriceX96: sqrtPrice,
         isToken0: poolEntity.isToken0,
         decimals: 18,
       });
     } else {
-      price = computeV3Price({
+      price = PriceService.computePriceFromSqrtPriceX96({
         sqrtPriceX96: sqrtPrice,
         isToken0: poolEntity.isToken0,
         decimals: 18,
       });
     }
-    const marketCapUsd = computeMarketCap({
+    const marketCapUsd = MarketDataService.calculateMarketCap({
       price,
-      ethPrice: isQuoteFxh ? fxhUsdPrice! : isQuoteNoice ? noiceUsdPrice! : ethPrice,
+      quotePriceUSD: isQuoteFxh ? fxhUsdPrice! 
+        : isQuoteNoice ? noiceUsdPrice! 
+        : isQuoteUSDC ? usdcPrice!
+        : isQuoteUSDT ? usdtPrice!
+        : ethPrice,
       totalSupply: baseTokenEntity!.totalSupply,
-      decimals: poolEntity.isQuoteEth ? 8 : 18,
+      decimals: poolEntity.isQuoteEth || isQuoteUSDC || isQuoteUSDT ? 8 : 18,
     });
 
-    const dollarLiquidity = computeDollarLiquidity({
+    const dollarLiquidity = MarketDataService.calculateLiquidity({
       assetBalance: poolEntity.isToken0 ? token0Reserve : token1Reserve,
       quoteBalance: poolEntity.isToken0 ? token1Reserve : token0Reserve,
       price,
-      ethPrice: isQuoteFxh ? fxhUsdPrice! : isQuoteNoice ? noiceUsdPrice! : ethPrice,
-      decimals: poolEntity.isQuoteEth ? 8 : 18,
+      quotePriceUSD: isQuoteFxh ? fxhUsdPrice! 
+        : isQuoteNoice ? noiceUsdPrice! 
+        : isQuoteUSDC ? usdcPrice!
+        : isQuoteUSDT ? usdtPrice!
+        : ethPrice,
+      decimals: poolEntity.isQuoteEth || isQuoteUSDC || isQuoteUSDT ? 8 : 18,
     });
 
 
@@ -479,7 +512,22 @@ ponder.on(
       poolEntity!.quoteToken != zeroAddress &&
       poolEntity!.quoteToken ===
         chainConfigs[context.chain.name].addresses.shared.noice.noiceAddress.toLowerCase();
-
+    let isQuoteUSDC, isQuoteUSDT;
+    if (chainConfigs[context.chain.name].addresses.stables) {
+      if (chainConfigs[context.chain.name].addresses.stables?.usdc) {
+        isQuoteUSDC =
+          poolEntity!.quoteToken != zeroAddress &&
+          poolEntity!.quoteToken ===
+          chainConfigs[context.chain.name].addresses.stables?.usdc?.toLowerCase();
+      }
+      if (chainConfigs[context.chain.name].addresses.stables?.usdt) {
+        isQuoteUSDT =
+          poolEntity!.quoteToken != zeroAddress &&
+          poolEntity!.quoteToken ===
+          chainConfigs[context.chain.name].addresses.stables?.usdt?.toLowerCase();
+      }
+    }
+    
     const sqrtPriceX96 = slot0?.[0] ?? 0n;
 
     const isCoinBuy = poolEntity.isToken0
@@ -504,6 +552,9 @@ ponder.on(
       false,
       isQuoteFxh,
       isQuoteNoice,
+      false,
+      isQuoteUSDC,
+      isQuoteUSDT
     );
   },
 );

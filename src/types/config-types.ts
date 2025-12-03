@@ -42,7 +42,8 @@ export interface ChainAddresses {
 }
 
 export interface StablesAddresses {
-  usdc: Address;
+  usdc?: Address;
+  usdt?: Address;
 }
 
 export interface ZoraAddresses {
@@ -63,6 +64,8 @@ export interface SharedAddresses {
   governanceFactory: Address;
   weth: Address;
   chainlinkEthOracle: Address;
+  chainlinkUsdcOracle: Address;
+  chainlinkUsdtOracle: Address;
   fxHash: FxHashAddresses;
   noice: NoiceAddresses;
   monad: MonadAddresses;

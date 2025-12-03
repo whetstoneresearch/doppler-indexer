@@ -1,6 +1,5 @@
 import { PoolKey } from "@app/types";
-import { computeDollarLiquidity } from "@app/utils/computeDollarLiquidity";
-import { computeV3Price } from "@app/utils/v3-utils";
+import { MarketDataService, PriceService } from "@app/core";
 import { Context } from "ponder:registry";
 import { pool } from "ponder:schema";
 import { Address, zeroAddress } from "viem";
@@ -12,7 +11,7 @@ import {
   getAmount0Delta, 
   getAmount1Delta 
 } from "@app/utils/v3-utils/computeGraduationThreshold";
-import { computeMarketCap } from "../../oracle";
+
 import { insertAssetIfNotExists } from "../asset";
 
 /**
@@ -129,24 +128,24 @@ export const insertZoraPoolV4Optimized = async ({
     }
   }
 
-  const price = computeV3Price({
+  const price = PriceService.computePriceFromSqrtPriceX96({
     sqrtPriceX96,
     isToken0,
     decimals: 18,
   });
 
-  const marketCapUsd = computeMarketCap({
+  const marketCapUsd = MarketDataService.calculateMarketCap({
     price,
-    ethPrice,
+    quotePriceUSD: ethPrice,
     totalSupply,
     decimals: isQuoteEth ? 8 : 18,
   });
 
-  const dollarLiquidity = computeDollarLiquidity({
+  const dollarLiquidity = MarketDataService.calculateLiquidity({
     assetBalance: isToken0 ? token0Reserve : token1Reserve,
     quoteBalance: isToken0 ? token1Reserve : token0Reserve,
     price,
-    ethPrice,
+    quotePriceUSD: ethPrice,
     decimals: isQuoteEth ? 8 : 18,
   });
 
