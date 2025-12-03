@@ -1,4 +1,4 @@
-import { ethPrice, zoraUsdcPrice, fxhWethPrice, noiceWethPrice, monadUsdcPrice } from "ponder.schema";
+import { ethPrice, zoraUsdcPrice, fxhWethPrice, noiceWethPrice, monadUsdcPrice, usdcPrice, usdtPrice } from "ponder.schema";
 import { Context } from "ponder:registry";
 import { MarketDataService } from "@app/core";
 import { chainConfigs } from "@app/config";
@@ -135,7 +135,7 @@ export const fetchUsdcPrice = async (
   let i = 0;
   while (!usdcPriceData) {
     i++;
-    usdcPriceData = await db.find(ethPrice, {
+    usdcPriceData = await db.find(usdcPrice, {
       timestamp: roundedTimestamp,
       chainId: chain.id,
     });
@@ -159,7 +159,7 @@ export const fetchUsdtPrice = async (
   let i = 0;
   while (!usdtPriceData) {
     i++;
-    usdtPriceData = await db.find(ethPrice, {
+    usdtPriceData = await db.find(usdtPrice, {
       timestamp: roundedTimestamp,
       chainId: chain.id,
     });
