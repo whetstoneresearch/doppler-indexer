@@ -123,3 +123,51 @@ export const fetchMonadPrice = async (
 
   return monadPriceData.price;
 };
+
+export const fetchUsdcPrice = async (
+  timestamp: bigint,
+  context: Context
+): Promise<bigint> => {
+  const { db, chain } = context;
+  let roundedTimestamp = BigInt(Math.floor(Number(timestamp) / 300) * 300);
+
+  let usdcPriceData;
+  let i = 0;
+  while (!usdcPriceData) {
+    i++;
+    usdcPriceData = await db.find(ethPrice, {
+      timestamp: roundedTimestamp,
+      chainId: chain.id,
+    });
+
+    if (!usdcPriceData) {
+      roundedTimestamp -= 300n;
+    }
+  }
+
+  return usdcPriceData.price;
+};
+
+export const fetchUsdtPrice = async (
+  timestamp: bigint,
+  context: Context
+): Promise<bigint> => {
+  const { db, chain } = context;
+  let roundedTimestamp = BigInt(Math.floor(Number(timestamp) / 300) * 300);
+
+  let usdtPriceData;
+  let i = 0;
+  while (!usdtPriceData) {
+    i++;
+    usdtPriceData = await db.find(ethPrice, {
+      timestamp: roundedTimestamp,
+      chainId: chain.id,
+    });
+
+    if (!usdtPriceData) {
+      roundedTimestamp -= 300n;
+    }
+  }
+
+  return usdtPriceData.price;
+};
