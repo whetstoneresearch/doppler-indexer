@@ -7,6 +7,8 @@ import {
   fetchFxhPrice,
   fetchNoicePrice,
   fetchMonadPrice,
+  fetchUsdcPrice,
+  fetchUsdtPrice
 } from "./shared/oracle";
 import { insertPoolIfNotExistsV4, updatePool } from "./shared/entities/pool";
 import { insertAssetIfNotExists } from "./shared/entities/asset";
@@ -113,17 +115,32 @@ ponder.on(
     const isQuoteFxh =
       quoteToken != zeroAddress &&
       quoteToken ===
-        chainConfigs[context.chain.name].addresses.shared.fxHash.fxhAddress.toLowerCase();
+      chainConfigs[context.chain.name].addresses.shared.fxHash.fxhAddress.toLowerCase();
     const isQuoteNoice =
       quoteToken != zeroAddress &&
       quoteToken ===
-        chainConfigs[context.chain.name].addresses.shared.noice.noiceAddress.toLowerCase();
+      chainConfigs[context.chain.name].addresses.shared.noice.noiceAddress.toLowerCase();
     const isQuoteMon =
       quoteToken != zeroAddress &&
       quoteToken ===
-        chainConfigs[context.chain.name].addresses.shared.monad.monAddress.toLowerCase();
+      chainConfigs[context.chain.name].addresses.shared.monad.monAddress.toLowerCase();
+    let isQuoteUSDC, isQuoteUSDT;
+    if (chainConfigs[context.chain.name].addresses.stables) {
+      if (chainConfigs[context.chain.name].addresses.stables?.usdt) {
+        isQuoteUSDC =
+          quoteToken != zeroAddress &&
+          quoteToken ===
+          chainConfigs[context.chain.name].addresses.stables?.usdc?.toLowerCase();
+      }
+      if (chainConfigs[context.chain.name].addresses.stables?.usdt) {
+        isQuoteUSDT =
+          quoteToken != zeroAddress &&
+          quoteToken ===
+          chainConfigs[context.chain.name].addresses.stables?.usdt?.toLowerCase();
+      }
+    }
     
-    var ethPrice, fxhWethPrice, noiceWethPrice, monUsdcPrice;
+    var ethPrice, fxhWethPrice, noiceWethPrice, monUsdcPrice, usdcPrice, usdtPrice;
     if (isQuoteFxh) {
       [ethPrice, fxhWethPrice] = await Promise.all([
         fetchEthPrice(timestamp, context),
@@ -138,6 +155,16 @@ ponder.on(
       [ethPrice, monUsdcPrice] = await Promise.all([
         fetchEthPrice(timestamp, context),
         fetchMonadPrice(timestamp, context),
+      ]);
+    } else if (isQuoteUSDC) {
+      [ethPrice, usdcPrice] = await Promise.all([
+        fetchEthPrice(timestamp, context),
+        fetchUsdcPrice(timestamp, context)
+      ]);
+    } else if (isQuoteUSDT) {
+      [ethPrice, usdtPrice] = await Promise.all([
+        fetchEthPrice(timestamp, context),
+        fetchUsdtPrice(timestamp, context)
       ]);
     } else {
       ethPrice = await fetchEthPrice(timestamp, context);
@@ -209,6 +236,8 @@ ponder.on(
       quotePriceUSD: isQuoteFxh ? fxhUsdPrice!
         : isQuoteNoice ? noiceUsdPrice!
         : isQuoteMon ? monUsdcPrice!
+        : isQuoteUSDC ? usdcPrice!
+        : isQuoteUSDT ? usdtPrice!
         : ethPrice,
       totalSupply: baseTokenEntity!.totalSupply,
       decimals: poolEntity.isQuoteEth ? 8 : 18,
@@ -221,6 +250,8 @@ ponder.on(
       quotePriceUSD: isQuoteFxh ? fxhUsdPrice!
         : isQuoteNoice ? noiceUsdPrice!
         : isQuoteMon ? monUsdcPrice!
+        : isQuoteUSDC ? usdcPrice!
+        : isQuoteUSDT ? usdtPrice!
         : ethPrice,
       decimals: poolEntity.isQuoteEth ? 8 : 18,
     });
@@ -287,7 +318,22 @@ ponder.on(
       poolEntity!.quoteToken != zeroAddress &&
       poolEntity!.quoteToken ===
         chainConfigs[context.chain.name].addresses.shared.monad.monAddress.toLowerCase();
-
+    let isQuoteUSDC, isQuoteUSDT;
+    if (chainConfigs[context.chain.name].addresses.stables) {
+      if (chainConfigs[context.chain.name].addresses.stables?.usdc) {
+        isQuoteUSDC =
+          poolEntity!.quoteToken != zeroAddress &&
+          poolEntity!.quoteToken ===
+          chainConfigs[context.chain.name].addresses.stables?.usdc?.toLowerCase();
+      }
+      if (chainConfigs[context.chain.name].addresses.stables?.usdt) {
+        isQuoteUSDT =
+          poolEntity!.quoteToken != zeroAddress &&
+          poolEntity!.quoteToken ===
+          chainConfigs[context.chain.name].addresses.stables?.usdt?.toLowerCase();
+      }
+    }
+    
     const sqrtPriceX96 = slot0?.[0] ?? 0n;
 
     const isCoinBuy = poolEntity.isToken0
@@ -312,7 +358,9 @@ ponder.on(
       false,
       isQuoteFxh,
       isQuoteNoice,
-      isQuoteMon
+      isQuoteMon,
+      isQuoteUSDC,
+      isQuoteUSDT
     );
   },
 );

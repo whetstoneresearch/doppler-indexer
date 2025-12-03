@@ -10,6 +10,8 @@ import {
   fetchFxhPrice,
   fetchNoicePrice,
   fetchMonadPrice,
+  fetchUsdcPrice,
+  fetchUsdtPrice
 } from "./oracle";
 import { updateAsset, updatePool } from "./entities";
 import { chainConfigs } from "@app/config";
@@ -56,6 +58,8 @@ export async function getPoolUsdPrice(
   fxhPrice: bigint,
   noicePrice: bigint,
   monadPrice: bigint,
+  usdcPrice: bigint,
+  usdtPrice: bigint,
   ethPrice: bigint,
   context: Context
 ): Promise<bigint | null> {
@@ -71,6 +75,18 @@ export async function getPoolUsdPrice(
     chainConfigs[chain.name].addresses.shared.noice.noiceAddress.toLowerCase();
   const monToken =
     chainConfigs[chain.name].addresses.shared.monad.monAddress.toLowerCase();
+  let usdcToken, usdtToken;
+  if (chainConfigs[context.chain.name].addresses.stables) {
+    if (chainConfigs[context.chain.name].addresses.stables?.usdc) {
+      usdcToken =
+        chainConfigs[chain.name].addresses.stables?.usdc?.toLowerCase();
+    }
+    if (chainConfigs[context.chain.name].addresses.stables?.usdt) {
+      usdtToken =
+        chainConfigs[chain.name].addresses.stables?.usdt?.toLowerCase();
+    }
+  }
+  
   const zeroAddressLower = zeroAddress;
 
   const isQuoteZora = quoteToken === zoraToken;
@@ -81,6 +97,8 @@ export async function getPoolUsdPrice(
   const isQuoteFxh = quoteToken === fxhToken;
   const isQuoteNoice = quoteToken === noiceToken;
   const isQuoteMon = quoteToken === monToken;
+  const isQuoteUsdc = quoteToken === usdcToken;
+  const isQuoteUsdt = quoteToken === usdtToken;
 
   if (isQuoteZora) {
     return zoraPrice;
@@ -96,6 +114,14 @@ export async function getPoolUsdPrice(
   
   if (isQuoteMon) {
     return monadPrice;
+  }
+  
+  if (isQuoteUsdc && usdcPrice) {
+    return usdcPrice;
+  }
+  
+  if (isQuoteUsdt && usdtPrice) {
+    return usdtPrice;
   }
 
   if (isQuoteEth) {
@@ -142,7 +168,7 @@ export function processSwapCalculations(
   poolEntity: typeof pool.$inferSelect,
   params: SwapHandlerParams,
   usdPrice: bigint,
-  isQuoteEth: boolean
+  quoteDecimals: number = 18
 ): ProcessedSwapData {
   const { amount0, amount1, sqrtPriceX96, isCoinBuy } = params;
   const { isToken0, reserves0, reserves1, fee } = poolEntity;
@@ -193,11 +219,11 @@ export function processSwapCalculations(
     quoteBalance: nextReservesQuote,
     price,
     quotePriceUSD: usdPrice,
-    decimals: isQuoteEth ? 8 : 18,
+    decimals: quoteDecimals,
   });
   
   const swapValueUsd = ((reserveQuoteDelta < 0n ? -reserveQuoteDelta : reserveQuoteDelta) * 
-    usdPrice) / (isQuoteEth ? CHAINLINK_ETH_DECIMALS : WAD);
+    usdPrice) / (BigInt(10) ** BigInt(quoteDecimals));
   
   return {
     price,
@@ -223,12 +249,14 @@ export async function handleOptimizedSwap(
   isFxh?: boolean,
   isNoice?: boolean,
   isMon?: boolean,
+  isUSDC?: boolean,
+  isUSDT?: boolean
 ): Promise<void> {
   const { context, timestamp } = params;
   const { db, chain } = context;
   const poolAddress = params.poolAddress;
 
-  let zoraPrice, ethPrice, fxhWethPrice, noiceWethPrice, monUsdcPrice, poolEntity;
+  let zoraPrice, ethPrice, fxhWethPrice, noiceWethPrice, monUsdcPrice, usdcPrice, usdtPrice, poolEntity;
   if (isZora) {
     [zoraPrice, ethPrice, poolEntity] = await Promise.all([
       fetchZoraPrice(timestamp, context),
@@ -265,6 +293,24 @@ export async function handleOptimizedSwap(
         chainId: chain.id,
       })
     ])
+  } else if (isUSDC) { 
+    [usdcPrice, ethPrice, poolEntity] = await Promise.all([
+      fetchUsdcPrice(timestamp, context),
+      fetchEthPrice(timestamp, context),
+      db.find(pool, {
+        address: poolAddress,
+        chainId: chain.id,
+      })
+    ])
+  } else if (isUSDT) { 
+    [usdtPrice, ethPrice, poolEntity] = await Promise.all([
+      fetchUsdtPrice(timestamp, context),
+      fetchEthPrice(timestamp, context),
+      db.find(pool, {
+        address: poolAddress,
+        chainId: chain.id,
+      })
+    ])
   } else {
     [ethPrice, poolEntity] = await Promise.all([
       fetchEthPrice(timestamp, context),
@@ -287,6 +333,8 @@ export async function handleOptimizedSwap(
     fxhWethPrice ?? 1n,
     noiceWethPrice ?? 1n,
     monUsdcPrice ?? 1n,
+    usdcPrice ?? 1n,
+    usdtPrice ?? 1n,
     ethPrice,
     context,
   );
@@ -306,7 +354,7 @@ export async function handleOptimizedSwap(
     poolEntity,
     params,
     resolvedUsdPrice!,
-    isQuoteEth
+    isQuoteEth || isUSDC || isUSDT ? 8 : 18
   );
 
   const tokenEntity = await db.find(token, {
@@ -323,7 +371,7 @@ export async function handleOptimizedSwap(
     price: swapData.price,
     quotePriceUSD: resolvedUsdPrice,
     totalSupply: tokenEntity.totalSupply,
-    decimals: isQuoteEth ? 8 : 18,
+    decimals: isQuoteEth || isUSDC || isUSDT ? 8 : 18,
   });
 
 
