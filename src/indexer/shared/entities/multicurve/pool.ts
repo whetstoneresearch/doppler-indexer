@@ -128,7 +128,7 @@ export const insertMulticurvePoolV4Optimized = async ({
     quoteToken === chainConfigs[chain.name].addresses.shared.weth;
   let isQuoteUSDC, isQuoteUSDT;
   if (chainConfigs[context.chain.name].addresses.stables) {
-    if (chainConfigs[context.chain.name].addresses.stables?.usdt) {
+    if (chainConfigs[context.chain.name].addresses.stables?.usdc) {
       isQuoteUSDC =
         quoteToken != zeroAddress &&
         quoteToken ===

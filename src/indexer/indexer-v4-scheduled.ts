@@ -126,7 +126,7 @@ ponder.on(
       chainConfigs[context.chain.name].addresses.shared.monad.monAddress.toLowerCase();
     let isQuoteUSDC, isQuoteUSDT;
     if (chainConfigs[context.chain.name].addresses.stables) {
-      if (chainConfigs[context.chain.name].addresses.stables?.usdt) {
+      if (chainConfigs[context.chain.name].addresses.stables?.usdc) {
         isQuoteUSDC =
           quoteToken != zeroAddress &&
           quoteToken ===
@@ -240,7 +240,7 @@ ponder.on(
         : isQuoteUSDT ? usdtPrice!
         : ethPrice,
       totalSupply: baseTokenEntity!.totalSupply,
-      decimals: poolEntity.isQuoteEth ? 8 : 18,
+      decimals: poolEntity.isQuoteEth || isQuoteUSDC || isQuoteUSDT ? 8 : 18,
     });
 
     const dollarLiquidity = MarketDataService.calculateLiquidity({
@@ -253,7 +253,7 @@ ponder.on(
         : isQuoteUSDC ? usdcPrice!
         : isQuoteUSDT ? usdtPrice!
         : ethPrice,
-      decimals: poolEntity.isQuoteEth ? 8 : 18,
+      decimals: poolEntity.isQuoteEth || isQuoteUSDC || isQuoteUSDT ? 8 : 18,
     });
 
     let newGraduationTick = poolEntity.graduationTick;

@@ -342,7 +342,7 @@ ponder.on(
         chainConfigs[context.chain.name].addresses.shared.noice.noiceAddress.toLowerCase();
     let isQuoteUSDC, isQuoteUSDT;
     if (chainConfigs[context.chain.name].addresses.stables) {
-      if (chainConfigs[context.chain.name].addresses.stables?.usdt) {
+      if (chainConfigs[context.chain.name].addresses.stables?.usdc) {
         isQuoteUSDC =
           quoteToken != zeroAddress &&
           quoteToken ===
@@ -444,7 +444,11 @@ ponder.on(
     }
     const marketCapUsd = MarketDataService.calculateMarketCap({
       price,
-      quotePriceUSD: isQuoteFxh ? fxhUsdPrice! : isQuoteNoice ? noiceUsdPrice! : ethPrice,
+      quotePriceUSD: isQuoteFxh ? fxhUsdPrice! 
+        : isQuoteNoice ? noiceUsdPrice! 
+        : isQuoteUSDC ? usdcPrice!
+        : isQuoteUSDT ? usdtPrice!
+        : ethPrice,
       totalSupply: baseTokenEntity!.totalSupply,
       decimals: poolEntity.isQuoteEth || isQuoteUSDC || isQuoteUSDT ? 8 : 18,
     });
@@ -453,7 +457,11 @@ ponder.on(
       assetBalance: poolEntity.isToken0 ? token0Reserve : token1Reserve,
       quoteBalance: poolEntity.isToken0 ? token1Reserve : token0Reserve,
       price,
-      quotePriceUSD: isQuoteFxh ? fxhUsdPrice! : isQuoteNoice ? noiceUsdPrice! : ethPrice,
+      quotePriceUSD: isQuoteFxh ? fxhUsdPrice! 
+        : isQuoteNoice ? noiceUsdPrice! 
+        : isQuoteUSDC ? usdcPrice!
+        : isQuoteUSDT ? usdtPrice!
+        : ethPrice,
       decimals: poolEntity.isQuoteEth || isQuoteUSDC || isQuoteUSDT ? 8 : 18,
     });
 
