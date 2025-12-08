@@ -9,7 +9,7 @@ import { batchUpsertUsersAndAssets, batchUpdateHolderCounts } from "./shared/ent
 import { handleOptimizedSwap } from "./shared/swap-optimizer";
 import { StateViewABI } from "@app/abis";
 import { zeroAddress } from "viem";
-import { PriceService } from "@app/core";
+import { computeV3Price } from "@app/utils";
 import { chainConfigs } from "@app/config";
 import { token, pool } from "ponder:schema";
 import { insertZoraPoolV4Optimized } from "./shared/entities/zora/pool";
@@ -66,7 +66,7 @@ import { insertZoraPoolV4Optimized } from "./shared/entities/zora/pool";
 
 //     const { sqrtPrice, isToken0: creatorCoinIsToken0 } = creatorCoinPool;
 
-//     const creatorCoinPrice = PriceService.computePriceFromSqrtPriceX96({
+//     const creatorCoinPrice = computeV3Price({
 //       sqrtPriceX96: sqrtPrice,
 //       isToken0: creatorCoinIsToken0,
 //       decimals: 18,

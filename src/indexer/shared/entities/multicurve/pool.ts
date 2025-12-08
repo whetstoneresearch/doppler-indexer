@@ -1,5 +1,5 @@
 import { PoolKey } from "@app/types";
-import { PriceService } from "@app/core";
+import { computeV3Price } from "@app/utils/v3-utils";
 import { Context } from "ponder:registry";
 import { pool } from "ponder:schema";
 import { Address, parseUnits, zeroAddress } from "viem";
@@ -7,10 +7,9 @@ import { StateViewABI } from "@app/abis";
 import { getPoolId } from "@app/utils/v4-utils/getPoolId";
 import { chainConfigs } from "@app/config";
 import { CHAINLINK_ETH_DECIMALS } from "@app/utils/constants";
-import { fetchEthPrice, fetchFxhPrice, fetchMonadPrice, fetchNoicePrice, fetchUsdcPrice, fetchUsdtPrice } from "../../oracle";
+import { computeMarketCap, fetchEthPrice, fetchFxhPrice, fetchMonadPrice, fetchNoicePrice } from "../../oracle";
 import { UniswapV4MulticurveInitializerABI } from "@app/abis/multicurve-abis/UniswapV4MulticurveInitializerABI";
 import { upsertTokenWithPool } from "../token-optimized";
-import { MarketDataService } from "@app/core";
 
 /**
  * Optimized version with caching and reduced contract calls
@@ -81,10 +80,8 @@ export const insertMulticurvePoolV4Optimized = async ({
     noiceWethPrice = parseUnits("1", 18);
   }
 
-  const [ethPrice, usdcPrice, usdtPrice, baseTokenEntity] = await Promise.all([
+  const [ethPrice, baseTokenEntity] = await Promise.all([
     fetchEthPrice(timestamp, context),
-    fetchUsdcPrice(timestamp, context),
-    fetchUsdtPrice(timestamp, context),
     upsertTokenWithPool({
       tokenAddress: baseToken,
       isDerc20: true,
@@ -126,21 +123,6 @@ export const insertMulticurvePoolV4Optimized = async ({
   const isQuoteEth =
     quoteToken === zeroAddress ||
     quoteToken === chainConfigs[chain.name].addresses.shared.weth;
-  let isQuoteUSDC, isQuoteUSDT;
-  if (chainConfigs[context.chain.name].addresses.stables) {
-    if (chainConfigs[context.chain.name].addresses.stables?.usdc) {
-      isQuoteUSDC =
-        quoteToken != zeroAddress &&
-        quoteToken ===
-        chainConfigs[context.chain.name].addresses.stables?.usdc?.toLowerCase();
-    }
-    if (chainConfigs[context.chain.name].addresses.stables?.usdt) {
-      isQuoteUSDT =
-        quoteToken != zeroAddress &&
-        quoteToken ===
-        chainConfigs[context.chain.name].addresses.stables?.usdt?.toLowerCase();
-    }
-  }
 
   if (!poolKey) {
     poolKey = poolState[2];
@@ -163,7 +145,7 @@ export const insertMulticurvePoolV4Optimized = async ({
   
   const tick = slot0Result?.[1] ?? 0;
 
-  const price = PriceService.computePriceFromSqrtPriceX96({
+  const price = computeV3Price({
     sqrtPriceX96,
     isToken0,
     decimals: 18,
@@ -175,18 +157,18 @@ export const insertMulticurvePoolV4Optimized = async ({
   const noiceUsdPrice = isQuoteNoice
     ? (noiceWethPrice! * ethPrice) / CHAINLINK_ETH_DECIMALS
     : undefined;
-  const quoteUsdPrice = 
-    isQuoteFxh ? fxhUsdPrice!
-    : isQuoteNoice ? noiceUsdPrice!
-    : isQuoteMon ? monUsdcPrice!
-    : isQuoteUSDC ? usdcPrice!
-    : isQuoteUSDT ? usdtPrice!
+  const quoteUsdPrice = isQuoteFxh
+    ? fxhUsdPrice!
+    : isQuoteNoice
+    ? noiceUsdPrice!
+    : isQuoteMon
+    ? monUsdcPrice!
     : ethPrice;
   const quoteDecimals = isQuoteFxh || isQuoteNoice || isQuoteMon ? 18 : 8;
 
-  const marketCapUsd = MarketDataService.calculateMarketCap({
+  const marketCapUsd = computeMarketCap({
     price,
-    quotePriceUSD: quoteUsdPrice,
+    ethPrice: quoteUsdPrice,
     totalSupply: baseTokenEntity.totalSupply,
     decimals: quoteDecimals,
   });

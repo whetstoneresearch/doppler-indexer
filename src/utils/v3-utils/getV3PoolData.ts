@@ -5,11 +5,11 @@ import {
   UniswapV3InitializerABI,
   UniswapV3PoolABI,
 } from "@app/abis";
+import { computeV3Price } from "./computeV3Price";
 import { getMulticallOptions } from "@app/core/utils";
 import { LockablePoolState, LockableV3PoolData, PoolState, V3PoolData } from "@app/types/v3-types";
 import { LockableUniswapV3InitializerABI } from "@app/abis";
 import { chainConfigs } from "@app/config";
-import { PriceService } from "@app/core/pricing";
 
 export const getSlot0Data = async ({
   address,
@@ -96,7 +96,7 @@ export const getV3MigrationPoolData = async ({
 
   const isToken0 = baseToken.toLowerCase() === token0.toLowerCase();
 
-  const price = PriceService.computePriceFromSqrtPriceX96({
+  const price = computeV3Price({
     sqrtPriceX96: slot0Data.sqrtPrice,
     isToken0,
     decimals: 18,
@@ -140,7 +140,7 @@ export const getV3PoolData = async ({
   });
 
   const isToken0 = token0.toLowerCase() === poolState.asset.toLowerCase();
-  const price = PriceService.computePriceFromSqrtPriceX96({
+  const price = computeV3Price({
     sqrtPriceX96: slot0Data.sqrtPrice,
     isToken0,
     decimals: 18,
@@ -184,7 +184,7 @@ export const getLockableV3PoolData = async ({
   });
 
   const isToken0 = token0.toLowerCase() === poolState.asset.toLowerCase();
-  const price = PriceService.computePriceFromSqrtPriceX96({
+  const price = computeV3Price({
     sqrtPriceX96: slot0Data.sqrtPrice,
     isToken0,
     decimals: 18,
@@ -308,3 +308,4 @@ const getLockablePoolState = async ({
 
   return poolState;
 };
+

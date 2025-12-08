@@ -67,8 +67,6 @@ export const baseSepoliaConfig: ChainConfig = {
       weth: COMMON_ADDRESSES.WETH_BASE,
       chainlinkEthOracle:
         "0x5b0cf2b36a65a6BB085D501B971e4c102B9Cd473" as Address,
-      chainlinkUsdcOracle: "0xd30e2101a97dcbaebcbc04f14c3f624e67a35165" as Address,
-      chainlinkUsdtOracle: "0x3ec8593f930ea45ea58c968260e6e9ff53fc934f" as Address,
       fxHash: {
         fxhAddress: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
         fxhWethPool: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
@@ -148,8 +146,6 @@ export const baseConfig: ChainConfig = {
       weth: COMMON_ADDRESSES.WETH_BASE,
       chainlinkEthOracle:
         "0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70" as Address,
-      chainlinkUsdcOracle: "0x7e860098f58bbfc8648a4311b374b1d669a2bc6b" as Address,
-      chainlinkUsdtOracle: "0xf19d560eb8d2adf07bd6d13ed03e1d11215721f9" as Address,
       fxHash: {
         fxhAddress: "0x5fc2843838e65eb0b5d33654628f446d54602791" as Address,
         fxhWethPool: "0xC3e7433ae4d929092F8dFf62F7E2f15f23bC3E63" as Address,

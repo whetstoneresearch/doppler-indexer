@@ -1,6 +1,6 @@
 import { DERC20ABI } from "@app/abis";
 import { V4PoolData } from "@app/types";
-import { MarketDataService } from "@app/core";
+import { computeDollarLiquidity } from "@app/utils/computeDollarLiquidity";
 import { getAssetData } from "@app/utils/getAssetData";
 import { getV3PoolData } from "@app/utils/v3-utils";
 import { computeGraduationPercentage } from "@app/utils/v4-utils";
@@ -8,7 +8,7 @@ import { getReservesV4 } from "@app/utils/v4-utils/getV4PoolData";
 import { Context } from "ponder:registry";
 import { pool, token } from "ponder:schema";
 import { Address, zeroAddress } from "viem";
-import { fetchMonadPrice, fetchZoraPrice } from "../oracle";
+import { computeMarketCap, fetchMonadPrice, fetchZoraPrice } from "../oracle";
 import { getLockableV3PoolData } from "@app/utils/v3-utils/getV3PoolData";
 import { chainConfigs } from "@app/config";
 import { AssetData } from "@app/types";
@@ -85,9 +85,9 @@ export const insertPoolIfNotExists = async ({
     getAssetData(assetAddr, context),
   ]);
 
-  const marketCapUsd = MarketDataService.calculateMarketCap({
+  const marketCapUsd = computeMarketCap({
     price,
-    quotePriceUSD: ethPrice,
+    ethPrice,
     totalSupply: assetTotalSupply,
   });
 
@@ -210,16 +210,16 @@ export const insertPoolIfNotExistsV4 = async ({
   const assetBalance = poolConfig.isToken0 ? token0Reserve : token1Reserve;
   const quoteBalance = poolConfig.isToken0 ? token1Reserve : token0Reserve;
 
-  const dollarLiquidity = MarketDataService.calculateLiquidity({
+  const dollarLiquidity = computeDollarLiquidity({
     assetBalance,
     quoteBalance,
     price,
-    quotePriceUSD: ethPrice,
+    ethPrice,
   });
 
-  const marketCapUsd = MarketDataService.calculateMarketCap({
+  const marketCapUsd = computeMarketCap({
     price,
-    quotePriceUSD: ethPrice,
+    ethPrice,
     totalSupply,
   });
 
@@ -350,25 +350,25 @@ export const insertLockableV3PoolIfNotExists = async ({
   let marketCapUsd;
   if (isQuoteCreatorCoin && quotePool) {
     creatorCoinUsdPrice = quotePool.price * zoraPrice! / 10n ** 18n;
-    marketCapUsd = MarketDataService.calculateMarketCap(
+    marketCapUsd = computeMarketCap(
       {
         price,
-        quotePriceUSD: creatorCoinUsdPrice,
+        ethPrice: creatorCoinUsdPrice,
         totalSupply: assetTotalSupply,
         decimals: quoteToken!.decimals
       }
     )
   } else if (isQuoteMon && monUsdPrice) {
-    marketCapUsd = MarketDataService.calculateMarketCap({
+    marketCapUsd = computeMarketCap({
       price,
-      quotePriceUSD: monUsdPrice,
+      ethPrice: monUsdPrice,
       totalSupply: assetTotalSupply,
       decimals: 18,
     });
   } else {
-    marketCapUsd = MarketDataService.calculateMarketCap({
+    marketCapUsd = computeMarketCap({
       price,
-      quotePriceUSD: ethPrice,
+      ethPrice,
       totalSupply: assetTotalSupply,
     });
   }
