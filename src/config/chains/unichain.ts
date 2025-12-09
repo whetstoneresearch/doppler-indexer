@@ -63,6 +63,10 @@ export const unichainConfig: ChainConfig = {
       monad: {
         monAddress: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
         monUsdcPool: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
+      },
+      eurc: {
+        eurcAddress: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
+        eurcUsdcPool: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
       }
     },
     zora: {

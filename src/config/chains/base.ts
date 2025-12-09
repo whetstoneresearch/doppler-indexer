@@ -80,10 +80,15 @@ export const baseSepoliaConfig: ChainConfig = {
       monad: {
         monAddress: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
         monUsdcPool: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
+      },
+      eurc: {
+        eurcAddress: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
+        eurcUsdcPool: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
       }
     },
     stables: {
-      usdc: "0xaf33add7918f685b2a82c1077bd8c07d220ffa04" as Address
+      usdc: "0xaf33add7918f685b2a82c1077bd8c07d220ffa04" as Address,
+      usdt: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
     },
     oracle: ORACLE_ADDRESSES,
   },
@@ -161,10 +166,15 @@ export const baseConfig: ChainConfig = {
       monad: {
         monAddress: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
         monUsdcPool: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
+      },
+      eurc: {
+        eurcAddress: "0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42" as Address,
+        eurcUsdcPool: "0xb18fad93e3c5a5f932d901f0c22c5639a832d6f29a4392fff3393fb734dd0720" as Address
       }
     },
     stables: {
       usdc: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" as Address,
+      usdt: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
     },
     oracle: ORACLE_ADDRESSES,
   },
