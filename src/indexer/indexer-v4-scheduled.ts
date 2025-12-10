@@ -27,6 +27,7 @@ import { pool, token } from "ponder:schema";
 import { handleOptimizedSwap } from "./shared/swap-optimizer";
 import { StateViewABI } from "@app/abis";
 import { zeroAddress } from "viem";
+import { getQuoteInfo } from "@app/utils/getQuoteInfo";
 
 ponder.on(
   "UniswapV4ScheduledMulticurveInitializer:Create",
@@ -111,64 +112,7 @@ ponder.on(
       chainId: context.chain.id,
     });
 
-    const quoteToken = poolEntity.quoteToken;
-    const isQuoteFxh =
-      quoteToken != zeroAddress &&
-      quoteToken ===
-      chainConfigs[context.chain.name].addresses.shared.fxHash.fxhAddress.toLowerCase();
-    const isQuoteNoice =
-      quoteToken != zeroAddress &&
-      quoteToken ===
-      chainConfigs[context.chain.name].addresses.shared.noice.noiceAddress.toLowerCase();
-    const isQuoteMon =
-      quoteToken != zeroAddress &&
-      quoteToken ===
-      chainConfigs[context.chain.name].addresses.shared.monad.monAddress.toLowerCase();
-    let isQuoteUSDC, isQuoteUSDT;
-    if (chainConfigs[context.chain.name].addresses.stables) {
-      if (chainConfigs[context.chain.name].addresses.stables?.usdc) {
-        isQuoteUSDC =
-          quoteToken != zeroAddress &&
-          quoteToken ===
-          chainConfigs[context.chain.name].addresses.stables?.usdc?.toLowerCase();
-      }
-      if (chainConfigs[context.chain.name].addresses.stables?.usdt) {
-        isQuoteUSDT =
-          quoteToken != zeroAddress &&
-          quoteToken ===
-          chainConfigs[context.chain.name].addresses.stables?.usdt?.toLowerCase();
-      }
-    }
-    
-    var ethPrice, fxhWethPrice, noiceWethPrice, monUsdcPrice, usdcPrice, usdtPrice;
-    if (isQuoteFxh) {
-      [ethPrice, fxhWethPrice] = await Promise.all([
-        fetchEthPrice(timestamp, context),
-        fetchFxhPrice(timestamp, context),
-      ]);
-    } else if (isQuoteNoice) {
-      [ethPrice, noiceWethPrice] = await Promise.all([
-        fetchEthPrice(timestamp, context),
-        fetchNoicePrice(timestamp, context),
-      ]);
-    } else if (isQuoteMon) {
-      [ethPrice, monUsdcPrice] = await Promise.all([
-        fetchEthPrice(timestamp, context),
-        fetchMonadPrice(timestamp, context),
-      ]);
-    } else if (isQuoteUSDC) {
-      [ethPrice, usdcPrice] = await Promise.all([
-        fetchEthPrice(timestamp, context),
-        fetchUsdcPrice(timestamp, context)
-      ]);
-    } else if (isQuoteUSDT) {
-      [ethPrice, usdtPrice] = await Promise.all([
-        fetchEthPrice(timestamp, context),
-        fetchUsdtPrice(timestamp, context)
-      ]);
-    } else {
-      ethPrice = await fetchEthPrice(timestamp, context);
-    }
+    const quoteInfo = await getQuoteInfo(poolEntity.quoteToken, timestamp, context);
 
     // Calculate reserves only if needed
     let token0Reserve = poolEntity.reserves0;
@@ -209,51 +153,25 @@ ponder.on(
     }
 
     let fxhUsdPrice, noiceUsdPrice;
-    var price;
-    if (isQuoteFxh) {
-      fxhUsdPrice = fxhWethPrice! * ethPrice / 10n ** 8n;
-      price = PriceService.computePriceFromSqrtPriceX96({
-        sqrtPriceX96: sqrtPrice,
-        isToken0: poolEntity.isToken0,
-        decimals: 18,
-      });
-    } else if (isQuoteNoice) {
-      noiceUsdPrice = noiceWethPrice! * ethPrice / 10n ** 8n;
-      price = PriceService.computePriceFromSqrtPriceX96({
-        sqrtPriceX96: sqrtPrice,
-        isToken0: poolEntity.isToken0,
-        decimals: 18,
-      });
-    } else {
-      price = PriceService.computePriceFromSqrtPriceX96({
-        sqrtPriceX96: sqrtPrice,
-        isToken0: poolEntity.isToken0,
-        decimals: 18,
-      });
-    }
+    const price = PriceService.computePriceFromSqrtPriceX96({
+      sqrtPriceX96: sqrtPrice,
+      isToken0: poolEntity.isToken0,
+      decimals: 18,
+    });
+    
     const marketCapUsd = MarketDataService.calculateMarketCap({
       price,
-      quotePriceUSD: isQuoteFxh ? fxhUsdPrice!
-        : isQuoteNoice ? noiceUsdPrice!
-        : isQuoteMon ? monUsdcPrice!
-        : isQuoteUSDC ? usdcPrice!
-        : isQuoteUSDT ? usdtPrice!
-        : ethPrice,
+      quotePriceUSD: quoteInfo.quotePrice,
       totalSupply: baseTokenEntity!.totalSupply,
-      decimals: poolEntity.isQuoteEth || isQuoteUSDC || isQuoteUSDT ? 8 : 18,
+      decimals: quoteInfo.quoteDecimals,
     });
 
     const dollarLiquidity = MarketDataService.calculateLiquidity({
       assetBalance: poolEntity.isToken0 ? token0Reserve : token1Reserve,
       quoteBalance: poolEntity.isToken0 ? token1Reserve : token0Reserve,
       price,
-      quotePriceUSD: isQuoteFxh ? fxhUsdPrice!
-        : isQuoteNoice ? noiceUsdPrice!
-        : isQuoteMon ? monUsdcPrice!
-        : isQuoteUSDC ? usdcPrice!
-        : isQuoteUSDT ? usdtPrice!
-        : ethPrice,
-      decimals: poolEntity.isQuoteEth || isQuoteUSDC || isQuoteUSDT ? 8 : 18,
+      quotePriceUSD: quoteInfo.quotePrice,
+      decimals: quoteInfo.quoteDecimals,
     });
 
     let newGraduationTick = poolEntity.graduationTick;
@@ -306,33 +224,7 @@ ponder.on(
     
     const tick = slot0[1];
 
-    const isQuoteFxh =
-      poolEntity!.quoteToken != zeroAddress &&
-      poolEntity!.quoteToken ===
-        chainConfigs[context.chain.name].addresses.shared.fxHash.fxhAddress.toLowerCase();
-    const isQuoteNoice =
-      poolEntity!.quoteToken != zeroAddress &&
-      poolEntity!.quoteToken ===
-        chainConfigs[context.chain.name].addresses.shared.noice.noiceAddress.toLowerCase();
-    const isQuoteMon =
-      poolEntity!.quoteToken != zeroAddress &&
-      poolEntity!.quoteToken ===
-        chainConfigs[context.chain.name].addresses.shared.monad.monAddress.toLowerCase();
-    let isQuoteUSDC, isQuoteUSDT;
-    if (chainConfigs[context.chain.name].addresses.stables) {
-      if (chainConfigs[context.chain.name].addresses.stables?.usdc) {
-        isQuoteUSDC =
-          poolEntity!.quoteToken != zeroAddress &&
-          poolEntity!.quoteToken ===
-          chainConfigs[context.chain.name].addresses.stables?.usdc?.toLowerCase();
-      }
-      if (chainConfigs[context.chain.name].addresses.stables?.usdt) {
-        isQuoteUSDT =
-          poolEntity!.quoteToken != zeroAddress &&
-          poolEntity!.quoteToken ===
-          chainConfigs[context.chain.name].addresses.stables?.usdt?.toLowerCase();
-      }
-    }
+    const quoteInfo = await getQuoteInfo(poolEntity.quoteToken, timestamp, context);
     
     const sqrtPriceX96 = slot0?.[0] ?? 0n;
 
@@ -354,13 +246,8 @@ ponder.on(
         blockNumber: event.block.number,
         context,
         tick
-      },
-      false,
-      isQuoteFxh,
-      isQuoteNoice,
-      isQuoteMon,
-      isQuoteUSDC,
-      isQuoteUSDT
+      },      
+      quoteInfo
     );
   },
 );

@@ -9,6 +9,7 @@ import { Context } from "ponder:registry";
 import { pool, token } from "ponder:schema";
 import { Address, zeroAddress } from "viem";
 import { fetchMonadPrice, fetchZoraPrice } from "../oracle";
+import { getQuoteInfo, QuoteToken, QuoteInfo } from "@app/utils/getQuoteInfo";
 import { getLockableV3PoolData } from "@app/utils/v3-utils/getV3PoolData";
 import { chainConfigs } from "@app/config";
 import { AssetData } from "@app/types";
@@ -38,14 +39,12 @@ export const fetchExistingPool = async ({
 export const insertPoolIfNotExists = async ({
   poolAddress,
   timestamp,
-  context,
-  ethPrice,
+  context
 }: {
   poolAddress: Address;
   timestamp: bigint;
-  context: Context;
-  ethPrice: bigint;
-}): Promise<typeof pool.$inferSelect> => {
+  context: Context;  
+}): Promise<[typeof pool.$inferSelect, QuoteInfo]> => {
   const { db, chain, client } = context;
   const address = poolAddress.toLowerCase() as `0x${string}`;
 
@@ -53,10 +52,6 @@ export const insertPoolIfNotExists = async ({
     address,
     chainId: chain.id,
   });
-
-  if (existingPool) {
-    return existingPool;
-  }
 
   const poolData = await getV3PoolData({
     address,
@@ -70,12 +65,12 @@ export const insertPoolIfNotExists = async ({
   const assetAddr = poolState.asset.toLowerCase() as `0x${string}`;
   const numeraireAddr = poolState.numeraire.toLowerCase() as `0x${string}`;
 
-  const isQuoteEth =
-    poolState.numeraire.toLowerCase() ===
-      "0x0000000000000000000000000000000000000000" ||
-    poolState.numeraire.toLowerCase() ===
-      chainConfigs[chain.name].addresses.shared.weth;
+  const quoteInfo = await getQuoteInfo(numeraireAddr, timestamp, context);
 
+  if (existingPool) {
+    return [existingPool, quoteInfo];
+  }
+  
   const [assetTotalSupply, assetData] = await Promise.all([
     client.readContract({
       address: assetAddr,
@@ -87,13 +82,15 @@ export const insertPoolIfNotExists = async ({
 
   const marketCapUsd = MarketDataService.calculateMarketCap({
     price,
-    quotePriceUSD: ethPrice,
+    quotePriceUSD: quoteInfo.quotePrice,
     totalSupply: assetTotalSupply,
+    decimals: quoteInfo.quoteDecimals
   });
 
   let migrationType = getMigrationType(assetData, chain.name);
 
-  return await db.insert(pool).values({
+  const isQuoteEth = quoteInfo.quoteToken === QuoteToken.Eth;
+  return [await db.insert(pool).values({
     ...poolData,
     ...slot0Data,
     address,
@@ -121,7 +118,9 @@ export const insertPoolIfNotExists = async ({
     isQuoteEth,
     integrator: assetData.integrator,
     migrationType,
-  });
+  }),
+    quoteInfo
+  ];
 };
 
 export const updatePool = async ({
@@ -187,12 +186,7 @@ export const insertPoolIfNotExistsV4 = async ({
     ? poolKey.currency1
     : poolKey.currency0;
 
-  const isQuoteEth =
-    numeraireAddr.toLowerCase() ===
-    "0x0000000000000000000000000000000000000000" ||
-    numeraireAddr.toLowerCase() === chainConfigs[chain.name].addresses.shared.weth;
-
-  const [reserves, totalSupply, assetData] = await Promise.all([
+  const [reserves, totalSupply, assetData, quoteInfo] = await Promise.all([
     getReservesV4({
       hook: address,
       context,
@@ -203,6 +197,7 @@ export const insertPoolIfNotExistsV4 = async ({
       functionName: "totalSupply",
     }),
     getAssetData(assetAddr, context),
+    getQuoteInfo(numeraireAddr, timestamp, context)
   ]);
 
   const { token0Reserve, token1Reserve } = reserves;
@@ -214,13 +209,15 @@ export const insertPoolIfNotExistsV4 = async ({
     assetBalance,
     quoteBalance,
     price,
-    quotePriceUSD: ethPrice,
+    quotePriceUSD: quoteInfo.quotePrice,
+    decimals: quoteInfo.quoteDecimals
   });
 
   const marketCapUsd = MarketDataService.calculateMarketCap({
     price,
-    quotePriceUSD: ethPrice,
+    quotePriceUSD: quoteInfo.quotePrice,
     totalSupply,
+    decimals: quoteInfo.quoteDecimals
   });
 
   const graduationPercentage = computeGraduationPercentage({
@@ -230,6 +227,7 @@ export const insertPoolIfNotExistsV4 = async ({
 
   let migrationType = getMigrationType(assetData, chain.name);
 
+  const isQuoteEth = quoteInfo.quoteToken === QuoteToken.Eth;
   return await db.insert(pool).values({
     address,
     chainId: chain.id,
@@ -264,24 +262,15 @@ export const insertPoolIfNotExistsV4 = async ({
   });
 };
 
-type LockableV3QuoteContext = {
-  isQuoteCreatorCoin: boolean;
-  creatorCoinUsdPrice?: bigint;
-  isQuoteMon: boolean;
-  monUsdPrice?: bigint;
-};
-
 export const insertLockableV3PoolIfNotExists = async ({
   poolAddress,
   timestamp,
-  context,
-  ethPrice,
+  context,  
 }: {
   poolAddress: Address;
   timestamp: bigint;
-  context: Context;
-  ethPrice: bigint;
-}): Promise<[typeof pool.$inferSelect, LockableV3QuoteContext] | null> => {
+  context: Context;  
+}): Promise<[typeof pool.$inferSelect, QuoteInfo] | null> => {
   const { db, chain, client } = context;
   const address = poolAddress.toLowerCase() as `0x${string}`;
 
@@ -302,41 +291,7 @@ export const insertLockableV3PoolIfNotExists = async ({
   const assetAddr = poolState.asset.toLowerCase() as `0x${string}`;
   const numeraireAddr = poolState.numeraire.toLowerCase() as `0x${string}`;
   
-  const isQuoteEth =
-    poolState.numeraire.toLowerCase() === zeroAddress ||
-    poolState.numeraire.toLowerCase() === chainConfigs[chain.name].addresses.shared.weth;
-  const monAddress = chainConfigs[chain.name].addresses.shared.monad.monAddress.toLowerCase();
-  const isQuoteMon =
-    monAddress !== zeroAddress && numeraireAddr === monAddress;
-
-  let quotePool;
-  let quoteToken;
-  let isQuoteCreatorCoin;
-  let zoraPrice;
-  let creatorCoinUsdPrice: bigint | null = null;
-  let monUsdPrice: bigint | null = null;
-
-  if (!isQuoteEth && !isQuoteMon) {
-    [zoraPrice, quoteToken] = await Promise.all([
-      fetchZoraPrice(timestamp, context),
-      db.find(token, {
-        address: numeraireAddr,
-        chainId: chain.id,
-      }),
-    ]);
-
-    if (!quoteToken || !quoteToken.pool) {
-      return null;
-    }
-
-    quotePool = await db.find(pool, {
-      address: quoteToken.pool,
-      chainId: chain.id,
-    })
-    isQuoteCreatorCoin = quoteToken.isCreatorCoin ?? false;
-  } else if (isQuoteMon) {
-    monUsdPrice = await fetchMonadPrice(timestamp, context);
-  }
+  const quoteInfo = await getQuoteInfo(numeraireAddr, timestamp, context);
 
   const [assetTotalSupply, assetData] = await Promise.all([
     client.readContract({
@@ -347,44 +302,23 @@ export const insertLockableV3PoolIfNotExists = async ({
     getAssetData(assetAddr, context),
   ]);
 
-  let marketCapUsd;
-  if (isQuoteCreatorCoin && quotePool) {
-    creatorCoinUsdPrice = quotePool.price * zoraPrice! / 10n ** 18n;
-    marketCapUsd = MarketDataService.calculateMarketCap(
-      {
-        price,
-        quotePriceUSD: creatorCoinUsdPrice,
-        totalSupply: assetTotalSupply,
-        decimals: quoteToken!.decimals
-      }
-    )
-  } else if (isQuoteMon && monUsdPrice) {
-    marketCapUsd = MarketDataService.calculateMarketCap({
+  const marketCapUsd = MarketDataService.calculateMarketCap(
+    {
       price,
-      quotePriceUSD: monUsdPrice,
+      quotePriceUSD: quoteInfo.quotePrice,
       totalSupply: assetTotalSupply,
-      decimals: 18,
-    });
-  } else {
-    marketCapUsd = MarketDataService.calculateMarketCap({
-      price,
-      quotePriceUSD: ethPrice,
-      totalSupply: assetTotalSupply,
-    });
-  }
+      decimals: quoteInfo.quoteDecimals
+    }
+  )
   
   if (existingPool) {
     return [
       existingPool,
-      {
-        isQuoteCreatorCoin: isQuoteCreatorCoin ?? false,
-        creatorCoinUsdPrice: creatorCoinUsdPrice ?? undefined,
-        isQuoteMon,
-        monUsdPrice: monUsdPrice ?? undefined,
-      },
+      quoteInfo,
     ];
   }
 
+  const isQuoteEth = quoteInfo.quoteToken === QuoteToken.Eth;
   return [await db.insert(pool).values({
     ...poolData,
     ...slot0Data,
@@ -413,12 +347,9 @@ export const insertLockableV3PoolIfNotExists = async ({
     isStreaming: true,
     isQuoteEth,
     integrator: assetData.integrator,
-  }), {
-    isQuoteCreatorCoin: isQuoteCreatorCoin ?? false,
-    creatorCoinUsdPrice: creatorCoinUsdPrice ?? undefined,
-    isQuoteMon,
-    monUsdPrice: monUsdPrice ?? undefined,
-  }];
+  }), 
+    quoteInfo
+  ];
 };
 
 function getMigrationType(assetData: AssetData, chainName: Network): string {

@@ -3,16 +3,7 @@ import { pool, token } from "ponder:schema";
 import { Address, zeroAddress } from "viem";
 import { SwapOrchestrator } from "@app/core";
 import { SwapService, MarketDataService, PriceService } from "@app/core";
-
-import {
-  fetchEthPrice,
-  fetchZoraPrice,
-  fetchFxhPrice,
-  fetchNoicePrice,
-  fetchMonadPrice,
-  fetchUsdcPrice,
-  fetchUsdtPrice
-} from "./oracle";
+import { QuoteToken, QuoteInfo, getQuoteInfo } from "@app/utils/getQuoteInfo";
 import { updateAsset, updatePool } from "./entities";
 import { chainConfigs } from "@app/config";
 import { updateFifteenMinuteBucketUsd } from "@app/utils/time-buckets";
@@ -50,118 +41,6 @@ interface ProcessedSwapData {
 }
 
 /**
- * Get USD price for a pool efficiently using cache
- */
-export async function getPoolUsdPrice(
-  poolEntity: typeof pool.$inferSelect,
-  zoraPrice: bigint,
-  fxhPrice: bigint,
-  noicePrice: bigint,
-  monadPrice: bigint,
-  usdcPrice: bigint,
-  usdtPrice: bigint,
-  ethPrice: bigint,
-  context: Context
-): Promise<bigint | null> {
-  const { db, chain } = context;
-  const quoteToken = poolEntity.quoteToken.toLowerCase();
-  const zoraToken =
-    chainConfigs[chain.name].addresses.zora.zoraToken.toLowerCase();
-  const wethToken =
-    chainConfigs[chain.name].addresses.shared.weth.toLowerCase();
-  const fxhToken =
-    chainConfigs[chain.name].addresses.shared.fxHash.fxhAddress.toLowerCase();
-  const noiceToken =
-    chainConfigs[chain.name].addresses.shared.noice.noiceAddress.toLowerCase();
-  const monToken =
-    chainConfigs[chain.name].addresses.shared.monad.monAddress.toLowerCase();
-  let usdcToken, usdtToken;
-  if (chainConfigs[context.chain.name].addresses.stables) {
-    if (chainConfigs[context.chain.name].addresses.stables?.usdc) {
-      usdcToken =
-        chainConfigs[chain.name].addresses.stables?.usdc?.toLowerCase();
-    }
-    if (chainConfigs[context.chain.name].addresses.stables?.usdt) {
-      usdtToken =
-        chainConfigs[chain.name].addresses.stables?.usdt?.toLowerCase();
-    }
-  }
-  
-  const zeroAddressLower = zeroAddress;
-
-  const isQuoteZora = quoteToken === zoraToken;
-  const isQuoteEth =
-    poolEntity.isQuoteEth ||
-    quoteToken === zeroAddressLower ||
-    quoteToken === wethToken;
-  const isQuoteFxh = quoteToken === fxhToken;
-  const isQuoteNoice = quoteToken === noiceToken;
-  const isQuoteMon = quoteToken === monToken;
-  const isQuoteUsdc = quoteToken === usdcToken;
-  const isQuoteUsdt = quoteToken === usdtToken;
-
-  if (isQuoteZora) {
-    return zoraPrice;
-  }
-
-  if (isQuoteFxh) {
-    return (fxhPrice * ethPrice) / 10n ** 8n;
-  }
-
-  if (isQuoteNoice) {
-    return (noicePrice * ethPrice) / 10n ** 8n;
-  }
-  
-  if (isQuoteMon) {
-    return monadPrice;
-  }
-  
-  if (isQuoteUsdc && usdcPrice) {
-    return usdcPrice;
-  }
-  
-  if (isQuoteUsdt && usdtPrice) {
-    return usdtPrice;
-  }
-
-  if (isQuoteEth) {
-    return ethPrice;
-  }
-  
-  let isQuoteCreatorCoin = false;
-  let creatorCoinPid = null;
-  
-  const creatorCoinEntity = await db.find(token, {
-    address: poolEntity.quoteToken,
-    chainId: chain.id,
-  });
-  isQuoteCreatorCoin = creatorCoinEntity?.isCreatorCoin ?? false;
-  creatorCoinPid = isQuoteCreatorCoin ? creatorCoinEntity?.pool : null;
-  
-  if (!isQuoteCreatorCoin || !creatorCoinPid) {
-    return null;
-  }
-  
-  // Get creator coin pool price
-  const creatorCoinPool = await db.find(pool, {
-    address: creatorCoinPid as `0x${string}`,
-    chainId: chain.id,
-  });
-  
-  if (!creatorCoinPool) {
-    return null;
-  }
-  
-  const creatorCoinPrice = PriceService.computePriceFromSqrtPriceX96({
-    sqrtPriceX96: creatorCoinPool.sqrtPrice,
-    isToken0: creatorCoinPool.isToken0,
-    decimals: 18,
-  });
-  
-  return (creatorCoinPrice * zoraPrice) / WAD;
-}
-
-/**
  * Process swap calculations in batch
  */
 export function processSwapCalculations(
@@ -178,6 +57,7 @@ export function processSwapCalculations(
     sqrtPriceX96,
     isToken0,
     decimals: 18,
+    quoteDecimals
   });
   
   // Calculate reserves
@@ -245,116 +125,26 @@ export function processSwapCalculations(
  */
 export async function handleOptimizedSwap(
   params: SwapHandlerParams,
-  isZora?: boolean,
-  isFxh?: boolean,
-  isNoice?: boolean,
-  isMon?: boolean,
-  isUSDC?: boolean,
-  isUSDT?: boolean
+  quoteInfo: QuoteInfo
 ): Promise<void> {
   const { context, timestamp } = params;
   const { db, chain } = context;
   const poolAddress = params.poolAddress;
 
-  let zoraPrice, ethPrice, fxhWethPrice, noiceWethPrice, monUsdcPrice, usdcPrice, usdtPrice, poolEntity;
-  if (isZora) {
-    [zoraPrice, ethPrice, poolEntity] = await Promise.all([
-      fetchZoraPrice(timestamp, context),
-      fetchEthPrice(timestamp, context),
-      db.find(pool, {
-        address: poolAddress,
-        chainId: chain.id,
-      }),
-    ]);
-  } else if (isFxh) {
-    [fxhWethPrice, ethPrice, poolEntity] = await Promise.all([
-      fetchFxhPrice(timestamp, context),
-      fetchEthPrice(timestamp, context),
-      db.find(pool, {
-        address: poolAddress,
-        chainId: chain.id,
-      }),
-    ]);
-  } else if (isNoice) {
-    [noiceWethPrice, ethPrice, poolEntity] = await Promise.all([
-      fetchNoicePrice(timestamp, context),
-      fetchEthPrice(timestamp, context),
-      db.find(pool, {
-        address: poolAddress,
-        chainId: chain.id,
-      }),
-    ]);
-  } else if (isMon) { 
-    [monUsdcPrice, ethPrice, poolEntity] = await Promise.all([
-      fetchMonadPrice(timestamp, context),
-      fetchEthPrice(timestamp, context),
-      db.find(pool, {
-        address: poolAddress,
-        chainId: chain.id,
-      })
-    ])
-  } else if (isUSDC) { 
-    [usdcPrice, ethPrice, poolEntity] = await Promise.all([
-      fetchUsdcPrice(timestamp, context),
-      fetchEthPrice(timestamp, context),
-      db.find(pool, {
-        address: poolAddress,
-        chainId: chain.id,
-      })
-    ])
-  } else if (isUSDT) { 
-    [usdtPrice, ethPrice, poolEntity] = await Promise.all([
-      fetchUsdtPrice(timestamp, context),
-      fetchEthPrice(timestamp, context),
-      db.find(pool, {
-        address: poolAddress,
-        chainId: chain.id,
-      })
-    ])
-  } else {
-    [ethPrice, poolEntity] = await Promise.all([
-      fetchEthPrice(timestamp, context),
-      db.find(pool, {
-        address: poolAddress,
-        chainId: chain.id,
-      }),
-    ]);
-  }
-
-
+  const poolEntity = await db.find(pool, {
+    address: poolAddress,
+    chainId: chain.id,
+  })
+  
   if (!poolEntity) {
     return;
-  }
-
-  // Get USD price efficiently
-  const usdPrice = await getPoolUsdPrice(
-    poolEntity,
-    zoraPrice ?? 1n,
-    fxhWethPrice ?? 1n,
-    noiceWethPrice ?? 1n,
-    monUsdcPrice ?? 1n,
-    usdcPrice ?? 1n,
-    usdtPrice ?? 1n,
-    ethPrice,
-    context,
-  );
-
-  const wethLower =
-    chainConfigs[chain.name].addresses.shared.weth.toLowerCase();
-  const zeroAddressLower = zeroAddress.toLowerCase();
-  const quoteLower = poolEntity.quoteToken.toLowerCase();
-  const isQuoteEth =
-    poolEntity.isQuoteEth ||
-    quoteLower === zeroAddressLower ||
-    quoteLower === wethLower;
-
-  const resolvedUsdPrice = usdPrice ?? (isQuoteEth ? ethPrice : WAD);
+  }  
   
   const swapData = processSwapCalculations(
     poolEntity,
     params,
-    resolvedUsdPrice!,
-    isQuoteEth || isUSDC || isUSDT ? 8 : 18
+    quoteInfo.quotePrice,
+    quoteInfo.quoteDecimals
   );
 
   const tokenEntity = await db.find(token, {
@@ -369,9 +159,9 @@ export async function handleOptimizedSwap(
   // Calculate market cap
   const marketCapUsd = MarketDataService.calculateMarketCap({
     price: swapData.price,
-    quotePriceUSD: resolvedUsdPrice,
+    quotePriceUSD: quoteInfo.quotePrice,
     totalSupply: tokenEntity.totalSupply,
-    decimals: isQuoteEth || isUSDC || isUSDT ? 8 : 18,
+    decimals: quoteInfo.quoteDecimals,
   });
 
 
@@ -390,7 +180,7 @@ export async function handleOptimizedSwap(
     amountIn: swapData.amountIn,
     amountOut: swapData.amountOut,
     price: swapData.price,
-    usdPrice: resolvedUsdPrice,
+    usdPrice: quoteInfo.quotePrice,
   });
 
   // Create metrics
@@ -407,6 +197,7 @@ export async function handleOptimizedSwap(
     updateAsset
   };
 
+  const isQuoteEth = (quoteInfo.quoteToken === QuoteToken.Eth) ? true : false
   // Execute all updates in parallel
   await Promise.all([
     SwapOrchestrator.performSwapUpdates(

@@ -13,6 +13,7 @@ import { PriceService } from "@app/core";
 import { chainConfigs } from "@app/config";
 import { token, pool } from "ponder:schema";
 import { insertZoraPoolV4Optimized } from "./shared/entities/zora/pool";
+import { getQuoteInfo, QuoteToken } from "@app/utils/getQuoteInfo";
 
 // ponder.on("ZoraFactory:CoinCreatedV4", async ({ event, context }) => {
 //   const { db, chain } = context;
@@ -229,6 +230,9 @@ ponder.on("ZoraV4CreatorCoinHook:Swapped", async ({ event, context }) => {
   
   const tick = slot0[1];
   
+  const zoraAddress = chainConfigs[context.chain.name].addresses.zora.zoraToken;
+  const quoteInfo = await getQuoteInfo(zoraAddress, timestamp, context);
+  
   await handleOptimizedSwap(
     {
       poolAddress: poolKeyHash,
@@ -244,7 +248,7 @@ ponder.on("ZoraV4CreatorCoinHook:Swapped", async ({ event, context }) => {
       context,
       tick
     },
-    true,
+    quoteInfo
   );
 });
 
