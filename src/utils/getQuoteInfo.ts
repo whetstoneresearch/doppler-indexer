@@ -29,11 +29,11 @@ export enum QuoteToken {
 
 export interface QuoteInfo {
   quoteToken: QuoteToken;
-  quotePrice: bigint;
+  quotePrice: bigint | null;
   quoteDecimals: number;
 }
 
-export async function getQuoteInfo(quoteAddress: Address, timestamp: bigint, context: Context): Promise<QuoteInfo> {
+export async function getQuoteInfo(quoteAddress: Address, timestamp: bigint | null, context: Context): Promise<QuoteInfo> {
   quoteAddress = quoteAddress.toLowerCase() as Address;
   
   const zoraAddress = chainConfigs[context.chain.name].addresses.zora.zoraToken.toLowerCase();
@@ -74,6 +74,22 @@ export async function getQuoteInfo(quoteAddress: Address, timestamp: bigint, con
     : creatorCoinInfo.isQuoteCreatorCoin ? QuoteToken.CreatorCoin
     : QuoteToken.Eth;
     
+  // uses 8 for tokens that use chainlink price feeds
+  const quoteDecimals = 
+    (isQuoteZora || isQuoteFxh || isQuoteNoice || isQuoteMon || creatorCoinInfo.isQuoteCreatorCoin) ? 18
+    : (isQuoteUsdc || isQuoteUsdt) ? 8
+    : isQuoteEurc ? 6
+    : 8;
+  
+  // Short circuit price fetching if timestamp is null
+  if (timestamp === null) {
+    return {
+      quoteToken,
+      quotePrice: null,
+      quoteDecimals
+    };
+  }
+    
   let quotePrice;
   if (isQuoteZora) {
     quotePrice = await fetchZoraPrice(timestamp, context);
@@ -104,13 +120,6 @@ export async function getQuoteInfo(quoteAddress: Address, timestamp: bigint, con
     // this assumes the quote token is eth if it's not one of the other hardcoded ones
     quotePrice = await fetchEthPrice(timestamp, context);
   }
-  
-  // uses 8 for tokens that use chainlink price feeds
-  const quoteDecimals = 
-    (isQuoteZora || isQuoteFxh || isQuoteNoice || isQuoteMon || creatorCoinInfo.isQuoteCreatorCoin) ? 18
-    : (isQuoteUsdc || isQuoteUsdt) ? 8
-    : isQuoteEurc ? 6
-    : 8;
   
   const quoteInfo = {
     quoteToken,

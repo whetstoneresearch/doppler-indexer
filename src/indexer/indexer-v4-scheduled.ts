@@ -161,7 +161,7 @@ ponder.on(
     
     const marketCapUsd = MarketDataService.calculateMarketCap({
       price,
-      quotePriceUSD: quoteInfo.quotePrice,
+      quotePriceUSD: quoteInfo.quotePrice!,
       totalSupply: baseTokenEntity!.totalSupply,
       decimals: quoteInfo.quoteDecimals,
     });
@@ -170,7 +170,7 @@ ponder.on(
       assetBalance: poolEntity.isToken0 ? token0Reserve : token1Reserve,
       quoteBalance: poolEntity.isToken0 ? token1Reserve : token0Reserve,
       price,
-      quotePriceUSD: quoteInfo.quotePrice,
+      quotePriceUSD: quoteInfo.quotePrice!,
       decimals: quoteInfo.quoteDecimals,
     });
 

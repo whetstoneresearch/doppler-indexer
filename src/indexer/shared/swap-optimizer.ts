@@ -143,7 +143,7 @@ export async function handleOptimizedSwap(
   const swapData = processSwapCalculations(
     poolEntity,
     params,
-    quoteInfo.quotePrice,
+    quoteInfo.quotePrice!,
     quoteInfo.quoteDecimals
   );
 
@@ -159,7 +159,7 @@ export async function handleOptimizedSwap(
   // Calculate market cap
   const marketCapUsd = MarketDataService.calculateMarketCap({
     price: swapData.price,
-    quotePriceUSD: quoteInfo.quotePrice,
+    quotePriceUSD: quoteInfo.quotePrice!,
     totalSupply: tokenEntity.totalSupply,
     decimals: quoteInfo.quoteDecimals,
   });
@@ -180,7 +180,7 @@ export async function handleOptimizedSwap(
     amountIn: swapData.amountIn,
     amountOut: swapData.amountOut,
     price: swapData.price,
-    usdPrice: quoteInfo.quotePrice,
+    usdPrice: quoteInfo.quotePrice!,
   });
 
   // Create metrics

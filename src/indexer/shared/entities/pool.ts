@@ -82,7 +82,7 @@ export const insertPoolIfNotExists = async ({
 
   const marketCapUsd = MarketDataService.calculateMarketCap({
     price,
-    quotePriceUSD: quoteInfo.quotePrice,
+    quotePriceUSD: quoteInfo.quotePrice!,
     totalSupply: assetTotalSupply,
     decimals: quoteInfo.quoteDecimals
   });
@@ -209,13 +209,13 @@ export const insertPoolIfNotExistsV4 = async ({
     assetBalance,
     quoteBalance,
     price,
-    quotePriceUSD: quoteInfo.quotePrice,
+    quotePriceUSD: quoteInfo.quotePrice!,
     decimals: quoteInfo.quoteDecimals
   });
 
   const marketCapUsd = MarketDataService.calculateMarketCap({
     price,
-    quotePriceUSD: quoteInfo.quotePrice,
+    quotePriceUSD: quoteInfo.quotePrice!,
     totalSupply,
     decimals: quoteInfo.quoteDecimals
   });
@@ -305,7 +305,7 @@ export const insertLockableV3PoolIfNotExists = async ({
   const marketCapUsd = MarketDataService.calculateMarketCap(
     {
       price,
-      quotePriceUSD: quoteInfo.quotePrice,
+      quotePriceUSD: quoteInfo.quotePrice!,
       totalSupply: assetTotalSupply,
       decimals: quoteInfo.quoteDecimals
     }

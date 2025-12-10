@@ -127,7 +127,7 @@ export const insertMulticurvePoolV4Optimized = async ({
 
   const marketCapUsd = MarketDataService.calculateMarketCap({
     price,
-    quotePriceUSD: quoteInfo.quotePrice,
+    quotePriceUSD: quoteInfo.quotePrice!,
     totalSupply: baseTokenEntity.totalSupply,
     decimals: quoteInfo.quoteDecimals,
   });

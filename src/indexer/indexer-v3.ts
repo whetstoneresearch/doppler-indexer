@@ -155,7 +155,7 @@ ponder.on("LockableUniswapV3Pool:Mint", async ({ event, context }) => {
     assetBalance: nextReservesAsset,
     quoteBalance: nextReservesQuote,
     price,
-    quotePriceUSD: quoteInfo.quotePrice,
+    quotePriceUSD: quoteInfo.quotePrice!,
     decimals: quoteInfo.quoteDecimals
   });
 
@@ -231,7 +231,7 @@ ponder.on("LockableUniswapV3Pool:Burn", async ({ event, context }) => {
     assetBalance: nextReservesAsset,
     quoteBalance: nextReservesQuote,
     price,
-    quotePriceUSD: quoteInfo.quotePrice,
+    quotePriceUSD: quoteInfo.quotePrice!,
     decimals: quoteInfo.quoteDecimals
   });
 
@@ -349,7 +349,7 @@ ponder.on("LockableUniswapV3Pool:Swap", async ({ event, context }) => {
     assetBalance: nextReservesAsset,
     quoteBalance: nextReservesQuote,
     price,
-    quotePriceUSD: quoteInfo.quotePrice,
+    quotePriceUSD: quoteInfo.quotePrice!,
     decimals: quoteInfo.quoteDecimals
   });
 
@@ -364,13 +364,13 @@ ponder.on("LockableUniswapV3Pool:Swap", async ({ event, context }) => {
 
   let marketCapUsd = MarketDataService.calculateMarketCap({
     price,
-    quotePriceUSD: quoteInfo.quotePrice,
+    quotePriceUSD: quoteInfo.quotePrice!,
     totalSupply: totalSupply,
     decimals: quoteInfo.quoteDecimals,
   });
   let swapValueUsd =
     ((reserveQuoteDelta < 0n ? -reserveQuoteDelta : reserveQuoteDelta) *
-      quoteInfo.quotePrice) /
+      quoteInfo.quotePrice!) /
     (BigInt(10) ** BigInt(quoteInfo.quoteDecimals));
 
   // Create swap data
@@ -387,7 +387,7 @@ ponder.on("LockableUniswapV3Pool:Swap", async ({ event, context }) => {
     amountIn,
     amountOut,
     price,
-    usdPrice: quoteInfo.quotePrice,
+    usdPrice: quoteInfo.quotePrice!,
   });
 
   // Create market metrics
@@ -475,7 +475,7 @@ ponder.on("UniswapV3Pool:Mint", async ({ event, context }) => {
     assetBalance: nextReservesAsset,
     quoteBalance: nextReservesQuote,
     price,
-    quotePriceUSD: quoteInfo.quotePrice,
+    quotePriceUSD: quoteInfo.quotePrice!,
     decimals: quoteInfo.quoteDecimals
   });
 
@@ -557,7 +557,7 @@ ponder.on("UniswapV3Pool:Burn", async ({ event, context }) => {
     assetBalance: nextReservesAsset,
     quoteBalance: nextReservesQuote,
     price,
-    quotePriceUSD: quoteInfo.quotePrice,
+    quotePriceUSD: quoteInfo.quotePrice!,
     decimals: quoteInfo.quoteDecimals
   });
 
@@ -684,7 +684,7 @@ ponder.on("UniswapV3Pool:Swap", async ({ event, context }) => {
     assetBalance: nextReservesAsset,
     quoteBalance: nextReservesQuote,
     price,
-    quotePriceUSD: quoteInfo.quotePrice,
+    quotePriceUSD: quoteInfo.quotePrice!,
     decimals: quoteInfo.quoteDecimals
   });
 
@@ -699,14 +699,14 @@ ponder.on("UniswapV3Pool:Swap", async ({ event, context }) => {
 
   const marketCapUsd = MarketDataService.calculateMarketCap({
     price,
-    quotePriceUSD: quoteInfo.quotePrice,
+    quotePriceUSD: quoteInfo.quotePrice!,
     totalSupply,
     decimals: quoteInfo.quoteDecimals
   });
 
   const swapValueUsd =
     ((reserveQuoteDelta < 0n ? -reserveQuoteDelta : reserveQuoteDelta) *
-      quoteInfo.quotePrice) /
+      quoteInfo.quotePrice!) /
     (BigInt(10) ** BigInt(quoteInfo.quoteDecimals));
 
   // Create swap data
@@ -723,7 +723,7 @@ ponder.on("UniswapV3Pool:Swap", async ({ event, context }) => {
     amountIn,
     amountOut,
     price,
-    usdPrice: quoteInfo.quotePrice,
+    usdPrice: quoteInfo.quotePrice!,
   });
 
   // Create market metrics
@@ -858,7 +858,7 @@ ponder.on("MigrationPool:Swap(address indexed sender, address indexed recipient,
     assetBalance: baseTokenReserveAfter,
     quoteBalance: quoteTokenReserveAfter,
     price,
-    quotePriceUSD: quoteInfo.quotePrice,
+    quotePriceUSD: quoteInfo.quotePrice!,
     decimals: quoteInfo.quoteDecimals
   });
 
@@ -873,7 +873,7 @@ ponder.on("MigrationPool:Swap(address indexed sender, address indexed recipient,
 
   const marketCapUsd = MarketDataService.calculateMarketCap({
     price,
-    quotePriceUSD: quoteInfo.quotePrice,
+    quotePriceUSD: quoteInfo.quotePrice!,
     totalSupply,
     decimals: quoteInfo.quoteDecimals
   });
@@ -882,7 +882,7 @@ ponder.on("MigrationPool:Swap(address indexed sender, address indexed recipient,
     ((quoteTokenReserveDelta < 0n
       ? -quoteTokenReserveDelta
       : quoteTokenReserveDelta) *
-      quoteInfo.quotePrice) /
+      quoteInfo.quotePrice!) /
     (BigInt(10) ** BigInt(quoteInfo.quoteDecimals));
 
   // Create swap data
@@ -899,7 +899,7 @@ ponder.on("MigrationPool:Swap(address indexed sender, address indexed recipient,
     amountIn,
     amountOut,
     price,
-    usdPrice: quoteInfo.quotePrice,
+    usdPrice: quoteInfo.quotePrice!,
   });
 
   // Create market metrics

@@ -62,7 +62,7 @@ ponder.on("UniswapV4Initializer:Create", async ({ event, context }) => {
     insertPoolIfNotExistsV4({
       poolAddress,
       timestamp,
-      ethPrice: quoteInfo.quotePrice,
+      ethPrice: quoteInfo.quotePrice!,
       poolData,
       context,
     }),
@@ -75,7 +75,7 @@ ponder.on("UniswapV4Initializer:Create", async ({ event, context }) => {
   const price = poolEntity.price;
   const marketCapUsd = MarketDataService.calculateMarketCap({
     price,
-    quotePriceUSD: quoteInfo.quotePrice,
+    quotePriceUSD: quoteInfo.quotePrice!,
     totalSupply,
     decimals: quoteInfo.quoteDecimals
   });
@@ -116,7 +116,7 @@ ponder.on("UniswapV4Pool:Swap", async ({ event, context }) => {
     insertPoolIfNotExistsV4({
       poolAddress: address,
       timestamp,
-      ethPrice: quoteInfo.quotePrice,
+      ethPrice: quoteInfo.quotePrice!,
       poolData: v4PoolData,
       context,
     }),
@@ -167,7 +167,7 @@ ponder.on("UniswapV4Pool:Swap", async ({ event, context }) => {
     assetBalance: isToken0 ? token0Reserve : token1Reserve,
     quoteBalance: isToken0 ? token1Reserve : token0Reserve,
     price,
-    quotePriceUSD: quoteInfo.quotePrice,
+    quotePriceUSD: quoteInfo.quotePrice!,
     decimals: quoteInfo.quoteDecimals
   });
 
@@ -177,13 +177,13 @@ ponder.on("UniswapV4Pool:Swap", async ({ event, context }) => {
   } else {
     marketCapUsd = MarketDataService.calculateMarketCap({
       price,
-      quotePriceUSD: quoteInfo.quotePrice,
+      quotePriceUSD: quoteInfo.quotePrice!,
       totalSupply,
       decimals: quoteInfo.quoteDecimals
     });
   }
 
-  const swapValueUsd = (amountIn * quoteInfo.quotePrice) / (BigInt(10) ** BigInt(quoteInfo.quoteDecimals));
+  const swapValueUsd = (amountIn * quoteInfo.quotePrice!) / (BigInt(10) ** BigInt(quoteInfo.quoteDecimals));
 
   const swapData = SwapOrchestrator.createSwapData({
     poolAddress: address,
@@ -198,7 +198,7 @@ ponder.on("UniswapV4Pool:Swap", async ({ event, context }) => {
     amountIn,
     amountOut,
     price,
-    usdPrice: quoteInfo.quotePrice,
+    usdPrice: quoteInfo.quotePrice!,
   });
 
   const marketMetrics = {
@@ -382,7 +382,7 @@ ponder.on(
     
     const marketCapUsd = MarketDataService.calculateMarketCap({
       price,
-      quotePriceUSD: quoteInfo.quotePrice,
+      quotePriceUSD: quoteInfo.quotePrice!,
       totalSupply: baseTokenEntity!.totalSupply,
       decimals: quoteInfo.quoteDecimals,
     });
@@ -391,7 +391,7 @@ ponder.on(
       assetBalance: poolEntity.isToken0 ? token0Reserve : token1Reserve,
       quoteBalance: poolEntity.isToken0 ? token1Reserve : token0Reserve,
       price,
-      quotePriceUSD: quoteInfo.quotePrice,
+      quotePriceUSD: quoteInfo.quotePrice!,
       decimals: quoteInfo.quoteDecimals,
     });
 
