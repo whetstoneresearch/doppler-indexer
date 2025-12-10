@@ -13,6 +13,7 @@ import {
 } from "@app/utils/v3-utils/computeGraduationThreshold";
 
 import { insertAssetIfNotExists } from "../asset";
+import { getQuoteInfo, QuoteToken } from "@app/utils/getQuoteInfo";
 
 /**
  * Optimized version with caching and reduced contract calls
@@ -23,7 +24,6 @@ export const insertZoraPoolV4Optimized = async ({
   quoteToken,
   timestamp,
   context,
-  ethPrice,
   poolKey,
   isQuoteZora,
   isCreatorCoin,
@@ -35,7 +35,6 @@ export const insertZoraPoolV4Optimized = async ({
   quoteToken: Address;
   timestamp: bigint;
   context: Context;
-  ethPrice: bigint;
   poolKey: PoolKey;
   isQuoteZora: boolean;
   isCreatorCoin: boolean;
@@ -57,8 +56,8 @@ export const insertZoraPoolV4Optimized = async ({
   }
 
   const isToken0 = baseToken.toLowerCase() < quoteToken.toLowerCase();
-  const isQuoteEth = quoteToken === zeroAddress || 
-    quoteToken === chainConfigs[chain.name].addresses.shared.weth;
+  
+  const quoteInfo = await getQuoteInfo(quoteToken, timestamp, context);
 
   // Optimized contract calls - single multicall instead of multiple calls
   const stateView = chainConfigs[chain.name].addresses.v4.stateView;
@@ -132,21 +131,22 @@ export const insertZoraPoolV4Optimized = async ({
     sqrtPriceX96,
     isToken0,
     decimals: 18,
+    quoteDecimals: quoteInfo.quoteDecimals
   });
 
   const marketCapUsd = MarketDataService.calculateMarketCap({
     price,
-    quotePriceUSD: ethPrice,
+    quotePriceUSD: quoteInfo.quotePrice!,
     totalSupply,
-    decimals: isQuoteEth ? 8 : 18,
+    decimals: quoteInfo.quoteDecimals
   });
 
   const dollarLiquidity = MarketDataService.calculateLiquidity({
     assetBalance: isToken0 ? token0Reserve : token1Reserve,
     quoteBalance: isToken0 ? token1Reserve : token0Reserve,
     price,
-    quotePriceUSD: ethPrice,
-    decimals: isQuoteEth ? 8 : 18,
+    quotePriceUSD: quoteInfo.quotePrice!,
+    decimals: quoteInfo.quoteDecimals
   });
 
   await insertAssetIfNotExists({
@@ -156,6 +156,8 @@ export const insertZoraPoolV4Optimized = async ({
     marketCapUsd,
     poolAddress: address
   })
+  
+  const isQuoteEth = quoteInfo.quoteToken === QuoteToken.Eth;
   
   // Insert new pool with all data at once
   return await db.insert(pool).values({

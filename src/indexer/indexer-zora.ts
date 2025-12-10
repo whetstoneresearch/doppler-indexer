@@ -134,25 +134,9 @@ ponder.on("ZoraFactory:CreatorCoinCreated", async ({ event, context }) => {
   const currencyAddress = currency.toLowerCase() as `0x${string}`;
   const callerId = caller.toLowerCase() as `0x${string}`;
 
-  const [zoraPrice, ethPrice] = await Promise.all([
-    fetchZoraPrice(timestamp, context),
-    fetchEthPrice(timestamp, context),
-  ]);
-
-  const isQuoteZora = currency != zeroAddress && currency.toLowerCase() === chainConfigs[context.chain.name].addresses.zora.zoraToken.toLowerCase();
-  const isQuoteEth = currency === zeroAddress || currency.toLowerCase() === chainConfigs[context.chain.name].addresses.shared.weth.toLowerCase();
-
-  let usdPrice;
-  if (isQuoteZora) {
-    usdPrice = zoraPrice;
-  } else if (isQuoteEth) {
-    usdPrice = ethPrice;
-  }
-
-  if (!usdPrice) {
-    return;
-  }
-
+  const quoteInfo = await getQuoteInfo(currencyAddress, timestamp, context);
+  const isQuoteZora = quoteInfo.quoteToken === QuoteToken.Zora;
+  
   // Optimized parallel operations with single upsert for tokens
   const [assetTokenEntity] = await Promise.all([
     upsertTokenWithPool({
@@ -183,8 +167,7 @@ ponder.on("ZoraFactory:CreatorCoinCreated", async ({ event, context }) => {
   await insertZoraPoolV4Optimized({
     poolAddress,
     context,
-    timestamp,
-    ethPrice: usdPrice,
+    timestamp,    
     poolKey,
     baseToken: coinAddress,
     quoteToken: currencyAddress,
@@ -280,18 +263,14 @@ ponder.on("ZoraCreatorCoinV4:LiquidityMigrated", async ({ event, context }) => {
 
   const totalSupply = baseTokenEntity.totalSupply;
 
-  const zoraPrice = await fetchZoraPrice(timestamp, context);
-  const ethPrice = await fetchEthPrice(timestamp, context);
-
-  const isQuoteZora = fromPoolEntity.quoteToken.toLowerCase() === chainConfigs[context.chain.name].addresses.zora.zoraToken.toLowerCase();
-  const isQuoteEth = fromPoolEntity.quoteToken.toLowerCase() === chainConfigs[context.chain.name].addresses.shared.weth.toLowerCase();
+  const quoteInfo = await getQuoteInfo(fromPoolEntity.quoteToken, timestamp, context);
+  const isQuoteZora = quoteInfo.quoteToken === QuoteToken.Zora;
 
   await Promise.all([
     insertZoraPoolV4Optimized({
       poolAddress: toPoolAddress,
       context,
-      timestamp,
-      ethPrice: isQuoteEth ? ethPrice : zoraPrice,
+      timestamp,      
       poolKey: toPoolKey,
       baseToken: fromPoolEntity.baseToken,
       quoteToken: fromPoolEntity.quoteToken,
