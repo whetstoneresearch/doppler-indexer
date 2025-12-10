@@ -34,20 +34,29 @@ export class PriceService {
    * Computes price from reserves (used by V2 protocol)
    * Uses the constant product formula: price = quoteReserve / assetReserve
    */
-  static computePriceFromReserves({
-    assetBalance,
-    quoteBalance,
-  }: {
-    assetBalance: bigint;
-    quoteBalance: bigint;
-  }): bigint {
-    if (assetBalance === 0n) {
-      throw new Error("Asset balance cannot be zero");
-    }
-    
-    const quote = (WAD * quoteBalance) / assetBalance;
-    return quote;
-  }
+   static computePriceFromReserves({
+     assetBalance,
+     quoteBalance,
+     assetDecimals,
+     quoteDecimals,
+   }: {
+     assetBalance: bigint;
+     quoteBalance: bigint;
+     assetDecimals: number;
+     quoteDecimals: number;
+   }): bigint {
+     if (assetBalance === 0n) {
+       throw new Error("Asset balance cannot be zero");
+     }
+        
+     const decimalDiff = assetDecimals - quoteDecimals;
+   
+     if (decimalDiff >= 0) {
+       return (quoteBalance * WAD * (10n ** BigInt(decimalDiff))) / assetBalance;
+     } else {
+       return (quoteBalance * WAD) / (assetBalance * (10n ** BigInt(-decimalDiff)));
+     }
+   }
 
   /**
    * Converts a price to USD using ETH price
