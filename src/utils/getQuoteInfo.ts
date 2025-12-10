@@ -57,7 +57,7 @@ export async function getQuoteInfo(quoteAddress: Address, timestamp: bigint | nu
     creatorCoinInfo = await getCreatorCoinInfo(quoteAddress, context);    
   } else {
     creatorCoinInfo = {
-      isQuoteCreaorCoin: false,
+      isQuoteCreatorCoin: false,
       creatorCoinPoolId: null,
       price: null
     };
