@@ -1,4 +1,4 @@
-import { ethPrice, zoraUsdcPrice, fxhWethPrice, noiceWethPrice, monadUsdcPrice, usdcPrice, usdtPrice } from "ponder.schema";
+import { ethPrice, zoraUsdcPrice, fxhWethPrice, noiceWethPrice, monadUsdcPrice, eurcUsdcPrice, usdcPrice, usdtPrice } from "ponder.schema";
 import { Context } from "ponder:registry";
 import { MarketDataService } from "@app/core";
 import { chainConfigs } from "@app/config";
@@ -124,10 +124,35 @@ export const fetchMonadPrice = async (
   return monadPriceData.price;
 };
 
+export const fetchEurcPrice = async (
+  timestamp: bigint,
+  context: Context
+): Promise<bigint> => {
+  const { db, chain } = context;
+
+  let roundedTimestamp = BigInt(Math.floor(Number(timestamp) / 300) * 300);
+
+  let eurcPriceData;
+  while (!eurcPriceData) {
+    eurcPriceData = await db.find(eurcUsdcPrice, {
+      timestamp: roundedTimestamp,
+      chainId: chain.id,
+    });
+
+    if (!eurcPriceData) {
+      roundedTimestamp -= 300n;
+    }
+  }
+
+  return eurcPriceData.price;
+};
+
 export const fetchUsdcPrice = async (
   timestamp: bigint,
   context: Context
 ): Promise<bigint> => {
+  // return hardcoded usdc value to lower rpc load
+  return BigInt(100000000)
   const { db, chain } = context;
   let roundedTimestamp = BigInt(Math.floor(Number(timestamp) / 300) * 300);
 
@@ -152,6 +177,8 @@ export const fetchUsdtPrice = async (
   timestamp: bigint,
   context: Context
 ): Promise<bigint> => {
+  // return hardcoded usdt value to lower rpc load
+  return BigInt(100000000)
   const { db, chain } = context;
   let roundedTimestamp = BigInt(Math.floor(Number(timestamp) / 300) * 300);
 
