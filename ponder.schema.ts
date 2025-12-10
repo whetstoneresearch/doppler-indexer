@@ -88,6 +88,18 @@ export const usdtPrice = onchainTable("usdt_price", (t) => ({
   })
 );
 
+export const eurcUsdcPrice = onchainTable("eurc_usdc_price", (t) => ({
+  timestamp: t.bigint().notNull(),
+  chainId: t.integer().notNull(),
+  price: t.bigint().notNull(),
+}),
+  (table) => ({
+    pk: primaryKey({
+      columns: [table.timestamp, table.chainId],
+    }),
+  })
+);
+
 export const zoraUsdcPrice = onchainTable(
   "zora_usdc_price",
   (t) => ({
