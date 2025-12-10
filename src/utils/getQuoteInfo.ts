@@ -165,6 +165,7 @@ async function getCreatorCoinInfo(quoteAddress: Address, context: Context): Prom
       sqrtPriceX96: poolEntity!.sqrtPrice,
       isToken0: poolEntity!.isToken0,
       decimals: 18,
+      quoteDecimals: 18
     });
     
     return {
