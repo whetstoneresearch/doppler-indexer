@@ -151,12 +151,12 @@ ponder.on(
         roundUp: false,
       });
     }
-
-    let fxhUsdPrice, noiceUsdPrice;
+    
     const price = PriceService.computePriceFromSqrtPriceX96({
       sqrtPriceX96: sqrtPrice,
       isToken0: poolEntity.isToken0,
       decimals: 18,
+      quoteDecimals: quoteInfo.quoteDecimals
     });
     
     const marketCapUsd = MarketDataService.calculateMarketCap({
