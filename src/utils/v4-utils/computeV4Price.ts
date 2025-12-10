@@ -23,19 +23,3 @@ export const computeV4Price = ({
     quoteDecimals: quoteTokenDecimals
   });
 };
-
-export const computeV4PriceFromSqrtPriceX96 = ({
-  isToken0,
-  sqrtPriceX96,
-  baseTokenDecimals,
-}: {
-  isToken0: boolean;
-  sqrtPriceX96: bigint;
-  baseTokenDecimals: number;
-}) => {
-  return PriceService.computePriceFromSqrtPriceX96({
-    sqrtPriceX96,
-    isToken0,
-    decimals: baseTokenDecimals,
-  });
-};
