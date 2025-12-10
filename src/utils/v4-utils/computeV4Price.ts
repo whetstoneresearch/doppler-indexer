@@ -5,10 +5,12 @@ export const computeV4Price = ({
   isToken0,
   currentTick,
   baseTokenDecimals,
+  quoteTokenDecimals
 }: {
   isToken0: boolean;
   currentTick: number;
   baseTokenDecimals: number;
+  quoteTokenDecimals: number;
 }) => {
   const sqrtPriceX96 = BigInt(
     TickMath.getSqrtRatioAtTick(currentTick).toString()
@@ -18,6 +20,7 @@ export const computeV4Price = ({
     sqrtPriceX96,
     isToken0,
     decimals: baseTokenDecimals,
+    quoteDecimals: quoteTokenDecimals
   });
 };
 

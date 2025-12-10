@@ -24,6 +24,7 @@ import {
 } from "../v3-utils/computeGraduationThreshold";
 import { getMulticallOptions } from "@app/core/utils";
 import { chainConfigs } from "@app/config";
+import { getQuoteInfo } from "@app/utils/getQuoteInfo";
 
 export const getV4PoolData = async ({
   hook,
@@ -96,11 +97,19 @@ export const getV4PoolData = async ({
     address: baseToken,
     functionName: "decimals",
   });
+  
+  let quoteInfo;
+  if (isToken0) {
+    quoteInfo = await getQuoteInfo(key.currency1, null, context);
+  } else {
+    quoteInfo = await getQuoteInfo(key.currency0, null, context);
+  }
 
   const price = computeV4Price({
     isToken0,
     currentTick: slot0Data.tick,
     baseTokenDecimals,
+    quoteTokenDecimals: quoteInfo.quoteDecimals
   });
 
   return {
