@@ -88,16 +88,16 @@ export default createConfig({
       startBlock: monad.startBlock,
       interval: BLOCK_INTERVALS.FIVE_MINUTES,
     },
-    BaseChainlinkUsdcPriceFeed: {
-      chain: "base",
-      startBlock: base.startBlock,
-      interval: BLOCK_INTERVALS.FIVE_MINUTES,
-    },
-    BaseSepoliaChainlinkUsdcPriceFeed: {
-      chain: "baseSepolia",
-      startBlock: baseSepolia.startBlock,
-      interval: 99999999999999,
-    },
+    // BaseChainlinkUsdcPriceFeed: {
+    //   chain: "base",
+    //   startBlock: base.startBlock,
+    //   interval: BLOCK_INTERVALS.FIVE_MINUTES,
+    // },
+    // BaseSepoliaChainlinkUsdcPriceFeed: {
+    //   chain: "baseSepolia",
+    //   startBlock: baseSepolia.startBlock,
+    //   interval: 99999999999999,
+    // },
     // InkChainlinkUsdcPriceFeed: {
     //   chain: "ink",
     //   startBlock: ink.startBlock,
