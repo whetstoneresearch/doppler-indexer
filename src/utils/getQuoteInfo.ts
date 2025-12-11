@@ -24,7 +24,8 @@ export enum QuoteToken {
   Usdc,
   Usdt,
   Eurc,
-  CreatorCoin
+  CreatorCoin,
+  Unknown
 }
 
 export interface QuoteInfo {
@@ -36,6 +37,8 @@ export interface QuoteInfo {
 export async function getQuoteInfo(quoteAddress: Address, timestamp: bigint | null, context: Context): Promise<QuoteInfo> {
   quoteAddress = quoteAddress.toLowerCase() as Address;
   
+  const nativeEthAddress = zeroAddress;
+  const wethAddress = chainConfigs[context.chain.name].addresses.shared.weth.toLowerCase();
   const zoraAddress = chainConfigs[context.chain.name].addresses.zora.zoraToken.toLowerCase();
   const fxhAddress = chainConfigs[context.chain.name].addresses.shared.fxHash.fxhAddress.toLowerCase();
   const noiceAddress = chainConfigs[context.chain.name].addresses.shared.noice.noiceAddress.toLowerCase();
@@ -44,6 +47,7 @@ export async function getQuoteInfo(quoteAddress: Address, timestamp: bigint | nu
   const usdtAddress = chainConfigs[context.chain.name].addresses.stables.usdt.toLowerCase();
   const eurcAddress = chainConfigs[context.chain.name].addresses.shared.eurc.eurcAddress.toLowerCase();
   
+  const isQuoteEth = (quoteAddress === nativeEthAddress || quoteAddress === wethAddress);
   const isQuoteZora = quoteAddress != zeroAddress && quoteAddress === zoraAddress;
   const isQuoteFxh = quoteAddress != zeroAddress && quoteAddress === fxhAddress;
   const isQuoteNoice = quoteAddress != zeroAddress && quoteAddress === noiceAddress;
@@ -72,14 +76,16 @@ export async function getQuoteInfo(quoteAddress: Address, timestamp: bigint | nu
     : isQuoteUsdt ? QuoteToken.Usdt
     : isQuoteEurc ? QuoteToken.Eurc
     : creatorCoinInfo.isQuoteCreatorCoin ? QuoteToken.CreatorCoin
-    : QuoteToken.Eth;
+    : isQuoteEth ? QuoteToken.Eth
+    : QuoteToken.Unknown;
     
   // uses 8 for tokens that use chainlink price feeds
   const quoteDecimals = 
     (isQuoteZora || isQuoteFxh || isQuoteNoice || isQuoteMon || creatorCoinInfo.isQuoteCreatorCoin) ? 18
-    : (isQuoteUsdc || isQuoteUsdt) ? 8
+    : (isQuoteEth || isQuoteUsdc || isQuoteUsdt) ? 8
     : isQuoteEurc ? 6
-    : 8;
+    // assumes 18 decimals for unknown quote tokens
+    : 18;
   
   // Short circuit price fetching if timestamp is null
   if (timestamp === null) {
@@ -91,7 +97,9 @@ export async function getQuoteInfo(quoteAddress: Address, timestamp: bigint | nu
   }
     
   let quotePrice;
-  if (isQuoteZora) {
+  if (isQuoteEth) {
+    quotePrice = await fetchEthPrice(timestamp, context);
+  } else if (isQuoteZora) {
     quotePrice = await fetchZoraPrice(timestamp, context);
   } else if (isQuoteFxh) {
     const [ethPrice, fxhWethPrice] = await Promise.all([
@@ -116,9 +124,10 @@ export async function getQuoteInfo(quoteAddress: Address, timestamp: bigint | nu
   } else if (creatorCoinInfo.isQuoteCreatorCoin) {
     const zoraPrice = await fetchZoraPrice(timestamp, context);
     quotePrice = (creatorCoinInfo.price! * zoraPrice) / WAD;
-  } else {
-    // this assumes the quote token is eth if it's not one of the other hardcoded ones
-    quotePrice = await fetchEthPrice(timestamp, context);
+  } else {    
+    // return price of 1^10^-20 (1/10th cent) if unknown quote token, will report incorrect metrics
+    // TODO: find path back to a terminal token we know usd price for and calculate usd price of quote token
+    quotePrice = BigInt(1) / (BigInt(10) ** BigInt(21));
   }
   
   const quoteInfo = {
