@@ -9,10 +9,11 @@ import { batchUpsertUsersAndAssets, batchUpdateHolderCounts } from "./shared/ent
 import { handleOptimizedSwap } from "./shared/swap-optimizer";
 import { StateViewABI } from "@app/abis";
 import { zeroAddress } from "viem";
-import { computeV3Price } from "@app/utils";
+import { PriceService } from "@app/core";
 import { chainConfigs } from "@app/config";
 import { token, pool } from "ponder:schema";
 import { insertZoraPoolV4Optimized } from "./shared/entities/zora/pool";
+import { getQuoteInfo, QuoteToken } from "@app/utils/getQuoteInfo";
 
 // ponder.on("ZoraFactory:CoinCreatedV4", async ({ event, context }) => {
 //   const { db, chain } = context;
@@ -66,7 +67,7 @@ import { insertZoraPoolV4Optimized } from "./shared/entities/zora/pool";
 
 //     const { sqrtPrice, isToken0: creatorCoinIsToken0 } = creatorCoinPool;
 
-//     const creatorCoinPrice = computeV3Price({
+//     const creatorCoinPrice = PriceService.computePriceFromSqrtPriceX96({
 //       sqrtPriceX96: sqrtPrice,
 //       isToken0: creatorCoinIsToken0,
 //       decimals: 18,
@@ -133,25 +134,9 @@ ponder.on("ZoraFactory:CreatorCoinCreated", async ({ event, context }) => {
   const currencyAddress = currency.toLowerCase() as `0x${string}`;
   const callerId = caller.toLowerCase() as `0x${string}`;
 
-  const [zoraPrice, ethPrice] = await Promise.all([
-    fetchZoraPrice(timestamp, context),
-    fetchEthPrice(timestamp, context),
-  ]);
-
-  const isQuoteZora = currency != zeroAddress && currency.toLowerCase() === chainConfigs[context.chain.name].addresses.zora.zoraToken.toLowerCase();
-  const isQuoteEth = currency === zeroAddress || currency.toLowerCase() === chainConfigs[context.chain.name].addresses.shared.weth.toLowerCase();
-
-  let usdPrice;
-  if (isQuoteZora) {
-    usdPrice = zoraPrice;
-  } else if (isQuoteEth) {
-    usdPrice = ethPrice;
-  }
-
-  if (!usdPrice) {
-    return;
-  }
-
+  const quoteInfo = await getQuoteInfo(currencyAddress, timestamp, context);
+  const isQuoteZora = quoteInfo.quoteToken === QuoteToken.Zora;
+  
   // Optimized parallel operations with single upsert for tokens
   const [assetTokenEntity] = await Promise.all([
     upsertTokenWithPool({
@@ -182,8 +167,7 @@ ponder.on("ZoraFactory:CreatorCoinCreated", async ({ event, context }) => {
   await insertZoraPoolV4Optimized({
     poolAddress,
     context,
-    timestamp,
-    ethPrice: usdPrice,
+    timestamp,    
     poolKey,
     baseToken: coinAddress,
     quoteToken: currencyAddress,
@@ -229,6 +213,9 @@ ponder.on("ZoraV4CreatorCoinHook:Swapped", async ({ event, context }) => {
   
   const tick = slot0[1];
   
+  const zoraAddress = chainConfigs[context.chain.name].addresses.zora.zoraToken;
+  const quoteInfo = await getQuoteInfo(zoraAddress, timestamp, context);
+  
   await handleOptimizedSwap(
     {
       poolAddress: poolKeyHash,
@@ -244,7 +231,7 @@ ponder.on("ZoraV4CreatorCoinHook:Swapped", async ({ event, context }) => {
       context,
       tick
     },
-    true,
+    quoteInfo
   );
 });
 
@@ -276,18 +263,14 @@ ponder.on("ZoraCreatorCoinV4:LiquidityMigrated", async ({ event, context }) => {
 
   const totalSupply = baseTokenEntity.totalSupply;
 
-  const zoraPrice = await fetchZoraPrice(timestamp, context);
-  const ethPrice = await fetchEthPrice(timestamp, context);
-
-  const isQuoteZora = fromPoolEntity.quoteToken.toLowerCase() === chainConfigs[context.chain.name].addresses.zora.zoraToken.toLowerCase();
-  const isQuoteEth = fromPoolEntity.quoteToken.toLowerCase() === chainConfigs[context.chain.name].addresses.shared.weth.toLowerCase();
+  const quoteInfo = await getQuoteInfo(fromPoolEntity.quoteToken, timestamp, context);
+  const isQuoteZora = quoteInfo.quoteToken === QuoteToken.Zora;
 
   await Promise.all([
     insertZoraPoolV4Optimized({
       poolAddress: toPoolAddress,
       context,
-      timestamp,
-      ethPrice: isQuoteEth ? ethPrice : zoraPrice,
+      timestamp,      
       poolKey: toPoolKey,
       baseToken: fromPoolEntity.baseToken,
       quoteToken: fromPoolEntity.quoteToken,

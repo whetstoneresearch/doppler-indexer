@@ -67,6 +67,8 @@ export const baseSepoliaConfig: ChainConfig = {
       weth: COMMON_ADDRESSES.WETH_BASE,
       chainlinkEthOracle:
         "0x5b0cf2b36a65a6BB085D501B971e4c102B9Cd473" as Address,
+      chainlinkUsdcOracle: "0xd30e2101a97dcbaebcbc04f14c3f624e67a35165" as Address,
+      chainlinkUsdtOracle: "0x3ec8593f930ea45ea58c968260e6e9ff53fc934f" as Address,
       fxHash: {
         fxhAddress: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
         fxhWethPool: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
@@ -78,10 +80,15 @@ export const baseSepoliaConfig: ChainConfig = {
       monad: {
         monAddress: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
         monUsdcPool: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
+      },
+      eurc: {
+        eurcAddress: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
+        eurcUsdcPool: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
       }
     },
     stables: {
-      usdc: "0xaf33add7918f685b2a82c1077bd8c07d220ffa04" as Address
+      usdc: "0xaf33add7918f685b2a82c1077bd8c07d220ffa04" as Address,
+      usdt: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
     },
     oracle: ORACLE_ADDRESSES,
   },
@@ -146,6 +153,8 @@ export const baseConfig: ChainConfig = {
       weth: COMMON_ADDRESSES.WETH_BASE,
       chainlinkEthOracle:
         "0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70" as Address,
+      chainlinkUsdcOracle: "0x7e860098f58bbfc8648a4311b374b1d669a2bc6b" as Address,
+      chainlinkUsdtOracle: "0xf19d560eb8d2adf07bd6d13ed03e1d11215721f9" as Address,
       fxHash: {
         fxhAddress: "0x5fc2843838e65eb0b5d33654628f446d54602791" as Address,
         fxhWethPool: "0xC3e7433ae4d929092F8dFf62F7E2f15f23bC3E63" as Address,
@@ -157,10 +166,15 @@ export const baseConfig: ChainConfig = {
       monad: {
         monAddress: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
         monUsdcPool: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
+      },
+      eurc: {
+        eurcAddress: "0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42" as Address,
+        eurcUsdcPool: "0xb18fad93e3c5a5f932d901f0c22c5639a832d6f29a4392fff3393fb734dd0720" as Address
       }
     },
     stables: {
       usdc: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" as Address,
+      usdt: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
     },
     oracle: ORACLE_ADDRESSES,
   },

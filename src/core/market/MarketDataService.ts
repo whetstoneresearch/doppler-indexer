@@ -19,8 +19,8 @@ export interface LiquidityParams {
   assetBalance: bigint;
   quoteBalance: bigint;
   price: bigint;
-  ethPriceUSD: bigint;
-  isQuoteETH?: boolean;
+  quotePriceUSD: bigint;
+  isQuoteUSD?: boolean;
   decimals?: number;
 }
 
@@ -30,9 +30,8 @@ export interface LiquidityParams {
 export interface MarketCapParams {
   price: bigint;
   totalSupply: bigint;
-  ethPriceUSD: bigint;
-  assetDecimals?: number;
-  isQuoteETH?: boolean;
+  quotePriceUSD: bigint;
+  assetDecimals?: number;  
   decimals?: number;
 }
 
@@ -42,8 +41,8 @@ export interface MarketCapParams {
 export interface VolumeParams {
   amountIn: bigint;
   amountOut: bigint;
-  ethPriceUSD: bigint;
-  isQuoteETH?: boolean;
+  quotePriceUSD: bigint;
+  isQuoteUSD?: boolean;
   quoteDecimals?: number;
 }
 
@@ -60,14 +59,14 @@ export class MarketDataService {
     const {
       price,
       totalSupply,
-      ethPriceUSD,
+      quotePriceUSD,
       assetDecimals = 18,
       decimals = 8,
     } = params;
     // Calculate market cap in quote currency
     const marketCap = (price * totalSupply) / BigInt(10 ** assetDecimals);
 
-    return (marketCap * ethPriceUSD) / BigInt(10 ** decimals);
+    return (marketCap * quotePriceUSD) / BigInt(10 ** decimals);
   }
 
   /**
@@ -79,18 +78,18 @@ export class MarketDataService {
       assetBalance,
       quoteBalance,
       price,
-      ethPriceUSD,
-      isQuoteETH = true,
+      quotePriceUSD,
+      isQuoteUSD = false,
       decimals = 8,
     } = params;
 
     // Calculate asset value in quote currency
     const assetValueInQuote = (assetBalance * price) / WAD;
 
-    if (isQuoteETH) {
+    if (!isQuoteUSD) {
       // Convert both to USD
-      const assetValueUsd = (assetValueInQuote * ethPriceUSD) / BigInt(10 ** decimals);
-      const quoteValueUsd = (quoteBalance * ethPriceUSD) / BigInt(10 ** decimals);
+      const assetValueUsd = (assetValueInQuote * quotePriceUSD) / BigInt(10 ** decimals);
+      const quoteValueUsd = (quoteBalance * quotePriceUSD) / BigInt(10 ** decimals);
       return assetValueUsd + quoteValueUsd;
     }
 
@@ -105,90 +104,21 @@ export class MarketDataService {
     const {
       amountIn,
       amountOut,
-      ethPriceUSD,
-      isQuoteETH = true,
+      quotePriceUSD,
+      isQuoteUSD = false,
       quoteDecimals = 18,
     } = params;
+    if (amountIn == 0n && amountOut ==0n){
+      return 0n;
+    }
 
     // Use the larger amount as volume indicator
     const swapAmount = amountIn > 0n ? amountIn : amountOut;
 
-    if (isQuoteETH) {
-      return (swapAmount * ethPriceUSD) / BigInt(10 ** quoteDecimals);
+    if (!isQuoteUSD) {
+      return (swapAmount * quotePriceUSD) / BigInt(10 ** quoteDecimals);
     }
 
     return swapAmount;
   }
-
-  /**
-   * Calculate comprehensive market metrics
-   * Combines market cap, liquidity, and volume calculations
-   */
-  static calculateMarketMetrics(params: {
-    price: bigint;
-    totalSupply: bigint;
-    assetBalance: bigint;
-    quoteBalance: bigint;
-    ethPriceUSD: bigint;
-    swapAmountIn?: bigint;
-    swapAmountOut?: bigint;
-    assetDecimals?: number;
-    isQuoteETH?: boolean;
-  }): MarketMetrics {
-    const {
-      price,
-      totalSupply,
-      assetBalance,
-      quoteBalance,
-      ethPriceUSD,
-      swapAmountIn = 0n,
-      swapAmountOut = 0n,
-      assetDecimals = 18,
-      isQuoteETH = true,
-    } = params;
-
-    // Calculate market cap
-    const marketCapUsd = MarketDataService.calculateMarketCap({
-      price,
-      totalSupply,
-      ethPriceUSD,
-      assetDecimals,
-      isQuoteETH,
-    });
-
-    // Calculate liquidity
-    const liquidityUsd = MarketDataService.calculateLiquidity({
-      assetBalance,
-      quoteBalance,
-      price,
-      ethPriceUSD,
-      isQuoteETH,
-    });
-
-    // Calculate volume if swap amounts provided
-    let volumeUsd: bigint | undefined;
-    if (swapAmountIn > 0n || swapAmountOut > 0n) {
-      volumeUsd = MarketDataService.calculateVolume({
-        amountIn: swapAmountIn,
-        amountOut: swapAmountOut,
-        ethPriceUSD,
-        isQuoteETH,
-      });
-    }
-
-    // Calculate price in USD
-    const priceUsd = PriceService.computePriceUSD({
-      price,
-      ethPriceUSD,
-      isQuoteETH,
-    });
-
-    return {
-      marketCapUsd,
-      liquidityUsd,
-      volumeUsd,
-      priceUsd,
-    };
-  }
 }
-

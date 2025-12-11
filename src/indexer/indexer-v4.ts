@@ -1,19 +1,13 @@
 import { ponder } from "ponder:registry";
 import { getPoolId, getV4PoolData } from "@app/utils/v4-utils";
 import { insertTokenIfNotExists } from "./shared/entities/token";
-import {
-  computeMarketCap,
-  fetchEthPrice,
-  fetchFxhPrice,
-  fetchNoicePrice,
-} from "./shared/oracle";
 import { insertPoolIfNotExistsV4, updatePool } from "./shared/entities/pool";
 import { insertAssetIfNotExists, updateAsset } from "./shared/entities/asset";
-import { computeDollarLiquidity } from "@app/utils/computeDollarLiquidity";
+
 import { insertV4ConfigIfNotExists } from "./shared/entities/v4Config";
 import { getReservesV4 } from "@app/utils/v4-utils/getV4PoolData";
 import { CHAINLINK_ETH_DECIMALS } from "@app/utils/constants";
-import { SwapService, SwapOrchestrator, PriceService } from "@app/core";
+import { SwapService, SwapOrchestrator, PriceService, MarketDataService } from "@app/core";
 import { TickMath } from "@uniswap/v3-sdk";
 import { computeGraduationPercentage } from "@app/utils/v4-utils";
 import { updateFifteenMinuteBucketUsd } from "@app/utils/time-buckets";
@@ -22,11 +16,11 @@ import { chainConfigs } from "@app/config/chains";
 import { insertMulticurvePoolV4Optimized } from "./shared/entities/multicurve/pool";
 import { getAmount1Delta } from "@app/utils/v3-utils/computeGraduationThreshold";
 import { getAmount0Delta } from "@app/utils/v3-utils/computeGraduationThreshold";
-import { computeV3Price } from "@app/utils/v3-utils/computeV3Price";
 import { pool, token } from "ponder:schema";
 import { handleOptimizedSwap } from "./shared/swap-optimizer";
 import { StateViewABI } from "@app/abis";
-import { zeroAddress } from "viem";
+import { Address, zeroAddress } from "viem";
+import { QuoteToken, QuoteInfo, getQuoteInfo } from "@app/utils/getQuoteInfo";
 
 ponder.on("UniswapV4Initializer:Create", async ({ event, context }) => {
   const { poolOrHook, asset: assetId, numeraire } = event.args;
@@ -36,10 +30,10 @@ ponder.on("UniswapV4Initializer:Create", async ({ event, context }) => {
   const poolAddress = poolOrHook.toLowerCase() as `0x${string}`;
   const assetAddress = assetId.toLowerCase() as `0x${string}`;
   const numeraireAddress = numeraire.toLowerCase() as `0x${string}`;
-
-  const creatorAddress = event.transaction.from.toLowerCase() as `0x${string}`;
-
-  const [baseToken, ethPrice, poolData] = await Promise.all([
+  
+  const creatorAddress = event.transaction.from.toLowerCase() as `0x${string}`;  
+    
+  const [baseToken, quoteInfo, poolData] = await Promise.all([
     insertTokenIfNotExists({
       tokenAddress: assetAddress,
       creatorAddress,
@@ -48,7 +42,7 @@ ponder.on("UniswapV4Initializer:Create", async ({ event, context }) => {
       isDerc20: true,
       poolAddress: poolAddress,
     }),
-    fetchEthPrice(timestamp, context),
+    getQuoteInfo(numeraireAddress, timestamp, context),
     getV4PoolData({
       hook: poolAddress,
       context,
@@ -68,7 +62,7 @@ ponder.on("UniswapV4Initializer:Create", async ({ event, context }) => {
     insertPoolIfNotExistsV4({
       poolAddress,
       timestamp,
-      ethPrice,
+      ethPrice: quoteInfo.quotePrice!,
       poolData,
       context,
     }),
@@ -79,10 +73,11 @@ ponder.on("UniswapV4Initializer:Create", async ({ event, context }) => {
   ]);
 
   const price = poolEntity.price;
-  const marketCapUsd = computeMarketCap({
+  const marketCapUsd = MarketDataService.calculateMarketCap({
     price,
-    ethPrice,
+    quotePriceUSD: quoteInfo.quotePrice!,
     totalSupply,
+    decimals: quoteInfo.quoteDecimals
   });
 
   await Promise.all([
@@ -101,13 +96,17 @@ ponder.on("UniswapV4Pool:Swap", async ({ event, context }) => {
   const { currentTick, totalProceeds, totalTokensSold } = event.args;
   const timestamp = event.block.timestamp;
 
-  const [ethPrice, v4PoolData] = await Promise.all([
-    fetchEthPrice(event.block.timestamp, context),
-    getV4PoolData({
+  const v4PoolData = 
+    await getV4PoolData({
       hook: address,
       context,
-    }),
-  ]);
+    });
+  
+  const quoteAddress = v4PoolData.poolConfig.isToken0
+    ? v4PoolData.poolKey.currency1
+    : v4PoolData.poolKey.currency0;
+  
+  const quoteInfo = await getQuoteInfo(quoteAddress, timestamp, context);
 
   const [reserves, poolEntity] = await Promise.all([
     getReservesV4({
@@ -117,7 +116,7 @@ ponder.on("UniswapV4Pool:Swap", async ({ event, context }) => {
     insertPoolIfNotExistsV4({
       poolAddress: address,
       timestamp,
-      ethPrice,
+      ethPrice: quoteInfo.quotePrice!,
       poolData: v4PoolData,
       context,
     }),
@@ -159,29 +158,32 @@ ponder.on("UniswapV4Pool:Swap", async ({ event, context }) => {
     sqrtPriceX96,
     isToken0,
     decimals: 18,
+    quoteDecimals: quoteInfo.quoteDecimals
   });
 
   const { token0Reserve, token1Reserve } = reserves;
 
-  const dollarLiquidity = computeDollarLiquidity({
+  const dollarLiquidity = MarketDataService.calculateLiquidity({
     assetBalance: isToken0 ? token0Reserve : token1Reserve,
     quoteBalance: isToken0 ? token1Reserve : token0Reserve,
     price,
-    ethPrice,
+    quotePriceUSD: quoteInfo.quotePrice!,
+    decimals: quoteInfo.quoteDecimals
   });
 
   let marketCapUsd;
   if (price == 340256786698763678858396856460488307819979090561464864775n) {
     marketCapUsd = marketCapUsdPrev;
   } else {
-    marketCapUsd = computeMarketCap({
+    marketCapUsd = MarketDataService.calculateMarketCap({
       price,
-      ethPrice,
+      quotePriceUSD: quoteInfo.quotePrice!,
       totalSupply,
+      decimals: quoteInfo.quoteDecimals
     });
   }
 
-  const swapValueUsd = (amountIn * ethPrice) / CHAINLINK_ETH_DECIMALS;
+  const swapValueUsd = (amountIn * quoteInfo.quotePrice!) / (BigInt(10) ** BigInt(quoteInfo.quoteDecimals));
 
   const swapData = SwapOrchestrator.createSwapData({
     poolAddress: address,
@@ -196,7 +198,7 @@ ponder.on("UniswapV4Pool:Swap", async ({ event, context }) => {
     amountIn,
     amountOut,
     price,
-    usdPrice: ethPrice,
+    usdPrice: quoteInfo.quotePrice!,
   });
 
   const marketMetrics = {
@@ -329,32 +331,7 @@ ponder.on(
     const baseTokenEntity = await context.db.find(token, {
       address: poolEntity.baseToken,
       chainId: context.chain.id,
-    });
-
-    const quoteToken = poolEntity.quoteToken;
-    const isQuoteFxh =
-      quoteToken != zeroAddress &&
-      quoteToken ===
-        chainConfigs[context.chain.name].addresses.shared.fxHash.fxhAddress.toLowerCase();
-    const isQuoteNoice =
-      quoteToken != zeroAddress &&
-      quoteToken ===
-        chainConfigs[context.chain.name].addresses.shared.noice.noiceAddress.toLowerCase();
-
-    var ethPrice, fxhWethPrice, noiceWethPrice;
-    if (isQuoteFxh) {
-      [ethPrice, fxhWethPrice] = await Promise.all([
-        fetchEthPrice(timestamp, context),
-        fetchFxhPrice(timestamp, context),
-      ]);
-    } else if (isQuoteNoice) {
-      [ethPrice, noiceWethPrice] = await Promise.all([
-        fetchEthPrice(timestamp, context),
-        fetchNoicePrice(timestamp, context),
-      ]);
-    } else {
-      ethPrice = await fetchEthPrice(timestamp, context);
-    }
+    });    
 
     // Calculate reserves only if needed
     let token0Reserve = poolEntity.reserves0;
@@ -393,43 +370,29 @@ ponder.on(
         roundUp: false,
       });
     }
+    
+    const quoteInfo = await getQuoteInfo(poolEntity.quoteToken, timestamp, context);
 
-    let fxhUsdPrice, noiceUsdPrice;
-    var price;
-    if (isQuoteFxh) {
-      fxhUsdPrice = fxhWethPrice! * ethPrice / 10n ** 8n;
-      price = computeV3Price({
-        sqrtPriceX96: sqrtPrice,
-        isToken0: poolEntity.isToken0,
-        decimals: 18,
-      });
-    } else if (isQuoteNoice) {
-      noiceUsdPrice = noiceWethPrice! * ethPrice / 10n ** 8n;
-      price = computeV3Price({
-        sqrtPriceX96: sqrtPrice,
-        isToken0: poolEntity.isToken0,
-        decimals: 18,
-      });
-    } else {
-      price = computeV3Price({
-        sqrtPriceX96: sqrtPrice,
-        isToken0: poolEntity.isToken0,
-        decimals: 18,
-      });
-    }
-    const marketCapUsd = computeMarketCap({
+    const price = PriceService.computePriceFromSqrtPriceX96({
+      sqrtPriceX96: sqrtPrice,
+      isToken0: poolEntity.isToken0,
+      decimals: 18,
+      quoteDecimals: quoteInfo.quoteDecimals
+    });
+    
+    const marketCapUsd = MarketDataService.calculateMarketCap({
       price,
-      ethPrice: isQuoteFxh ? fxhUsdPrice! : isQuoteNoice ? noiceUsdPrice! : ethPrice,
+      quotePriceUSD: quoteInfo.quotePrice!,
       totalSupply: baseTokenEntity!.totalSupply,
-      decimals: poolEntity.isQuoteEth ? 8 : 18,
+      decimals: quoteInfo.quoteDecimals,
     });
 
-    const dollarLiquidity = computeDollarLiquidity({
+    const dollarLiquidity = MarketDataService.calculateLiquidity({
       assetBalance: poolEntity.isToken0 ? token0Reserve : token1Reserve,
       quoteBalance: poolEntity.isToken0 ? token1Reserve : token0Reserve,
       price,
-      ethPrice: isQuoteFxh ? fxhUsdPrice! : isQuoteNoice ? noiceUsdPrice! : ethPrice,
-      decimals: poolEntity.isQuoteEth ? 8 : 18,
+      quotePriceUSD: quoteInfo.quotePrice!,
+      decimals: quoteInfo.quoteDecimals,
     });
 
 
@@ -471,15 +434,8 @@ ponder.on(
     
     const tick = slot0[1];
 
-    const isQuoteFxh =
-      poolEntity!.quoteToken != zeroAddress &&
-      poolEntity!.quoteToken ===
-        chainConfigs[context.chain.name].addresses.shared.fxHash.fxhAddress.toLowerCase();
-    const isQuoteNoice =
-      poolEntity!.quoteToken != zeroAddress &&
-      poolEntity!.quoteToken ===
-        chainConfigs[context.chain.name].addresses.shared.noice.noiceAddress.toLowerCase();
-
+    const quoteInfo = await getQuoteInfo(poolEntity.quoteToken, timestamp, context);
+    
     const sqrtPriceX96 = slot0?.[0] ?? 0n;
 
     const isCoinBuy = poolEntity.isToken0
@@ -501,9 +457,7 @@ ponder.on(
         context,
         tick
       },
-      false,
-      isQuoteFxh,
-      isQuoteNoice,
+      quoteInfo
     );
   },
 );

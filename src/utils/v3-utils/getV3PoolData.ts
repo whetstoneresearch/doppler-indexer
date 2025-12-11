@@ -5,11 +5,12 @@ import {
   UniswapV3InitializerABI,
   UniswapV3PoolABI,
 } from "@app/abis";
-import { computeV3Price } from "./computeV3Price";
 import { getMulticallOptions } from "@app/core/utils";
 import { LockablePoolState, LockableV3PoolData, PoolState, V3PoolData } from "@app/types/v3-types";
 import { LockableUniswapV3InitializerABI } from "@app/abis";
 import { chainConfigs } from "@app/config";
+import { PriceService } from "@app/core/pricing";
+import { getQuoteInfo } from "../getQuoteInfo";
 
 export const getSlot0Data = async ({
   address,
@@ -96,10 +97,18 @@ export const getV3MigrationPoolData = async ({
 
   const isToken0 = baseToken.toLowerCase() === token0.toLowerCase();
 
-  const price = computeV3Price({
+  let quoteInfo;
+  if (isToken0) {
+    quoteInfo = await getQuoteInfo(token1, null, context);
+  } else {
+    quoteInfo = await getQuoteInfo(token0, null, context);
+  }
+  
+  const price = PriceService.computePriceFromSqrtPriceX96({
     sqrtPriceX96: slot0Data.sqrtPrice,
     isToken0,
     decimals: 18,
+    quoteDecimals: quoteInfo.quoteDecimals
   });
 
   return {
@@ -140,10 +149,19 @@ export const getV3PoolData = async ({
   });
 
   const isToken0 = token0.toLowerCase() === poolState.asset.toLowerCase();
-  const price = computeV3Price({
+  
+  let quoteInfo;
+  if (isToken0) {
+    quoteInfo = await getQuoteInfo(token1, null, context);
+  } else {
+    quoteInfo = await getQuoteInfo(token0, null, context);
+  }
+  
+  const price = PriceService.computePriceFromSqrtPriceX96({
     sqrtPriceX96: slot0Data.sqrtPrice,
     isToken0,
     decimals: 18,
+    quoteDecimals: quoteInfo.quoteDecimals
   });
 
   return {
@@ -184,10 +202,19 @@ export const getLockableV3PoolData = async ({
   });
 
   const isToken0 = token0.toLowerCase() === poolState.asset.toLowerCase();
-  const price = computeV3Price({
+  
+  let quoteInfo;
+  if (isToken0) {
+    quoteInfo = await getQuoteInfo(token1, null, context);
+  } else {
+    quoteInfo = await getQuoteInfo(token0, null, context);
+  }
+  
+  const price = PriceService.computePriceFromSqrtPriceX96({
     sqrtPriceX96: slot0Data.sqrtPrice,
     isToken0,
     decimals: 18,
+    quoteDecimals: quoteInfo.quoteDecimals
   });
 
   return {
@@ -308,4 +335,3 @@ const getLockablePoolState = async ({
 
   return poolState;
 };
-

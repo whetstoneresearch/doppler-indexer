@@ -1,5 +1,4 @@
-import { PriceService, SwapOrchestrator, SwapService } from "@app/core";
-import { computeDollarLiquidity } from "@app/utils/computeDollarLiquidity";
+import { PriceService, SwapOrchestrator, SwapService, MarketDataService } from "@app/core";
 import { CHAINLINK_ETH_DECIMALS, WAD } from "@app/utils/constants";
 import { computeGraduationThresholdDelta } from "@app/utils/v3-utils/computeGraduationThreshold";
 import { ponder } from "ponder:registry";
@@ -13,7 +12,7 @@ import {
   updatePosition,
 } from "./shared/entities/position";
 import { insertTokenIfNotExists } from "./shared/entities/token";
-import { computeMarketCap, fetchEthPrice, fetchZoraPrice } from "./shared/oracle";
+import { fetchEthPrice, fetchZoraPrice } from "./shared/oracle";
 import { updateFifteenMinuteBucketUsd } from "@app/utils/time-buckets";
 import { fetchV3MigrationPool, updateMigrationPool } from "./shared/entities/migrationPool";
 import { insertAssetIfNotExists, updateAsset } from "./shared/entities";
@@ -26,9 +25,7 @@ ponder.on("UniswapV3Initializer:Create", async ({ event, context }) => {
   const creatorId = event.transaction.from.toLowerCase() as `0x${string}`;
   const numeraireId = numeraire.toLowerCase() as `0x${string}`;
   const assetId = asset.toLowerCase() as `0x${string}`;
-  const poolOrHookId = poolOrHook.toLowerCase() as `0x${string}`;
-
-  const ethPrice = await fetchEthPrice(timestamp, context);
+  const poolOrHookId = poolOrHook.toLowerCase() as `0x${string}`;  
 
   await insertTokenIfNotExists({
     tokenAddress: assetId,
@@ -45,11 +42,10 @@ ponder.on("UniswapV3Initializer:Create", async ({ event, context }) => {
     isDerc20: false,
   });
 
-  const poolEntity = await insertPoolIfNotExists({
+  const [poolEntity, _] = await insertPoolIfNotExists({
     poolAddress: poolOrHookId,
     context,
-    timestamp,
-    ethPrice,
+    timestamp    
   });
 
   await insertAssetIfNotExists({
@@ -67,9 +63,7 @@ ponder.on("LockableUniswapV3Initializer:Create", async ({ event, context }) => {
   const creatorId = event.transaction.from.toLowerCase() as `0x${string}`;
   const numeraireId = numeraire.toLowerCase() as `0x${string}`;
   const assetId = asset.toLowerCase() as `0x${string}`;
-  const poolOrHookId = poolOrHook.toLowerCase() as `0x${string}`;
-
-  const ethPrice = await fetchEthPrice(timestamp, context);
+  const poolOrHookId = poolOrHook.toLowerCase() as `0x${string}`;  
 
   await insertTokenIfNotExists({
     tokenAddress: assetId,
@@ -88,8 +82,7 @@ ponder.on("LockableUniswapV3Initializer:Create", async ({ event, context }) => {
   const result = await insertLockableV3PoolIfNotExists({
     poolAddress: poolOrHookId,
     context,
-    timestamp,
-    ethPrice,
+    timestamp,  
   });
 
   if (!result) {
@@ -128,16 +121,13 @@ ponder.on("LockableUniswapV3Initializer:Lock", async ({ event, context }) => {
 ponder.on("LockableUniswapV3Pool:Mint", async ({ event, context }) => {
   const address = event.log.address.toLowerCase() as `0x${string}`;
   const { tickLower, tickUpper, amount, owner, amount0, amount1 } = event.args;
-  const timestamp = event.block.timestamp;
-
-  const ethPrice = await fetchEthPrice(timestamp, context);
+  const timestamp = event.block.timestamp;  
 
   // Price is returned in terms of quote asset
   const result = await insertLockableV3PoolIfNotExists({
     poolAddress: address,
     timestamp,
-    context,
-    ethPrice,
+    context,    
   });
 
   if (!result) {
@@ -150,13 +140,7 @@ ponder.on("LockableUniswapV3Pool:Mint", async ({ event, context }) => {
     liquidity,
     reserves0,
     reserves1,
-  }, quoteContext] = result;
-  const {
-    isQuoteCreatorCoin,
-    creatorCoinUsdPrice,
-    isQuoteMon,
-    monUsdPrice,
-  } = quoteContext;
+  }, quoteInfo] = result;
 
   const reserveAssetBefore = isToken0 ? reserves0 : reserves1;
   const reserveQuoteBefore = isToken0 ? reserves1 : reserves0;
@@ -167,30 +151,13 @@ ponder.on("LockableUniswapV3Pool:Mint", async ({ event, context }) => {
   const nextReservesAsset = reserveAssetBefore + reserveAssetDelta;
   const nextReservesQuote = reserveQuoteBefore + reserveQuoteDelta;
 
-  let liquidityUsd;
-  if (isQuoteCreatorCoin && creatorCoinUsdPrice) {
-    liquidityUsd = computeDollarLiquidity({
-      assetBalance: nextReservesAsset,
-      quoteBalance: nextReservesQuote,
-      price,
-      ethPrice: creatorCoinUsdPrice,
-    });
-  } else if (isQuoteMon && monUsdPrice) {
-    liquidityUsd = computeDollarLiquidity({
-      assetBalance: nextReservesAsset,
-      quoteBalance: nextReservesQuote,
-      price,
-      ethPrice: monUsdPrice,
-      decimals: 18,
-    });
-  } else {
-    liquidityUsd = computeDollarLiquidity({
-      assetBalance: nextReservesAsset,
-      quoteBalance: nextReservesQuote,
-      price,
-      ethPrice,
-    });
-  }
+  const liquidityUsd = MarketDataService.calculateLiquidity({
+    assetBalance: nextReservesAsset,
+    quoteBalance: nextReservesQuote,
+    price,
+    quotePriceUSD: quoteInfo.quotePrice!,
+    decimals: quoteInfo.quoteDecimals
+  });
 
   const positionEntity = await insertPositionIfNotExists({
     poolAddress: address,
@@ -233,13 +200,10 @@ ponder.on("LockableUniswapV3Pool:Burn", async ({ event, context }) => {
   const timestamp = event.block.timestamp;
   const { tickLower, tickUpper, owner, amount, amount0, amount1 } = event.args;
 
-  const ethPrice = await fetchEthPrice(timestamp, context);
-
   const result = await insertLockableV3PoolIfNotExists({
     poolAddress: address,
     timestamp,
-    context,
-    ethPrice,
+    context,    
   });
 
   if (!result) {
@@ -252,13 +216,7 @@ ponder.on("LockableUniswapV3Pool:Burn", async ({ event, context }) => {
     liquidity,
     reserves0,
     reserves1,
-  }, quoteContext] = result;
-  const {
-    isQuoteCreatorCoin,
-    creatorCoinUsdPrice,
-    isQuoteMon,
-    monUsdPrice,
-  } = quoteContext;
+  }, quoteInfo] = result;
 
   const reserveAssetBefore = isToken0 ? reserves0 : reserves1;
   const reserveQuoteBefore = isToken0 ? reserves1 : reserves0;
@@ -269,30 +227,13 @@ ponder.on("LockableUniswapV3Pool:Burn", async ({ event, context }) => {
   const nextReservesAsset = reserveAssetBefore - reserveAssetDelta;
   const nextReservesQuote = reserveQuoteBefore - reserveQuoteDelta;
 
-  let liquidityUsd;
-  if (isQuoteCreatorCoin && creatorCoinUsdPrice) {
-    liquidityUsd = computeDollarLiquidity({
-      assetBalance: nextReservesAsset,
-      quoteBalance: nextReservesQuote,
-      price,
-      ethPrice: creatorCoinUsdPrice,
-    });
-  } else if (isQuoteMon && monUsdPrice) {
-    liquidityUsd = computeDollarLiquidity({
-      assetBalance: nextReservesAsset,
-      quoteBalance: nextReservesQuote,
-      price,
-      ethPrice: monUsdPrice,
-      decimals: 18,
-    });
-  } else {
-    liquidityUsd = computeDollarLiquidity({
-      assetBalance: nextReservesAsset,
-      quoteBalance: nextReservesQuote,
-      price,
-      ethPrice,
-    });
-  }
+  const liquidityUsd = MarketDataService.calculateLiquidity({
+    assetBalance: nextReservesAsset,
+    quoteBalance: nextReservesQuote,
+    price,
+    quotePriceUSD: quoteInfo.quotePrice!,
+    decimals: quoteInfo.quoteDecimals
+  });
 
   const positionEntity = await insertPositionIfNotExists({
     poolAddress: address,
@@ -339,15 +280,12 @@ ponder.on("LockableUniswapV3Pool:Swap", async ({ event, context }) => {
     args: [],
   });
   
-  const tick = slot0[1];
-  
-  const ethPrice = await fetchEthPrice(event.block.timestamp, context);
+  const tick = slot0[1];  
 
   const result = await insertLockableV3PoolIfNotExists({
     poolAddress: address,
     timestamp,
     context,
-    ethPrice,
   });
 
   if (!result) {
@@ -364,18 +302,13 @@ ponder.on("LockableUniswapV3Pool:Swap", async ({ event, context }) => {
     totalFee0,
     totalFee1,
     graduationBalance,
-  }, quoteContext] = result;
-  const {
-    isQuoteCreatorCoin,
-    creatorCoinUsdPrice,
-    isQuoteMon,
-    monUsdPrice,
-  } = quoteContext;
+  }, quoteInfo] = result;
 
   const price = PriceService.computePriceFromSqrtPriceX96({
     sqrtPriceX96,
     isToken0,
     decimals: 18,
+    quoteDecimals: quoteInfo.quoteDecimals
   });
 
   const reserveAssetBefore = isToken0 ? reserves0 : reserves1;
@@ -412,30 +345,13 @@ ponder.on("LockableUniswapV3Pool:Swap", async ({ event, context }) => {
 
   const quoteDelta = isToken0 ? amount1 - fee1 : amount0 - fee0;
 
-  let liquidityUsd;
-  if (isQuoteCreatorCoin && creatorCoinUsdPrice) {
-    liquidityUsd = computeDollarLiquidity({
-      assetBalance: nextReservesAsset,
-      quoteBalance: nextReservesQuote,
-      price,
-      ethPrice: creatorCoinUsdPrice,
-    });
-  } else if (isQuoteMon && monUsdPrice) {
-    liquidityUsd = computeDollarLiquidity({
-      assetBalance: nextReservesAsset,
-      quoteBalance: nextReservesQuote,
-      price,
-      ethPrice: monUsdPrice,
-      decimals: 18,
-    });
-  } else {
-    liquidityUsd = computeDollarLiquidity({
-      assetBalance: nextReservesAsset,
-      quoteBalance: nextReservesQuote,
-      price,
-      ethPrice,
-    });
-  }
+  let liquidityUsd = MarketDataService.calculateLiquidity({
+    assetBalance: nextReservesAsset,
+    quoteBalance: nextReservesQuote,
+    price,
+    quotePriceUSD: quoteInfo.quotePrice!,
+    decimals: quoteInfo.quoteDecimals
+  });
 
   const { totalSupply } = await insertTokenIfNotExists({
     tokenAddress: baseToken,
@@ -446,44 +362,16 @@ ponder.on("LockableUniswapV3Pool:Swap", async ({ event, context }) => {
     poolAddress: address,
   });
 
-  let marketCapUsd;
-  let swapValueUsd;
-  if (isQuoteCreatorCoin && creatorCoinUsdPrice) {
-    marketCapUsd = computeMarketCap({
-      price,
-      ethPrice: creatorCoinUsdPrice,
-      totalSupply: totalSupply,
-      decimals: 18,
-    });
-
-    swapValueUsd =
-      ((reserveQuoteDelta < 0n ? -reserveQuoteDelta : reserveQuoteDelta) *
-        creatorCoinUsdPrice) /
-      WAD;
-  } else if (isQuoteMon && monUsdPrice) {
-    marketCapUsd = computeMarketCap({
-      price,
-      ethPrice: monUsdPrice,
-      totalSupply: totalSupply,
-      decimals: 18,
-    });
-
-    swapValueUsd =
-      ((reserveQuoteDelta < 0n ? -reserveQuoteDelta : reserveQuoteDelta) *
-        monUsdPrice) /
-      WAD;
-  } else {
-    marketCapUsd = computeMarketCap({
-      price,
-      ethPrice,
-      totalSupply: totalSupply,
-    });
-    
-    swapValueUsd =
-      ((reserveQuoteDelta < 0n ? -reserveQuoteDelta : reserveQuoteDelta) *
-        ethPrice) /
-      CHAINLINK_ETH_DECIMALS;
-  }
+  let marketCapUsd = MarketDataService.calculateMarketCap({
+    price,
+    quotePriceUSD: quoteInfo.quotePrice!,
+    totalSupply: totalSupply,
+    decimals: quoteInfo.quoteDecimals,
+  });
+  let swapValueUsd =
+    ((reserveQuoteDelta < 0n ? -reserveQuoteDelta : reserveQuoteDelta) *
+      quoteInfo.quotePrice!) /
+    (BigInt(10) ** BigInt(quoteInfo.quoteDecimals));
 
   // Create swap data
   const swapData = SwapOrchestrator.createSwapData({
@@ -499,7 +387,7 @@ ponder.on("LockableUniswapV3Pool:Swap", async ({ event, context }) => {
     amountIn,
     amountOut,
     price,
-    usdPrice: ethPrice,
+    usdPrice: quoteInfo.quotePrice!,
   });
 
   // Create market metrics
@@ -558,11 +446,9 @@ ponder.on("LockableUniswapV3Pool:Swap", async ({ event, context }) => {
 ponder.on("UniswapV3Pool:Mint", async ({ event, context }) => {
   const address = event.log.address.toLowerCase() as `0x${string}`;
   const { tickLower, tickUpper, amount, owner, amount0, amount1 } = event.args;
-  const timestamp = event.block.timestamp;
+  const timestamp = event.block.timestamp;  
 
-  const ethPrice = await fetchEthPrice(timestamp, context);
-
-  const {
+  const [{
     baseToken,
     isToken0,
     price,
@@ -570,11 +456,10 @@ ponder.on("UniswapV3Pool:Mint", async ({ event, context }) => {
     reserves0,
     reserves1,
     maxThreshold,
-  } = await insertPoolIfNotExists({
+  }, quoteInfo] = await insertPoolIfNotExists({
     poolAddress: address,
     timestamp,
-    context,
-    ethPrice,
+    context,    
   });
 
   const reserveAssetBefore = isToken0 ? reserves0 : reserves1;
@@ -586,11 +471,12 @@ ponder.on("UniswapV3Pool:Mint", async ({ event, context }) => {
   const nextReservesAsset = reserveAssetBefore + reserveAssetDelta;
   const nextReservesQuote = reserveQuoteBefore + reserveQuoteDelta;
 
-  const liquidityUsd = computeDollarLiquidity({
+  const liquidityUsd = MarketDataService.calculateLiquidity({
     assetBalance: nextReservesAsset,
     quoteBalance: nextReservesQuote,
     price,
-    ethPrice,
+    quotePriceUSD: quoteInfo.quotePrice!,
+    decimals: quoteInfo.quoteDecimals
   });
 
   const graduationThresholdDelta = computeGraduationThresholdDelta({
@@ -642,11 +528,9 @@ ponder.on("UniswapV3Pool:Mint", async ({ event, context }) => {
 ponder.on("UniswapV3Pool:Burn", async ({ event, context }) => {
   const address = event.log.address.toLowerCase() as `0x${string}`;
   const timestamp = event.block.timestamp;
-  const { tickLower, tickUpper, owner, amount, amount0, amount1 } = event.args;
+  const { tickLower, tickUpper, owner, amount, amount0, amount1 } = event.args;  
 
-  const ethPrice = await fetchEthPrice(timestamp, context);
-
-  const {
+  const [{
     baseToken,
     isToken0,
     price,
@@ -654,11 +538,10 @@ ponder.on("UniswapV3Pool:Burn", async ({ event, context }) => {
     reserves0,
     reserves1,
     maxThreshold,
-  } = await insertPoolIfNotExists({
+  }, quoteInfo] = await insertPoolIfNotExists({
     poolAddress: address,
     timestamp,
-    context,
-    ethPrice,
+    context    
   });
 
   const reserveAssetBefore = isToken0 ? reserves0 : reserves1;
@@ -670,11 +553,12 @@ ponder.on("UniswapV3Pool:Burn", async ({ event, context }) => {
   const nextReservesAsset = reserveAssetBefore - reserveAssetDelta;
   const nextReservesQuote = reserveQuoteBefore - reserveQuoteDelta;
 
-  const liquidityUsd = computeDollarLiquidity({
+  const liquidityUsd = MarketDataService.calculateLiquidity({
     assetBalance: nextReservesAsset,
     quoteBalance: nextReservesQuote,
     price,
-    ethPrice,
+    quotePriceUSD: quoteInfo.quotePrice!,
+    decimals: quoteInfo.quoteDecimals
   });
 
   const graduationThresholdDelta = computeGraduationThresholdDelta({
@@ -733,10 +617,8 @@ ponder.on("UniswapV3Pool:Swap", async ({ event, context }) => {
   });
   
   const tick = slot0[1];
-  
-  const ethPrice = await fetchEthPrice(event.block.timestamp, context);
 
-  const {
+  const [{
     isToken0,
     baseToken,
     quoteToken,
@@ -747,11 +629,10 @@ ponder.on("UniswapV3Pool:Swap", async ({ event, context }) => {
     totalFee1,
     graduationBalance,
     migrated,
-  } = await insertPoolIfNotExists({
+  }, quoteInfo] = await insertPoolIfNotExists({
     poolAddress: address,
     timestamp,
-    context,
-    ethPrice,
+    context    
   });
 
   if (migrated) {
@@ -762,6 +643,7 @@ ponder.on("UniswapV3Pool:Swap", async ({ event, context }) => {
     sqrtPriceX96,
     isToken0,
     decimals: 18,
+    quoteDecimals: quoteInfo.quoteDecimals
   });
 
   const reserveAssetBefore = isToken0 ? reserves0 : reserves1;
@@ -798,11 +680,12 @@ ponder.on("UniswapV3Pool:Swap", async ({ event, context }) => {
 
   const quoteDelta = isToken0 ? amount1 - fee1 : amount0 - fee0;
 
-  const dollarLiquidity = computeDollarLiquidity({
+  const dollarLiquidity = MarketDataService.calculateLiquidity({
     assetBalance: nextReservesAsset,
     quoteBalance: nextReservesQuote,
     price,
-    ethPrice,
+    quotePriceUSD: quoteInfo.quotePrice!,
+    decimals: quoteInfo.quoteDecimals
   });
 
   const { totalSupply } = await insertTokenIfNotExists({
@@ -814,16 +697,17 @@ ponder.on("UniswapV3Pool:Swap", async ({ event, context }) => {
     poolAddress: address,
   });
 
-  const marketCapUsd = computeMarketCap({
+  const marketCapUsd = MarketDataService.calculateMarketCap({
     price,
-    ethPrice,
+    quotePriceUSD: quoteInfo.quotePrice!,
     totalSupply,
+    decimals: quoteInfo.quoteDecimals
   });
 
   const swapValueUsd =
     ((reserveQuoteDelta < 0n ? -reserveQuoteDelta : reserveQuoteDelta) *
-      ethPrice) /
-    CHAINLINK_ETH_DECIMALS;
+      quoteInfo.quotePrice!) /
+    (BigInt(10) ** BigInt(quoteInfo.quoteDecimals));
 
   // Create swap data
   const swapData = SwapOrchestrator.createSwapData({
@@ -839,7 +723,7 @@ ponder.on("UniswapV3Pool:Swap", async ({ event, context }) => {
     amountIn,
     amountOut,
     price,
-    usdPrice: ethPrice,
+    usdPrice: quoteInfo.quotePrice!,
   });
 
   // Create market metrics
@@ -910,13 +794,11 @@ ponder.on("MigrationPool:Swap(address indexed sender, address indexed recipient,
   
   const tick = slot0[1];
   
-  const [ethPrice, v3MigrationPool] = await Promise.all([
-    fetchEthPrice(timestamp, context),
+  const v3MigrationPool = await
     fetchV3MigrationPool({
       poolAddress: address,
       context,
-    }),
-  ]);
+    });
 
   if (!v3MigrationPool) {
     return;
@@ -925,19 +807,19 @@ ponder.on("MigrationPool:Swap(address indexed sender, address indexed recipient,
   const { isToken0, reserveBaseToken, reserveQuoteToken, fee } =
     v3MigrationPool!;
 
+  const parentPool = v3MigrationPool!.parentPool.toLowerCase() as `0x${string}`;
+
+  const [{ baseToken, quoteToken }, quoteInfo] = await insertPoolIfNotExists({
+    poolAddress: parentPool,
+    timestamp,
+    context    
+  });
+  
   const price = PriceService.computePriceFromSqrtPriceX96({
     sqrtPriceX96,
     isToken0,
     decimals: 18,
-  });
-
-  const parentPool = v3MigrationPool!.parentPool.toLowerCase() as `0x${string}`;
-
-  const { baseToken, quoteToken } = await insertPoolIfNotExists({
-    poolAddress: parentPool,
-    timestamp,
-    context,
-    ethPrice,
+    quoteDecimals: quoteInfo.quoteDecimals
   });
 
   const baseTokenReserveBefore = reserveBaseToken;
@@ -972,11 +854,12 @@ ponder.on("MigrationPool:Swap(address indexed sender, address indexed recipient,
     amount1,
   });
 
-  const dollarLiquidity = computeDollarLiquidity({
+  const dollarLiquidity = MarketDataService.calculateLiquidity({
     assetBalance: baseTokenReserveAfter,
     quoteBalance: quoteTokenReserveAfter,
     price,
-    ethPrice,
+    quotePriceUSD: quoteInfo.quotePrice!,
+    decimals: quoteInfo.quoteDecimals
   });
 
   const { totalSupply } = await insertTokenIfNotExists({
@@ -988,18 +871,19 @@ ponder.on("MigrationPool:Swap(address indexed sender, address indexed recipient,
     poolAddress: address,
   });
 
-  const marketCapUsd = computeMarketCap({
+  const marketCapUsd = MarketDataService.calculateMarketCap({
     price,
-    ethPrice,
+    quotePriceUSD: quoteInfo.quotePrice!,
     totalSupply,
+    decimals: quoteInfo.quoteDecimals
   });
 
   const swapValueUsd =
     ((quoteTokenReserveDelta < 0n
       ? -quoteTokenReserveDelta
       : quoteTokenReserveDelta) *
-      ethPrice) /
-    CHAINLINK_ETH_DECIMALS;
+      quoteInfo.quotePrice!) /
+    (BigInt(10) ** BigInt(quoteInfo.quoteDecimals));
 
   // Create swap data
   const swapData = SwapOrchestrator.createSwapData({
@@ -1015,7 +899,7 @@ ponder.on("MigrationPool:Swap(address indexed sender, address indexed recipient,
     amountIn,
     amountOut,
     price,
-    usdPrice: ethPrice,
+    usdPrice: quoteInfo.quotePrice!,
   });
 
   // Create market metrics

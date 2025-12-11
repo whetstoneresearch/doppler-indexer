@@ -50,6 +50,8 @@ export const unichainConfig: ChainConfig = {
       weth: COMMON_ADDRESSES.WETH_BASE,
       chainlinkEthOracle:
         "0xED2B1ca5D7E246f615c2291De309643D41FeC97e" as Address,
+      chainlinkUsdcOracle: "0xd15862fc3d5407a03b696548b6902d6464a69b8c" as Address,
+      chainlinkUsdtOracle: "0x58fa68a373956285ddfb340edf755246f8dfca16" as Address,
       fxHash: {
         fxhAddress: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
         fxhWethPool: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
@@ -61,6 +63,10 @@ export const unichainConfig: ChainConfig = {
       monad: {
         monAddress: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
         monUsdcPool: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
+      },
+      eurc: {
+        eurcAddress: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
+        eurcUsdcPool: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
       }
     },
     zora: {
@@ -72,6 +78,7 @@ export const unichainConfig: ChainConfig = {
     },
     stables: {
       usdc: "0x078d782b760474a361dda0af3839290b0ef57ad6" as Address,
+      usdt: "0x9151434b16b9763660705744891fA906F660EcC5" as Address
     },
     oracle: ORACLE_ADDRESSES,
   },

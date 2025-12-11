@@ -24,7 +24,7 @@ import { UniswapV4ScheduledMulticurveInitializerHookABI } from "@app/abis/multic
 import { UniswapV4ScheduledMulticurveInitializerABI } from "@app/abis/multicurve-abis/UniswapV4ScheduledMulticurveInitializerABI";
 import { monadFallbackTransport } from "./src/utils/monadFallbackTransport";
 
-const { base, unichain, ink, monad } = chainConfigs;
+const { base, baseSepolia, unichain, ink, monad } = chainConfigs;
 
 export default createConfig({
   database: {
@@ -86,6 +86,46 @@ export default createConfig({
       startBlock: monad.startBlock,
       interval: BLOCK_INTERVALS.FIVE_MINUTES,
     },
+    // BaseChainlinkUsdcPriceFeed: {
+    //   chain: "base",
+    //   startBlock: base.startBlock,
+    //   interval: 99999999999999,
+    // },
+    // BaseSepoliaChainlinkUsdcPriceFeed: {
+    //   chain: "baseSepolia",
+    //   startBlock: baseSepolia.startBlock,
+    //   interval: 99999999999999,
+    // },
+    // InkChainlinkUsdcPriceFeed: {
+    //   chain: "ink",
+    //   startBlock: ink.startBlock,
+    //   interval: 99999999999999,
+    // },
+    // InkChainlinkUsdtPriceFeed: {
+    //   chain: "ink",
+    //   startBlock: ink.startBlock,
+    //   interval: 99999999999999,
+    // },
+    // UnichainChainlinkUsdcPriceFeed: {
+    //   chain: "unichain",
+    //   startBlock: unichain.startBlock,
+    //   interval: 99999999999999,
+    // },
+    // UnichainChainlinkUsdtPriceFeed: {
+    //   chain: "unichain",
+    //   startBlock: unichain.startBlock,
+    //   interval: 99999999999999,
+    // },
+    // MonadChainlinkUsdcPriceFeed: {
+    //   chain: "monad",
+    //   startBlock: monad.startBlock,
+    //   interval: BLOCK_INTERVALS.FIVE_MINUTES,
+    // },
+    // MonadChainlinkUsdtPriceFeed: {
+    //   chain: "monad",
+    //   startBlock: monad.startBlock,
+    //   interval: BLOCK_INTERVALS.FIVE_MINUTES,
+    // },
     ZoraUsdcPrice: {
       chain: "base",
       startBlock: 38094491,
@@ -105,6 +145,11 @@ export default createConfig({
       chain: "monad",
       startBlock: monad.startBlock,
       interval: BLOCK_INTERVALS.FIVE_MINUTES,
+    },
+    EurcUsdcPrice: {
+      chain: "base",
+      startBlock: 39224595,
+      interval: 99999999999
     }
   },
   contracts: {

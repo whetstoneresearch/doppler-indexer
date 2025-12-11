@@ -8,6 +8,7 @@ import { fetchEthPrice } from "../oracle";
 import { CHAINLINK_ETH_DECIMALS } from "@app/utils/constants";
 import { insertPoolIfNotExists } from "./pool";
 import { chainConfigs } from "@app/config";
+import { getQuoteInfo } from "@app/utils/getQuoteInfo";
 
 export const insertV2PoolIfNotExists = async ({
   assetAddress,
@@ -18,9 +19,7 @@ export const insertV2PoolIfNotExists = async ({
   timestamp: bigint;
   context: Context;
 }): Promise<typeof v2Pool.$inferSelect> => {
-  const { db, chain } = context;
-
-  const ethPrice = await fetchEthPrice(timestamp, context);
+  const { db, chain } = context;  
 
   const { poolAddress, migrationPool, numeraire } =
     await insertAssetIfNotExists({
@@ -40,11 +39,10 @@ export const insertV2PoolIfNotExists = async ({
     return existingV2Pool;
   }
 
-  const { baseToken } = await insertPoolIfNotExists({
+  const [{ baseToken }, quoteInfo] = await insertPoolIfNotExists({
     poolAddress,
     timestamp,
-    context,
-    ethPrice,
+    context    
   });
 
   const isToken0 = baseToken === assetAddress;
@@ -59,13 +57,14 @@ export const insertV2PoolIfNotExists = async ({
     context,
   });
 
-
   const price = PriceService.computePriceFromReserves({
     assetBalance: reserve0,
     quoteBalance: reserve1,
+    assetDecimals: 18,
+    quoteDecimals: quoteInfo.quoteDecimals
   });
 
-  const dollarPrice = (price * ethPrice) / CHAINLINK_ETH_DECIMALS;
+  const dollarPrice = (price * quoteInfo.quotePrice!) / (BigInt(10) ** BigInt(quoteInfo.quoteDecimals));
 
   return await db.insert(v2Pool).values({
     address: migrationPoolAddr,
@@ -123,9 +122,7 @@ export const insertV2MigrationPoolIfNotExists = async ({
   timestamp: bigint;
   context: Context;
 }): Promise<typeof v2Pool.$inferSelect> => {
-  const { db, chain } = context;
-
-  const ethPrice = await fetchEthPrice(timestamp, context);
+  const { db, chain } = context;  
 
   const existingV2Pool = await db.find(v2Pool, {
     address: migrationPoolAddress,
@@ -139,9 +136,9 @@ export const insertV2MigrationPoolIfNotExists = async ({
   const assetId = assetAddress.toLowerCase() as `0x${string}`;
   const numeraireId = numeraire.toLowerCase() as `0x${string}`;
 
-  const wethAddress = chainConfigs[chain.name].addresses.shared.weth.toLowerCase() as `0x${string}`;
+  const quoteInfo = await getQuoteInfo(numeraireId, timestamp, context);
 
-  const migrationPoolIsToken0 = numeraireId === zeroAddress ? assetId < wethAddress : isToken0ParentPool;
+  const migrationPoolIsToken0 = numeraireId === zeroAddress ? assetId < numeraireId : isToken0ParentPool;
 
   const { reserve0, reserve1 } = await getPairData({
     address: migrationPoolAddress,
@@ -151,9 +148,11 @@ export const insertV2MigrationPoolIfNotExists = async ({
   const price = PriceService.computePriceFromReserves({
     assetBalance: migrationPoolIsToken0 ? reserve0 : reserve1,
     quoteBalance: migrationPoolIsToken0 ? reserve1 : reserve0,
+    assetDecimals: 18,
+    quoteDecimals: quoteInfo.quoteDecimals
   });
 
-  const dollarPrice = (price * ethPrice) / CHAINLINK_ETH_DECIMALS;
+  const dollarPrice = (price * quoteInfo.quotePrice!) / (BigInt(10) ** BigInt(quoteInfo.quoteDecimals));
 
   return await db.insert(v2Pool).values({
     address: migrationPoolAddress,

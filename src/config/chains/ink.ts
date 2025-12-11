@@ -50,6 +50,8 @@ export const inkConfig: ChainConfig = {
       weth: COMMON_ADDRESSES.WETH_BASE,
       chainlinkEthOracle:
         "0xe5867B1d421f0b52697F16e2ac437e87d66D5fbF" as Address,
+      chainlinkUsdcOracle: "0x58fa68a373956285ddfb340edf755246f8dfca16" as Address,
+      chainlinkUsdtOracle: "0xb4fe9028a4d4d8b3d00e52341f2bb0798860532c" as Address,
       fxHash: {
         fxhAddress: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
         fxhWethPool: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
@@ -61,6 +63,10 @@ export const inkConfig: ChainConfig = {
       monad: {
         monAddress: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
         monUsdcPool: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
+      },
+      eurc: {
+        eurcAddress: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
+        eurcUsdcPool: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
       }
     },
     zora: {
@@ -72,6 +78,7 @@ export const inkConfig: ChainConfig = {
     },
     stables: {
       usdc: "0x2d270e6886d130d724215a266106e6832161eaed" as Address,
+      usdt: "0x0200C29006150606B650577BBE7B6248F58470c1" as Address
     },
     oracle: ORACLE_ADDRESSES,
   },

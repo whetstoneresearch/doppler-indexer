@@ -1,7 +1,7 @@
 import { ponder } from "ponder:registry";
 import { v2Pool } from "ponder.schema";
 import { getPairData } from "@app/utils/v2-utils/getPairData";
-import { computeMarketCap, fetchEthPrice } from "./shared/oracle";
+import { fetchEthPrice } from "./shared/oracle";
 import {
   insertPoolIfNotExists,
   insertTokenIfNotExists,
@@ -12,8 +12,7 @@ import {
 import { CHAINLINK_ETH_DECIMALS } from "@app/utils/constants";
 import { zeroAddress } from "viem";
 import { chainConfigs } from "@app/config";
-import { SwapService, SwapOrchestrator, PriceService } from "@app/core";
-import { computeDollarLiquidity } from "@app/utils/computeDollarLiquidity";
+import { SwapService, SwapOrchestrator, PriceService, MarketDataService } from "@app/core";
 import { updateFifteenMinuteBucketUsd } from "@app/utils/time-buckets";
 
 ponder.on("MigrationPool:Swap(address indexed sender, uint256 amount0In, uint256 amount1In, uint256 amount0Out, uint256 amount1Out, address indexed to)", async ({ event, context }) => {
@@ -32,24 +31,19 @@ ponder.on("MigrationPool:Swap(address indexed sender, uint256 amount0In, uint256
     return;
   }
 
-  const [reserves, ethPrice] = await Promise.all([
-    getPairData({ address, context }),
-    fetchEthPrice(timestamp, context),
-  ]);
+  const reserves = await getPairData({ address, context });
 
   const { reserve0, reserve1 } = reserves;
 
-  const { isToken0, baseToken, quoteToken } = await insertPoolIfNotExists({
+  const [{ isToken0, baseToken, quoteToken }, quoteInfo] = await insertPoolIfNotExists({
     poolAddress: parentPool,
     timestamp,
-    context,
-    ethPrice,
+    context
   });
 
   let v2isToken0 = isToken0;
-  if (quoteToken.toLowerCase() == zeroAddress) {
-    const weth = chainConfigs[chain.name].addresses.shared.weth.toLowerCase() as `0x${string}`;
-    v2isToken0 = baseToken.toLowerCase() < weth.toLowerCase();
+  if (quoteToken.toLowerCase() == zeroAddress) {    
+    v2isToken0 = baseToken.toLowerCase() < quoteToken.toLowerCase();
   }
 
   const assetBalance = v2isToken0 ? reserve0 : reserve1;
@@ -67,6 +61,8 @@ ponder.on("MigrationPool:Swap(address indexed sender, uint256 amount0In, uint256
   const price = PriceService.computePriceFromReserves({
     assetBalance,
     quoteBalance,
+    assetDecimals: 18,
+    quoteDecimals: quoteInfo.quoteDecimals
   });
 
   const { totalSupply } = await insertTokenIfNotExists({
@@ -76,19 +72,24 @@ ponder.on("MigrationPool:Swap(address indexed sender, uint256 amount0In, uint256
     context,
     isDerc20: true,
   });
-
-  const metrics = SwapService.calculateMarketMetrics({
-    totalSupply,
+  
+  const marketCapUsd = MarketDataService.calculateMarketCap({
     price,
-    swapAmountIn: amount0In > 0 ? amount0In : amount1In,
-    swapAmountOut: amount0Out > 0 ? amount0Out : amount1Out,
-    ethPriceUSD: ethPrice,
-    assetDecimals: 18,
+    totalSupply,
+    quotePriceUSD: quoteInfo.quotePrice!,
+    assetDecimals: 18,    
+    decimals: quoteInfo.quoteDecimals
+  });
+  
+  const liquidityUsd = MarketDataService.calculateLiquidity({
     assetBalance,
     quoteBalance,
-    isQuoteETH: true,
+    price,
+    quotePriceUSD: quoteInfo.quotePrice!,
+    isQuoteUSD: false,
+    decimals: quoteInfo.quoteDecimals
   });
-
+  
   let quoteDelta = 0n;
   if (v2isToken0) {
     if (amount1In > 0n) {
@@ -103,7 +104,7 @@ ponder.on("MigrationPool:Swap(address indexed sender, uint256 amount0In, uint256
       quoteDelta = amount0Out;
     }
   }
-  const swapValueUsd = (quoteDelta * ethPrice) / CHAINLINK_ETH_DECIMALS;
+  const swapValueUsd = (quoteDelta * quoteInfo.quotePrice!) / (BigInt(10) ** BigInt(quoteInfo.quoteDecimals));
 
   // Create swap data
   const swapData = SwapOrchestrator.createSwapData({
@@ -119,13 +120,13 @@ ponder.on("MigrationPool:Swap(address indexed sender, uint256 amount0In, uint256
     amountIn: amount0In > 0 ? amount0In : amount1In,
     amountOut: amount0Out > 0 ? amount0Out : amount1Out,
     price,
-    usdPrice: ethPrice,
+    usdPrice: quoteInfo.quotePrice!,
   });
 
   // Create market metrics
   const marketMetrics = {
-    liquidityUsd: metrics.liquidityUsd,
-    marketCapUsd: metrics.marketCapUsd,
+    liquidityUsd: liquidityUsd,
+    marketCapUsd: marketCapUsd,
     swapValueUsd,
     percentDayChange: 0,
   };
@@ -161,7 +162,7 @@ ponder.on("MigrationPool:Swap(address indexed sender, uint256 amount0In, uint256
     await updateV2Pool({
       poolAddress: address,
       context,
-      update: { price: (price * ethPrice) / CHAINLINK_ETH_DECIMALS },
+      update: { price: (price * quoteInfo.quotePrice!) / (BigInt(10) ** BigInt(quoteInfo.quoteDecimals)) },
     }),
   ]);
 });
@@ -181,15 +182,12 @@ ponder.on("UniswapV2PairUnichain:Swap", async ({ event, context }) => {
 
   const { parentPool } = v2PoolData;
 
-  const { reserve0, reserve1 } = await getPairData({ address, context });
+  const { reserve0, reserve1 } = await getPairData({ address, context });  
 
-  const ethPrice = await fetchEthPrice(timestamp, context);
-
-  const { isToken0, baseToken, quoteToken } = await insertPoolIfNotExists({
+  const [{ isToken0, baseToken, quoteToken }, quoteInfo] = await insertPoolIfNotExists({
     poolAddress: parentPool,
     timestamp,
-    context,
-    ethPrice,
+    context
   });
 
   const amountIn = amount0In > 0 ? amount0In : amount1In;
@@ -210,6 +208,8 @@ ponder.on("UniswapV2PairUnichain:Swap", async ({ event, context }) => {
   const price = PriceService.computePriceFromReserves({
     assetBalance,
     quoteBalance,
+    assetDecimals: 18,
+    quoteDecimals: quoteInfo.quoteDecimals
   });
 
   const { totalSupply } = await insertTokenIfNotExists({
@@ -220,20 +220,22 @@ ponder.on("UniswapV2PairUnichain:Swap", async ({ event, context }) => {
     isDerc20: true,
   });
 
-  const marketCapUsd = computeMarketCap({
+  const marketCapUsd = MarketDataService.calculateMarketCap({
     price,
-    ethPrice,
+    quotePriceUSD: quoteInfo.quotePrice!,
     totalSupply,
+    decimals: quoteInfo.quoteDecimals
   });
 
   // Price change is now calculated in scheduled jobs using buckets
   const priceChange = 0;
 
-  const liquidityUsd = await computeDollarLiquidity({
+  const liquidityUsd = MarketDataService.calculateLiquidity({
     assetBalance,
     quoteBalance,
     price,
-    ethPrice,
+    quotePriceUSD: quoteInfo.quotePrice!,
+    decimals: quoteInfo.quoteDecimals
   });
 
   let quoteDelta = 0n;
@@ -250,7 +252,7 @@ ponder.on("UniswapV2PairUnichain:Swap", async ({ event, context }) => {
       quoteDelta = amount0Out;
     }
   }
-  const swapValueUsd = (quoteDelta * ethPrice) / CHAINLINK_ETH_DECIMALS;
+  const swapValueUsd = (quoteDelta * quoteInfo.quotePrice!) / (BigInt(10) ** BigInt(quoteInfo.quoteDecimals));
 
   // Create swap data
   const swapData = SwapOrchestrator.createSwapData({
@@ -266,7 +268,7 @@ ponder.on("UniswapV2PairUnichain:Swap", async ({ event, context }) => {
     amountIn,
     amountOut,
     price,
-    usdPrice: ethPrice,
+    usdPrice: quoteInfo.quotePrice!,
   });
 
   // Create market metrics
@@ -309,6 +311,6 @@ ponder.on("UniswapV2PairUnichain:Swap", async ({ event, context }) => {
   await updateV2Pool({
     poolAddress: address,
     context,
-    update: { price: (price * ethPrice) / CHAINLINK_ETH_DECIMALS },
+    update: { price: (price * quoteInfo.quotePrice!) / (BigInt(10) ** BigInt(quoteInfo.quoteDecimals)) },
   });
 });

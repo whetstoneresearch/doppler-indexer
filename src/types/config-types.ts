@@ -37,12 +37,13 @@ export interface ChainAddresses {
   v4: V4Addresses;
   zora: ZoraAddresses;
   shared: SharedAddresses;
-  stables?: StablesAddresses;
+  stables: StablesAddresses;
   oracle: OracleAddresses;
 }
 
 export interface StablesAddresses {
   usdc: Address;
+  usdt: Address;
 }
 
 export interface ZoraAddresses {
@@ -63,9 +64,17 @@ export interface SharedAddresses {
   governanceFactory: Address;
   weth: Address;
   chainlinkEthOracle: Address;
+  chainlinkUsdcOracle: Address;
+  chainlinkUsdtOracle: Address;
   fxHash: FxHashAddresses;
   noice: NoiceAddresses;
   monad: MonadAddresses;
+  eurc: EurcAddresses;
+}
+
+export interface EurcAddresses {
+  eurcAddress: Address;
+  eurcUsdcPool: Address;
 }
 
 export interface MonadAddresses {
