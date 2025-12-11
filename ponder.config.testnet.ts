@@ -103,6 +103,11 @@ export default createConfig({
       chain: "monad",
       startBlock: monad.startBlock,
       interval: 99999999999,
+    },
+    EurcUsdcPrice: {
+      chain: "base",
+      startBlock: 39224595,
+      interval: 99999999999
     }
   },
   contracts: {
@@ -244,19 +249,19 @@ export default createConfig({
         },
       },
     },
-    ZoraCoinV4: {
-      abi: ZoraCoinABI,
-      chain: {
-        baseSepolia: {
-          startBlock: baseSepolia.v4StartBlock,
-          address: factory({
-            address: baseSepolia.addresses.zora.zoraFactory,
-            event: getAbiItem({ abi: ZoraFactoryABI, name: "CoinCreatedV4" }),
-            parameter: "coin",
-          }),
-        },
-      },
-    },
+    // ZoraCoinV4: {
+    //   abi: ZoraCoinABI,
+    //   chain: {
+    //     baseSepolia: {
+    //       startBlock: baseSepolia.v4StartBlock,
+    //       address: factory({
+    //         address: baseSepolia.addresses.zora.zoraFactory,
+    //         event: getAbiItem({ abi: ZoraFactoryABI, name: "CoinCreatedV4" }),
+    //         parameter: "coin",
+    //       }),
+    //     },
+    //   },
+    // },
     ZoraCreatorCoinV4: {
       abi: ZoraCreatorCoinABI,
       chain: {
@@ -273,19 +278,19 @@ export default createConfig({
         },
       },
     },
-    ZoraV4Hook: {
-      abi: ZoraV4HookABI,
-      chain: {
-        baseSepolia: {
-          startBlock: baseSepolia.v4StartBlock,
-          address: factory({
-            address: baseSepolia.addresses.zora.zoraFactory,
-            event: getAbiItem({ abi: ZoraFactoryABI, name: "CoinCreatedV4" }),
-            parameter: "poolKey.hooks",
-          }),
-        },
-      },
-    },
+    // ZoraV4Hook: {
+    //   abi: ZoraV4HookABI,
+    //   chain: {
+    //     baseSepolia: {
+    //       startBlock: baseSepolia.v4StartBlock,
+    //       address: factory({
+    //         address: baseSepolia.addresses.zora.zoraFactory,
+    //         event: getAbiItem({ abi: ZoraFactoryABI, name: "CoinCreatedV4" }),
+    //         parameter: "poolKey.hooks",
+    //       }),
+    //     },
+    //   },
+    // },
     ZoraV4CreatorCoinHook: {
       abi: ZoraV4HookABI,
       chain: {

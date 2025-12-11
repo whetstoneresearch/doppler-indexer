@@ -2,7 +2,7 @@ import { ethPrice, zoraUsdcPrice, fxhWethPrice, noiceWethPrice, monadUsdcPrice, 
 import { Context } from "ponder:registry";
 import { MarketDataService } from "@app/core";
 import { chainConfigs } from "@app/config";
-import { zeroAddress } from "viem";
+import { parseUnits, zeroAddress } from "viem";
 
 export const fetchEthPrice = async (
   timestamp: bigint,
@@ -33,6 +33,10 @@ export const fetchZoraPrice = async (
   context: Context
 ): Promise<bigint> => {
   const { db, chain } = context;
+  
+  if (chain.name != "base") {
+    return parseUnits("1", 18);
+  }
 
   let roundedTimestamp = BigInt(Math.floor(Number(timestamp) / 300) * 300);
 
@@ -57,6 +61,10 @@ export const fetchFxhPrice = async (
 ): Promise<bigint> => {
   const { db, chain } = context;
 
+  if (chain.name != "base") {
+    return parseUnits("1", 18);
+  }
+  
   let roundedTimestamp = BigInt(Math.floor(Number(timestamp) / 300) * 300);
 
   let fxhPriceData;
@@ -79,6 +87,10 @@ export const fetchNoicePrice = async (
   context: Context,
 ): Promise<bigint> => {
   const { db, chain } = context;
+  
+  if (chain.name != "base") {
+    return parseUnits("1", 18);
+  }
 
   let roundedTimestamp = BigInt(Math.floor(Number(timestamp) / 300) * 300);
 
@@ -102,6 +114,10 @@ export const fetchMonadPrice = async (
   context: Context,
 ): Promise<bigint> => {
   const { db, chain } = context;
+  
+  if (chain.name != "monad") {
+    return parseUnits("1", 18);
+  }
 
   let roundedTimestamp = BigInt(Math.floor(Number(timestamp) / 300) * 300);
 
@@ -129,6 +145,10 @@ export const fetchEurcPrice = async (
   context: Context
 ): Promise<bigint> => {
   const { db, chain } = context;
+  
+  if (chain.name != "base") {
+    return parseUnits("1", 18);
+  }
 
   let roundedTimestamp = BigInt(Math.floor(Number(timestamp) / 300) * 300);
 
