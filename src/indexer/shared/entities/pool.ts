@@ -52,6 +52,11 @@ export const insertPoolIfNotExists = async ({
     address,
     chainId: chain.id,
   });
+  
+  if (existingPool) {
+    const quoteInfo = await getQuoteInfo(existingPool.quoteToken, timestamp, context);
+    return [existingPool, quoteInfo];
+  }
 
   const poolData = await getV3PoolData({
     address,
@@ -66,10 +71,6 @@ export const insertPoolIfNotExists = async ({
   const numeraireAddr = poolState.numeraire.toLowerCase() as `0x${string}`;
 
   const quoteInfo = await getQuoteInfo(numeraireAddr, timestamp, context);
-
-  if (existingPool) {
-    return [existingPool, quoteInfo];
-  }
   
   const [assetTotalSupply, assetData] = await Promise.all([
     client.readContract({
