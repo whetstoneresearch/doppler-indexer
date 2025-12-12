@@ -31,7 +31,8 @@ export enum QuoteToken {
 export interface QuoteInfo {
   quoteToken: QuoteToken;
   quotePrice: bigint | null;
-  quoteDecimals: number;
+  quoteDecimals: number; // Token decimals (e.g., 18 for ETH, 6 for USDC)
+  quotePriceDecimals: number; // Price feed decimals (e.g., 8 for Chainlink feeds)
 }
 
 export async function getQuoteInfo(quoteAddress: Address, timestamp: bigint | null, context: Context): Promise<QuoteInfo> {
@@ -79,12 +80,18 @@ export async function getQuoteInfo(quoteAddress: Address, timestamp: bigint | nu
     : isQuoteEth ? QuoteToken.Eth
     : QuoteToken.Unknown;
     
-  // uses 8 for tokens that use chainlink price feeds
+  // Token decimals (actual token decimals)
   const quoteDecimals = 
-    (isQuoteZora || isQuoteFxh || isQuoteNoice || isQuoteMon || creatorCoinInfo.isQuoteCreatorCoin) ? 18
-    : (isQuoteEth || isQuoteUsdc || isQuoteUsdt) ? 8
-    : isQuoteEurc ? 6
+    (isQuoteZora || isQuoteFxh || isQuoteNoice || isQuoteMon || creatorCoinInfo.isQuoteCreatorCoin || isQuoteEth) ? 18
+    : (isQuoteUsdc || isQuoteUsdt || isQuoteEurc) ? 6
     // assumes 18 decimals for unknown quote tokens
+    : 18;
+  
+  // Price feed decimals (decimals of the USD price value)
+  const quotePriceDecimals = 
+    (isQuoteEth || isQuoteUsdc || isQuoteUsdt) ? 8 // Chainlink feeds use 8 decimals
+    : (isQuoteZora || isQuoteFxh || isQuoteNoice || isQuoteMon || creatorCoinInfo.isQuoteCreatorCoin) ? 18 // Calculated prices use 18 decimals
+    : isQuoteEurc ? 6
     : 18;
   
   // Short circuit price fetching if timestamp is null
@@ -92,7 +99,8 @@ export async function getQuoteInfo(quoteAddress: Address, timestamp: bigint | nu
     return {
       quoteToken,
       quotePrice: null,
-      quoteDecimals
+      quoteDecimals,
+      quotePriceDecimals
     };
   }
     
@@ -133,7 +141,8 @@ export async function getQuoteInfo(quoteAddress: Address, timestamp: bigint | nu
   const quoteInfo = {
     quoteToken,
     quotePrice,
-    quoteDecimals
+    quoteDecimals,
+    quotePriceDecimals
   }
   
   return quoteInfo;

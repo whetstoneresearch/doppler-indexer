@@ -129,7 +129,7 @@ export const insertMulticurvePoolV4Optimized = async ({
     price,
     quotePriceUSD: quoteInfo.quotePrice!,
     totalSupply: baseTokenEntity.totalSupply,
-    decimals: quoteInfo.quoteDecimals,
+    decimals: quoteInfo.quotePriceDecimals,
   });
 
   const isQuoteEth = quoteInfo.quoteToken === QuoteToken.Eth ? true : false;

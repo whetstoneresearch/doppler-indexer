@@ -64,7 +64,7 @@ export const insertV2PoolIfNotExists = async ({
     quoteDecimals: quoteInfo.quoteDecimals
   });
 
-  const dollarPrice = (price * quoteInfo.quotePrice!) / (BigInt(10) ** BigInt(quoteInfo.quoteDecimals));
+  const dollarPrice = (price * quoteInfo.quotePrice!) / (BigInt(10) ** BigInt(quoteInfo.quotePriceDecimals));
 
   return await db.insert(v2Pool).values({
     address: migrationPoolAddr,
@@ -152,7 +152,7 @@ export const insertV2MigrationPoolIfNotExists = async ({
     quoteDecimals: quoteInfo.quoteDecimals
   });
 
-  const dollarPrice = (price * quoteInfo.quotePrice!) / (BigInt(10) ** BigInt(quoteInfo.quoteDecimals));
+  const dollarPrice = (price * quoteInfo.quotePrice!) / (BigInt(10) ** BigInt(quoteInfo.quotePriceDecimals));
 
   return await db.insert(v2Pool).values({
     address: migrationPoolAddress,

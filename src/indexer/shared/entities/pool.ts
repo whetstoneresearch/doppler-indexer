@@ -85,7 +85,7 @@ export const insertPoolIfNotExists = async ({
     price,
     quotePriceUSD: quoteInfo.quotePrice!,
     totalSupply: assetTotalSupply,
-    decimals: quoteInfo.quoteDecimals
+    decimals: quoteInfo.quotePriceDecimals
   });
 
   let migrationType = getMigrationType(assetData, chain.name);
@@ -211,14 +211,14 @@ export const insertPoolIfNotExistsV4 = async ({
     quoteBalance,
     price,
     quotePriceUSD: quoteInfo.quotePrice!,
-    decimals: quoteInfo.quoteDecimals
+    decimals: quoteInfo.quotePriceDecimals
   });
 
   const marketCapUsd = MarketDataService.calculateMarketCap({
     price,
     quotePriceUSD: quoteInfo.quotePrice!,
     totalSupply,
-    decimals: quoteInfo.quoteDecimals
+    decimals: quoteInfo.quotePriceDecimals
   });
 
   const graduationPercentage = computeGraduationPercentage({
@@ -308,7 +308,7 @@ export const insertLockableV3PoolIfNotExists = async ({
       price,
       quotePriceUSD: quoteInfo.quotePrice!,
       totalSupply: assetTotalSupply,
-      decimals: quoteInfo.quoteDecimals
+      decimals: quoteInfo.quotePriceDecimals
     }
   )
   

@@ -53,7 +53,11 @@ export interface VolumeParams {
 export class MarketDataService {
   /**
    * Calculate market capitalization in USD
-   * Formula: (price * totalSupply) / 10^decimals * ethPrice (if quote is ETH)
+   * Formula: (price * totalSupply) / 10^assetDecimals * quotePriceUSD / 10^decimals
+   * 
+   * Note: price is expected to have 18 decimals of precision (from WAD)
+   * quotePriceUSD has `decimals` precision (8 for Chainlink feeds)
+   * The result will have 18 decimals of precision
    */
   static calculateMarketCap(params: MarketCapParams): bigint {
     const {
@@ -63,10 +67,14 @@ export class MarketDataService {
       assetDecimals = 18,
       decimals = 8,
     } = params;
-    // Calculate market cap in quote currency
-    const marketCap = (price * totalSupply) / BigInt(10 ** assetDecimals);
-
-    return (marketCap * quotePriceUSD) / BigInt(10 ** decimals);
+    
+    // price has 18 decimals (WAD), totalSupply has assetDecimals
+    // After (price * totalSupply) / 10^assetDecimals, we have 18 decimals in quote currency
+    const marketCapInQuote = (price * totalSupply) / BigInt(10 ** assetDecimals);
+    
+    // quotePriceUSD has `decimals` precision (e.g., 8 for Chainlink)
+    // Final result has 18 decimals
+    return (marketCapInQuote * quotePriceUSD) / BigInt(10 ** decimals);
   }
 
   /**

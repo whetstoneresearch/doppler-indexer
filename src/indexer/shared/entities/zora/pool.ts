@@ -138,7 +138,7 @@ export const insertZoraPoolV4Optimized = async ({
     price,
     quotePriceUSD: quoteInfo.quotePrice!,
     totalSupply,
-    decimals: quoteInfo.quoteDecimals
+    decimals: quoteInfo.quotePriceDecimals
   });
 
   const dollarLiquidity = MarketDataService.calculateLiquidity({
@@ -146,7 +146,7 @@ export const insertZoraPoolV4Optimized = async ({
     quoteBalance: isToken0 ? token1Reserve : token0Reserve,
     price,
     quotePriceUSD: quoteInfo.quotePrice!,
-    decimals: quoteInfo.quoteDecimals
+    decimals: quoteInfo.quotePriceDecimals
   });
 
   await insertAssetIfNotExists({

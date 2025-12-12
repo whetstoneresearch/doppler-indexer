@@ -77,7 +77,7 @@ ponder.on("UniswapV4Initializer:Create", async ({ event, context }) => {
     price,
     quotePriceUSD: quoteInfo.quotePrice!,
     totalSupply,
-    decimals: quoteInfo.quoteDecimals
+    decimals: quoteInfo.quotePriceDecimals
   });
 
   await Promise.all([
@@ -168,7 +168,7 @@ ponder.on("UniswapV4Pool:Swap", async ({ event, context }) => {
     quoteBalance: isToken0 ? token1Reserve : token0Reserve,
     price,
     quotePriceUSD: quoteInfo.quotePrice!,
-    decimals: quoteInfo.quoteDecimals
+    decimals: quoteInfo.quotePriceDecimals
   });
 
   let marketCapUsd;
@@ -179,11 +179,11 @@ ponder.on("UniswapV4Pool:Swap", async ({ event, context }) => {
       price,
       quotePriceUSD: quoteInfo.quotePrice!,
       totalSupply,
-      decimals: quoteInfo.quoteDecimals
+      decimals: quoteInfo.quotePriceDecimals
     });
   }
 
-  const swapValueUsd = (amountIn * quoteInfo.quotePrice!) / (BigInt(10) ** BigInt(quoteInfo.quoteDecimals));
+  const swapValueUsd = (amountIn * quoteInfo.quotePrice!) / (BigInt(10) ** BigInt(quoteInfo.quotePriceDecimals));
 
   const swapData = SwapOrchestrator.createSwapData({
     poolAddress: address,
@@ -384,7 +384,7 @@ ponder.on(
       price,
       quotePriceUSD: quoteInfo.quotePrice!,
       totalSupply: baseTokenEntity!.totalSupply,
-      decimals: quoteInfo.quoteDecimals,
+      decimals: quoteInfo.quotePriceDecimals,
     });
 
     const dollarLiquidity = MarketDataService.calculateLiquidity({
@@ -392,7 +392,7 @@ ponder.on(
       quoteBalance: poolEntity.isToken0 ? token1Reserve : token0Reserve,
       price,
       quotePriceUSD: quoteInfo.quotePrice!,
-      decimals: quoteInfo.quoteDecimals,
+      decimals: quoteInfo.quotePriceDecimals,
     });
 
 

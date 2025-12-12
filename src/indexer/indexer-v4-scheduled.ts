@@ -163,7 +163,7 @@ ponder.on(
       price,
       quotePriceUSD: quoteInfo.quotePrice!,
       totalSupply: baseTokenEntity!.totalSupply,
-      decimals: quoteInfo.quoteDecimals,
+      decimals: quoteInfo.quotePriceDecimals,
     });
 
     const dollarLiquidity = MarketDataService.calculateLiquidity({
@@ -171,7 +171,7 @@ ponder.on(
       quoteBalance: poolEntity.isToken0 ? token1Reserve : token0Reserve,
       price,
       quotePriceUSD: quoteInfo.quotePrice!,
-      decimals: quoteInfo.quoteDecimals,
+      decimals: quoteInfo.quotePriceDecimals,
     });
 
     let newGraduationTick = poolEntity.graduationTick;

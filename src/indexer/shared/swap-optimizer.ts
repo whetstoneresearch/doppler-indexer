@@ -161,7 +161,7 @@ export async function handleOptimizedSwap(
     price: swapData.price,
     quotePriceUSD: quoteInfo.quotePrice!,
     totalSupply: tokenEntity.totalSupply,
-    decimals: quoteInfo.quoteDecimals,
+    decimals: quoteInfo.quotePriceDecimals,
   });
 
 

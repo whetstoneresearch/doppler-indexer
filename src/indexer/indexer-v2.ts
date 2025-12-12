@@ -78,7 +78,7 @@ ponder.on("MigrationPool:Swap(address indexed sender, uint256 amount0In, uint256
     totalSupply,
     quotePriceUSD: quoteInfo.quotePrice!,
     assetDecimals: 18,    
-    decimals: quoteInfo.quoteDecimals
+    decimals: quoteInfo.quotePriceDecimals
   });
   
   const liquidityUsd = MarketDataService.calculateLiquidity({
@@ -87,7 +87,7 @@ ponder.on("MigrationPool:Swap(address indexed sender, uint256 amount0In, uint256
     price,
     quotePriceUSD: quoteInfo.quotePrice!,
     isQuoteUSD: false,
-    decimals: quoteInfo.quoteDecimals
+    decimals: quoteInfo.quotePriceDecimals
   });
   
   let quoteDelta = 0n;
@@ -104,7 +104,7 @@ ponder.on("MigrationPool:Swap(address indexed sender, uint256 amount0In, uint256
       quoteDelta = amount0Out;
     }
   }
-  const swapValueUsd = (quoteDelta * quoteInfo.quotePrice!) / (BigInt(10) ** BigInt(quoteInfo.quoteDecimals));
+  const swapValueUsd = (quoteDelta * quoteInfo.quotePrice!) / (BigInt(10) ** BigInt(quoteInfo.quotePriceDecimals));
 
   // Create swap data
   const swapData = SwapOrchestrator.createSwapData({
@@ -162,7 +162,7 @@ ponder.on("MigrationPool:Swap(address indexed sender, uint256 amount0In, uint256
     await updateV2Pool({
       poolAddress: address,
       context,
-      update: { price: (price * quoteInfo.quotePrice!) / (BigInt(10) ** BigInt(quoteInfo.quoteDecimals)) },
+      update: { price: (price * quoteInfo.quotePrice!) / (BigInt(10) ** BigInt(quoteInfo.quotePriceDecimals)) },
     }),
   ]);
 });
@@ -224,7 +224,7 @@ ponder.on("UniswapV2PairUnichain:Swap", async ({ event, context }) => {
     price,
     quotePriceUSD: quoteInfo.quotePrice!,
     totalSupply,
-    decimals: quoteInfo.quoteDecimals
+    decimals: quoteInfo.quotePriceDecimals
   });
 
   // Price change is now calculated in scheduled jobs using buckets
@@ -235,7 +235,7 @@ ponder.on("UniswapV2PairUnichain:Swap", async ({ event, context }) => {
     quoteBalance,
     price,
     quotePriceUSD: quoteInfo.quotePrice!,
-    decimals: quoteInfo.quoteDecimals
+    decimals: quoteInfo.quotePriceDecimals
   });
 
   let quoteDelta = 0n;
@@ -252,7 +252,7 @@ ponder.on("UniswapV2PairUnichain:Swap", async ({ event, context }) => {
       quoteDelta = amount0Out;
     }
   }
-  const swapValueUsd = (quoteDelta * quoteInfo.quotePrice!) / (BigInt(10) ** BigInt(quoteInfo.quoteDecimals));
+  const swapValueUsd = (quoteDelta * quoteInfo.quotePrice!) / (BigInt(10) ** BigInt(quoteInfo.quotePriceDecimals));
 
   // Create swap data
   const swapData = SwapOrchestrator.createSwapData({
@@ -311,6 +311,6 @@ ponder.on("UniswapV2PairUnichain:Swap", async ({ event, context }) => {
   await updateV2Pool({
     poolAddress: address,
     context,
-    update: { price: (price * quoteInfo.quotePrice!) / (BigInt(10) ** BigInt(quoteInfo.quoteDecimals)) },
+    update: { price: (price * quoteInfo.quotePrice!) / (BigInt(10) ** BigInt(quoteInfo.quotePriceDecimals)) },
   });
 });

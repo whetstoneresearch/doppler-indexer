@@ -6,7 +6,10 @@ import { Q192, WAD } from "@app/utils/constants";
 export class PriceService {
   /**
    * Computes price from sqrt price (used by V3 and V4 protocols)
-   * This is the core calculation that was duplicated across V3 and V4
+   * Returns price with 18 decimals of precision (WAD)
+   * 
+   * The price represents: how much quote token per 1 base token
+   * Adjusts for decimal differences between base and quote tokens
    */
   static computePriceFromSqrtPriceX96({
     sqrtPriceX96,
