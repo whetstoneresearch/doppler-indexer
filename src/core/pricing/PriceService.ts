@@ -22,15 +22,15 @@ export class PriceService {
     decimals?: number;
     quoteDecimals?: number;
   }): bigint {
-    const ratioX192 = sqrtPriceX96 * sqrtPriceX96;
-
+    const ratioX192 = sqrtPriceX96 * sqrtPriceX96;    
+    const scalingExponent = 18 + decimals - quoteDecimals;    
+    const scalingFactor = BigInt(10) ** BigInt(scalingExponent);
+    
     const price = isToken0
-      ? (ratioX192 * BigInt(10 ** decimals)) / Q192
-      : (Q192 * BigInt(10 ** decimals)) / ratioX192;
+      ? (ratioX192 * scalingFactor) / Q192
+      : (Q192 * scalingFactor) / ratioX192;
 
-    const scaledPrice = price * 10n ** (BigInt(decimals) - BigInt(quoteDecimals));
-
-    return scaledPrice;
+    return price;
   }
 
   /**
@@ -60,23 +60,4 @@ export class PriceService {
        return (quoteBalance * WAD) / (assetBalance * (10n ** BigInt(-decimalDiff)));
      }
    }
-
-  /**
-   * Converts a price to USD using ETH price
-   * Common calculation used across all protocols
-   */
-  static computePriceUSD({
-    price,
-    ethPriceUSD,
-    isQuoteETH = true,
-  }: {
-    price: bigint;
-    ethPriceUSD: bigint;
-    isQuoteETH?: boolean;
-  }): bigint {
-    if (isQuoteETH) {
-      return (price * ethPriceUSD) / WAD;
-    }
-    return price;
-  }
 }

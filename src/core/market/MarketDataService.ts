@@ -22,6 +22,8 @@ export interface LiquidityParams {
   quotePriceUSD: bigint;
   isQuoteUSD?: boolean;
   decimals?: number;
+  assetDecimals?: number;
+  quoteDecimals?: number;
 }
 
 /**
@@ -44,6 +46,7 @@ export interface VolumeParams {
   quotePriceUSD: bigint;
   isQuoteUSD?: boolean;
   quoteDecimals?: number;
+  decimals?: number;
 }
 
 /**
@@ -79,7 +82,7 @@ export class MarketDataService {
 
   /**
    * Calculate total liquidity in USD
-   * Formula: assetValue + quoteValue (both in USD)
+   * Formula: assetValue + quoteValue (both in USD)   
    */
   static calculateLiquidity(params: LiquidityParams): bigint {
     const {
@@ -89,15 +92,21 @@ export class MarketDataService {
       quotePriceUSD,
       isQuoteUSD = false,
       decimals = 8,
+      assetDecimals = 18,
+      quoteDecimals = 18,
     } = params;
 
     // Calculate asset value in quote currency
     const assetValueInQuote = (assetBalance * price) / WAD;
 
     if (!isQuoteUSD) {
-      // Convert both to USD
-      const assetValueUsd = (assetValueInQuote * quotePriceUSD) / BigInt(10 ** decimals);
-      const quoteValueUsd = (quoteBalance * quotePriceUSD) / BigInt(10 ** decimals);
+
+      const priceFactor = BigInt(10 ** (18 - decimals));
+      const assetDecimalFactor = BigInt(10 ** (18 - assetDecimals));
+      const quoteDecimalFactor = BigInt(10 ** (18 - quoteDecimals));
+            
+      const assetValueUsd = (assetValueInQuote * quotePriceUSD * priceFactor * assetDecimalFactor) / WAD;      
+      const quoteValueUsd = (quoteBalance * quotePriceUSD * priceFactor * quoteDecimalFactor) / WAD;
       return assetValueUsd + quoteValueUsd;
     }
 
@@ -106,7 +115,7 @@ export class MarketDataService {
   }
 
   /**
-   * Calculate swap volume in USD
+   * Calculate swap volume in USD   
    */
   static calculateVolume(params: VolumeParams): bigint {
     const {
@@ -115,6 +124,7 @@ export class MarketDataService {
       quotePriceUSD,
       isQuoteUSD = false,
       quoteDecimals = 18,
+      decimals = 8,
     } = params;
     if (amountIn == 0n && amountOut ==0n){
       return 0n;
@@ -124,7 +134,9 @@ export class MarketDataService {
     const swapAmount = amountIn > 0n ? amountIn : amountOut;
 
     if (!isQuoteUSD) {
-      return (swapAmount * quotePriceUSD) / BigInt(10 ** quoteDecimals);
+
+      const scaleFactor = BigInt(10 ** (18 - decimals));
+      return (swapAmount * quotePriceUSD * scaleFactor) / BigInt(10 ** quoteDecimals);
     }
 
     return swapAmount;
