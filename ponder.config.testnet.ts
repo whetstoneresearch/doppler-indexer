@@ -101,7 +101,7 @@ export default createConfig({
     },
     MonadUsdcPrice: {
       chain: "monad",
-      startBlock: monad.startBlock,
+      startBlock: 42295250,
       interval: 99999999999,
     },
     EurcUsdcPrice: {
