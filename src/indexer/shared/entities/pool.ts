@@ -211,7 +211,9 @@ export const insertPoolIfNotExistsV4 = async ({
     quoteBalance,
     price,
     quotePriceUSD: quoteInfo.quotePrice!,
-    decimals: quoteInfo.quotePriceDecimals
+    decimals: quoteInfo.quotePriceDecimals,
+    assetDecimals: 18,
+    quoteDecimals: quoteInfo.quoteDecimals
   });
 
   const marketCapUsd = MarketDataService.calculateMarketCap({

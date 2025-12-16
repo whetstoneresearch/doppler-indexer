@@ -88,11 +88,9 @@ export async function getQuoteInfo(quoteAddress: Address, timestamp: bigint | nu
     : 18;
   
   // Price feed decimals (decimals of the USD price value)
-  const quotePriceDecimals = 
+  const quotePriceDecimals =
     (isQuoteEth || isQuoteUsdc || isQuoteUsdt) ? 8 // Chainlink feeds use 8 decimals
-    : (isQuoteZora || isQuoteFxh || isQuoteNoice || isQuoteMon || creatorCoinInfo.isQuoteCreatorCoin) ? 18 // Calculated prices use 18 decimals
-    : isQuoteEurc ? 6
-    : 18;
+    : quoteDecimals;
   
   // Short circuit price fetching if timestamp is null
   if (timestamp === null) {

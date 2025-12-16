@@ -156,7 +156,9 @@ ponder.on("LockableUniswapV3Pool:Mint", async ({ event, context }) => {
     quoteBalance: nextReservesQuote,
     price,
     quotePriceUSD: quoteInfo.quotePrice!,
-    decimals: quoteInfo.quotePriceDecimals
+    decimals: quoteInfo.quotePriceDecimals,
+    assetDecimals: 18,
+    quoteDecimals: quoteInfo.quoteDecimals
   });
 
   const positionEntity = await insertPositionIfNotExists({
@@ -232,7 +234,9 @@ ponder.on("LockableUniswapV3Pool:Burn", async ({ event, context }) => {
     quoteBalance: nextReservesQuote,
     price,
     quotePriceUSD: quoteInfo.quotePrice!,
-    decimals: quoteInfo.quotePriceDecimals
+    decimals: quoteInfo.quotePriceDecimals,
+    assetDecimals: 18,
+    quoteDecimals: quoteInfo.quoteDecimals
   });
 
   const positionEntity = await insertPositionIfNotExists({
@@ -350,7 +354,9 @@ ponder.on("LockableUniswapV3Pool:Swap", async ({ event, context }) => {
     quoteBalance: nextReservesQuote,
     price,
     quotePriceUSD: quoteInfo.quotePrice!,
-    decimals: quoteInfo.quotePriceDecimals
+    decimals: quoteInfo.quotePriceDecimals,
+    assetDecimals: 18,
+    quoteDecimals: quoteInfo.quoteDecimals
   });
 
   const { totalSupply } = await insertTokenIfNotExists({
@@ -476,7 +482,9 @@ ponder.on("UniswapV3Pool:Mint", async ({ event, context }) => {
     quoteBalance: nextReservesQuote,
     price,
     quotePriceUSD: quoteInfo.quotePrice!,
-    decimals: quoteInfo.quotePriceDecimals
+    decimals: quoteInfo.quotePriceDecimals,
+    assetDecimals: 18,
+    quoteDecimals: quoteInfo.quoteDecimals
   });
 
   const graduationThresholdDelta = computeGraduationThresholdDelta({
@@ -558,7 +566,9 @@ ponder.on("UniswapV3Pool:Burn", async ({ event, context }) => {
     quoteBalance: nextReservesQuote,
     price,
     quotePriceUSD: quoteInfo.quotePrice!,
-    decimals: quoteInfo.quotePriceDecimals
+    decimals: quoteInfo.quotePriceDecimals,
+    assetDecimals: 18,
+    quoteDecimals: quoteInfo.quoteDecimals
   });
 
   const graduationThresholdDelta = computeGraduationThresholdDelta({
@@ -685,7 +695,9 @@ ponder.on("UniswapV3Pool:Swap", async ({ event, context }) => {
     quoteBalance: nextReservesQuote,
     price,
     quotePriceUSD: quoteInfo.quotePrice!,
-    decimals: quoteInfo.quotePriceDecimals
+    decimals: quoteInfo.quotePriceDecimals,
+    assetDecimals: 18,
+    quoteDecimals: quoteInfo.quoteDecimals
   });
 
   const { totalSupply } = await insertTokenIfNotExists({
@@ -859,7 +871,9 @@ ponder.on("MigrationPool:Swap(address indexed sender, address indexed recipient,
     quoteBalance: quoteTokenReserveAfter,
     price,
     quotePriceUSD: quoteInfo.quotePrice!,
-    decimals: quoteInfo.quotePriceDecimals
+    decimals: quoteInfo.quotePriceDecimals,
+    assetDecimals: 18,
+    quoteDecimals: quoteInfo.quoteDecimals
   });
 
   const { totalSupply } = await insertTokenIfNotExists({

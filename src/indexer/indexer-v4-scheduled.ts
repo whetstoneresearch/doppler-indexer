@@ -172,6 +172,8 @@ ponder.on(
       price,
       quotePriceUSD: quoteInfo.quotePrice!,
       decimals: quoteInfo.quotePriceDecimals,
+      assetDecimals: 18,
+      quoteDecimals: quoteInfo.quoteDecimals,
     });
 
     let newGraduationTick = poolEntity.graduationTick;

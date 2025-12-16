@@ -100,6 +100,8 @@ export function processSwapCalculations(
     price,
     quotePriceUSD: usdPrice,
     decimals: quoteDecimals,
+    assetDecimals: 18,
+    quoteDecimals: quoteDecimals,
   });
   
   const swapValueUsd = ((reserveQuoteDelta < 0n ? -reserveQuoteDelta : reserveQuoteDelta) * 

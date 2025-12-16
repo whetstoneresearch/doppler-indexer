@@ -147,7 +147,7 @@ export const fetchEurcPrice = async (
   const { db, chain } = context;
   
   if (chain.name != "base") {
-    return parseUnits("1", 18);
+    return parseUnits("115", 16);
   }
 
   let roundedTimestamp = BigInt(Math.floor(Number(timestamp) / 300) * 300);

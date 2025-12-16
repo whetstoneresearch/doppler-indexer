@@ -87,7 +87,9 @@ ponder.on("MigrationPool:Swap(address indexed sender, uint256 amount0In, uint256
     price,
     quotePriceUSD: quoteInfo.quotePrice!,
     isQuoteUSD: false,
-    decimals: quoteInfo.quotePriceDecimals
+    decimals: quoteInfo.quotePriceDecimals,
+    assetDecimals: 18,
+    quoteDecimals: quoteInfo.quoteDecimals
   });
   
   let quoteDelta = 0n;
@@ -235,7 +237,9 @@ ponder.on("UniswapV2PairUnichain:Swap", async ({ event, context }) => {
     quoteBalance,
     price,
     quotePriceUSD: quoteInfo.quotePrice!,
-    decimals: quoteInfo.quotePriceDecimals
+    decimals: quoteInfo.quotePriceDecimals,
+    assetDecimals: 18,
+    quoteDecimals: quoteInfo.quoteDecimals
   });
 
   let quoteDelta = 0n;

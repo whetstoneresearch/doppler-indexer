@@ -168,7 +168,9 @@ ponder.on("UniswapV4Pool:Swap", async ({ event, context }) => {
     quoteBalance: isToken0 ? token1Reserve : token0Reserve,
     price,
     quotePriceUSD: quoteInfo.quotePrice!,
-    decimals: quoteInfo.quotePriceDecimals
+    decimals: quoteInfo.quotePriceDecimals,
+    assetDecimals: 18,
+    quoteDecimals: quoteInfo.quoteDecimals
   });
 
   let marketCapUsd;
@@ -393,6 +395,8 @@ ponder.on(
       price,
       quotePriceUSD: quoteInfo.quotePrice!,
       decimals: quoteInfo.quotePriceDecimals,
+      assetDecimals: 18,
+      quoteDecimals: quoteInfo.quoteDecimals,
     });
 
 
