@@ -102,10 +102,10 @@ export class MarketDataService {
     if (!isQuoteUSD) {
 
       const priceFactor = BigInt(10 ** (18 - decimals));
-      const assetDecimalFactor = BigInt(10 ** (18 - assetDecimals));
       const quoteDecimalFactor = BigInt(10 ** (18 - quoteDecimals));
             
-      const assetValueUsd = (assetValueInQuote * quotePriceUSD * priceFactor * assetDecimalFactor) / WAD;      
+
+      const assetValueUsd = (assetValueInQuote * quotePriceUSD * priceFactor) / WAD;      
       const quoteValueUsd = (quoteBalance * quotePriceUSD * priceFactor * quoteDecimalFactor) / WAD;
       return assetValueUsd + quoteValueUsd;
     }
