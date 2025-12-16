@@ -185,7 +185,9 @@ ponder.on("UniswapV4Pool:Swap", async ({ event, context }) => {
     });
   }
 
-  const swapValueUsd = (amountIn * quoteInfo.quotePrice!) / (BigInt(10) ** BigInt(quoteInfo.quotePriceDecimals));
+  // Calculate swap value using quote token delta
+  const quoteDelta = totalProceeds - totalProceedsPrev;
+  const swapValueUsd = ((quoteDelta < 0n ? -quoteDelta : quoteDelta) * quoteInfo.quotePrice!) / (BigInt(10) ** BigInt(quoteInfo.quotePriceDecimals));
 
   const swapData = SwapOrchestrator.createSwapData({
     poolAddress: address,
