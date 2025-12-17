@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { MarketDataService } from '../MarketDataService';
-import { WAD, CHAINLINK_ETH_DECIMALS } from '@app/utils/constants';
+
+const WAD = BigInt(10) ** BigInt(18);
 
 describe('MarketDataService', () => {
   describe('calculateMarketCap', () => {
