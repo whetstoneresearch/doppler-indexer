@@ -41,10 +41,8 @@ ponder.on("MigrationPool:Swap(address indexed sender, uint256 amount0In, uint256
     context
   });
 
-  let v2isToken0 = isToken0;
-  if (quoteToken.toLowerCase() == zeroAddress) {    
-    v2isToken0 = baseToken.toLowerCase() < quoteToken.toLowerCase();
-  }
+
+  const v2isToken0 = v2PoolData!.isToken0;
 
   const assetBalance = v2isToken0 ? reserve0 : reserve1;
   const quoteBalance = v2isToken0 ? reserve1 : reserve0;

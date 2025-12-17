@@ -25,3 +25,31 @@ export const getPairData = async ({
     reserve1,
   };
 };
+
+export const getPairTokens = async ({
+  address,
+  context,
+}: {
+  address: Hex;
+  context: Context;
+}) => {
+  const { client } = context;
+
+  const [token0, token1] = await Promise.all([
+    client.readContract({
+      abi: UniswapV2PairABI,
+      address: address,
+      functionName: "token0",
+    }),
+    client.readContract({
+      abi: UniswapV2PairABI,
+      address: address,
+      functionName: "token1",
+    }),
+  ]);
+
+  return {
+    token0,
+    token1,
+  };
+};
