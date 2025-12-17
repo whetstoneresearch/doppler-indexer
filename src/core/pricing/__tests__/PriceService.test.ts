@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { PriceService } from '../PriceService';
-import { Q192, WAD } from '@app/utils/constants';
+
+const WAD = BigInt(10) ** BigInt(18);
 
 describe('PriceService', () => {
   describe('computePriceFromSqrtPriceX96', () => {
