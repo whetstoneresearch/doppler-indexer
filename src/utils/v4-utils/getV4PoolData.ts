@@ -24,14 +24,16 @@ import {
 } from "../v3-utils/computeGraduationThreshold";
 import { getMulticallOptions } from "@app/core/utils";
 import { chainConfigs } from "@app/config";
-import { getQuoteInfo } from "@app/utils/getQuoteInfo";
+import { getQuoteInfo, QuoteInfo } from "@app/utils/getQuoteInfo";
 
 export const getV4PoolData = async ({
   hook,
   context,
+  quoteInfo: providedQuoteInfo,
 }: {
   hook: Address;
   context: Context;
+  quoteInfo?: QuoteInfo;
 }): Promise<V4PoolData> => {
   const { stateView } = chainConfigs[context.chain.name].addresses.v4;
   const { client, chain } = context;
@@ -98,11 +100,12 @@ export const getV4PoolData = async ({
     functionName: "decimals",
   });
   
-  let quoteInfo;
-  if (isToken0) {
-    quoteInfo = await getQuoteInfo(key.currency1, null, context);
-  } else {
-    quoteInfo = await getQuoteInfo(key.currency0, null, context);
+  let quoteInfo: QuoteInfo;
+  if (providedQuoteInfo) {    
+    quoteInfo = providedQuoteInfo;
+  } else {    
+    const quoteTokenAddress = isToken0 ? key.currency1 : key.currency0;
+    quoteInfo = await getQuoteInfo(quoteTokenAddress, null, context);
   }
 
   const price = computeV4Price({

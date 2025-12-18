@@ -128,8 +128,13 @@ export async function getQuoteInfo(quoteAddress: Address, timestamp: bigint | nu
   } else if (isQuoteEurc) {
     quotePrice = await fetchEurcPrice(timestamp, context);
   } else if (creatorCoinInfo.isQuoteCreatorCoin) {
-    const zoraPrice = await fetchZoraPrice(timestamp, context);
-    quotePrice = (creatorCoinInfo.price! * zoraPrice) / WAD;
+    if (creatorCoinInfo.price === null) {
+      // Creator coin pool doesn't exist yet, fall back to unknown token handling
+      quotePrice = BigInt(1) / (BigInt(10) ** BigInt(21));
+    } else {
+      const zoraPrice = await fetchZoraPrice(timestamp, context);
+      quotePrice = (creatorCoinInfo.price * zoraPrice) / WAD;
+    }
   } else {    
     // return price of 1^10^-20 (1/10th cent) if unknown quote token, will report incorrect metrics
     // TODO: find path back to a terminal token we know usd price for and calculate usd price of quote token
@@ -177,9 +182,21 @@ async function getCreatorCoinInfo(quoteAddress: Address, context: Context): Prom
       chainId: chain.id,
     });
     
+    if (!poolEntity) {
+      console.error(
+        `Creator coin pool ${creatorCoinPoolId} not found in database for token ${quoteAddress}. ` +
+        `This should not happen - creator coin pools are created via ZoraFactory:CreatorCoinCreated events.`
+      );
+      return {
+        isQuoteCreatorCoin: true,
+        creatorCoinPoolId,
+        price: null
+      };
+    }
+    
     const price = PriceService.computePriceFromSqrtPriceX96({
-      sqrtPriceX96: poolEntity!.sqrtPrice,
-      isToken0: poolEntity!.isToken0,
+      sqrtPriceX96: poolEntity.sqrtPrice,
+      isToken0: poolEntity.isToken0,
       decimals: 18,
       quoteDecimals: 18
     });

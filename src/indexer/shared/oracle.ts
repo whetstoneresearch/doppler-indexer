@@ -4,6 +4,10 @@ import { MarketDataService } from "@app/core";
 import { chainConfigs } from "@app/config";
 import { parseUnits, zeroAddress } from "viem";
 
+// Maximum number of 5-minute intervals to search backwards for price data
+// 1000 attempts = ~3.5 days of historical data
+const MAX_PRICE_LOOKUP_ATTEMPTS = 1000;
+
 export const fetchEthPrice = async (
   timestamp: bigint,
   context: Context
@@ -12,9 +16,9 @@ export const fetchEthPrice = async (
   let roundedTimestamp = BigInt(Math.floor(Number(timestamp) / 300) * 300);
 
   let ethPriceData;
-  let i = 0;
-  while (!ethPriceData) {
-    i++;
+  let attempts = 0;
+  while (!ethPriceData && attempts < MAX_PRICE_LOOKUP_ATTEMPTS) {
+    attempts++;
     ethPriceData = await db.find(ethPrice, {
       timestamp: roundedTimestamp,
       chainId: chain.id,
@@ -23,6 +27,12 @@ export const fetchEthPrice = async (
     if (!ethPriceData) {
       roundedTimestamp -= 300n;
     }
+  }
+
+  if (!ethPriceData) {
+    throw new Error(
+      `No ETH price data found after ${MAX_PRICE_LOOKUP_ATTEMPTS} attempts for chain ${chain.name} (searched back to timestamp ${roundedTimestamp})`
+    );
   }
 
   return ethPriceData.price;
@@ -41,7 +51,9 @@ export const fetchZoraPrice = async (
   let roundedTimestamp = BigInt(Math.floor(Number(timestamp) / 300) * 300);
 
   let zoraPriceData;
-  while (!zoraPriceData) {
+  let attempts = 0;
+  while (!zoraPriceData && attempts < MAX_PRICE_LOOKUP_ATTEMPTS) {
+    attempts++;
     zoraPriceData = await db.find(zoraUsdcPrice, {
       timestamp: roundedTimestamp,
       chainId: chain.id,
@@ -50,6 +62,12 @@ export const fetchZoraPrice = async (
     if (!zoraPriceData) {
       roundedTimestamp -= 300n;
     }
+  }
+
+  if (!zoraPriceData) {
+    throw new Error(
+      `No ZORA price data found after ${MAX_PRICE_LOOKUP_ATTEMPTS} attempts for chain ${chain.name} (searched back to timestamp ${roundedTimestamp})`
+    );
   }
 
   return zoraPriceData.price;
@@ -68,7 +86,9 @@ export const fetchFxhPrice = async (
   let roundedTimestamp = BigInt(Math.floor(Number(timestamp) / 300) * 300);
 
   let fxhPriceData;
-  while (!fxhPriceData) {
+  let attempts = 0;
+  while (!fxhPriceData && attempts < MAX_PRICE_LOOKUP_ATTEMPTS) {
+    attempts++;
     fxhPriceData = await db.find(fxhWethPrice, {
       timestamp: roundedTimestamp,
       chainId: chain.id,
@@ -77,6 +97,12 @@ export const fetchFxhPrice = async (
     if (!fxhPriceData) {
       roundedTimestamp -= 300n;
     }
+  }
+
+  if (!fxhPriceData) {
+    throw new Error(
+      `No FXH price data found after ${MAX_PRICE_LOOKUP_ATTEMPTS} attempts for chain ${chain.name} (searched back to timestamp ${roundedTimestamp})`
+    );
   }
 
   return fxhPriceData.price;
@@ -95,7 +121,9 @@ export const fetchNoicePrice = async (
   let roundedTimestamp = BigInt(Math.floor(Number(timestamp) / 300) * 300);
 
   let noicePriceData;
-  while (!noicePriceData) {
+  let attempts = 0;
+  while (!noicePriceData && attempts < MAX_PRICE_LOOKUP_ATTEMPTS) {
+    attempts++;
     noicePriceData = await db.find(noiceWethPrice, {
       timestamp: roundedTimestamp,
       chainId: chain.id,
@@ -104,6 +132,12 @@ export const fetchNoicePrice = async (
     if (!noicePriceData) {
       roundedTimestamp -= 300n;
     }
+  }
+
+  if (!noicePriceData) {
+    throw new Error(
+      `No NOICE price data found after ${MAX_PRICE_LOOKUP_ATTEMPTS} attempts for chain ${chain.name} (searched back to timestamp ${roundedTimestamp})`
+    );
   }
 
   return noicePriceData.price;
@@ -126,7 +160,9 @@ export const fetchMonadPrice = async (
   }
   
   let monadPriceData;
-  while (!monadPriceData) {
+  let attempts = 0;
+  while (!monadPriceData && attempts < MAX_PRICE_LOOKUP_ATTEMPTS) {
+    attempts++;
     monadPriceData = await db.find(monadUsdcPrice, {
       timestamp: roundedTimestamp,
       chainId: chain.id,
@@ -135,6 +171,12 @@ export const fetchMonadPrice = async (
     if (!monadPriceData) {
       roundedTimestamp -= 300n;
     }
+  }
+
+  if (!monadPriceData) {
+    throw new Error(
+      `No MONAD price data found after ${MAX_PRICE_LOOKUP_ATTEMPTS} attempts for chain ${chain.name} (searched back to timestamp ${roundedTimestamp})`
+    );
   }
 
   return monadPriceData.price;
@@ -153,7 +195,9 @@ export const fetchEurcPrice = async (
   let roundedTimestamp = BigInt(Math.floor(Number(timestamp) / 300) * 300);
 
   let eurcPriceData;
-  while (!eurcPriceData) {
+  let attempts = 0;
+  while (!eurcPriceData && attempts < MAX_PRICE_LOOKUP_ATTEMPTS) {
+    attempts++;
     eurcPriceData = await db.find(eurcUsdcPrice, {
       timestamp: roundedTimestamp,
       chainId: chain.id,
@@ -164,6 +208,12 @@ export const fetchEurcPrice = async (
     }
   }
 
+  if (!eurcPriceData) {
+    throw new Error(
+      `No EURC price data found after ${MAX_PRICE_LOOKUP_ATTEMPTS} attempts for chain ${chain.name} (searched back to timestamp ${roundedTimestamp})`
+    );
+  }
+
   return eurcPriceData.price;
 };
 
@@ -172,14 +222,18 @@ export const fetchUsdcPrice = async (
   context: Context
 ): Promise<bigint> => {
   // return hardcoded usdc value to lower rpc load
-  return BigInt(100000000)
+  return BigInt(100000000);
+  
+  // Note: Code below is unreachable due to early return above
+  // Keeping for reference if dynamic pricing is needed in the future
+  /*
   const { db, chain } = context;
   let roundedTimestamp = BigInt(Math.floor(Number(timestamp) / 300) * 300);
 
   let usdcPriceData;
-  let i = 0;
-  while (!usdcPriceData) {
-    i++;
+  let attempts = 0;
+  while (!usdcPriceData && attempts < MAX_PRICE_LOOKUP_ATTEMPTS) {
+    attempts++;
     usdcPriceData = await db.find(usdcPrice, {
       timestamp: roundedTimestamp,
       chainId: chain.id,
@@ -190,7 +244,14 @@ export const fetchUsdcPrice = async (
     }
   }
 
+  if (!usdcPriceData) {
+    throw new Error(
+      `No USDC price data found after ${MAX_PRICE_LOOKUP_ATTEMPTS} attempts for chain ${chain.name} (searched back to timestamp ${roundedTimestamp})`
+    );
+  }
+
   return usdcPriceData.price;
+  */
 };
 
 export const fetchUsdtPrice = async (
@@ -198,14 +259,18 @@ export const fetchUsdtPrice = async (
   context: Context
 ): Promise<bigint> => {
   // return hardcoded usdt value to lower rpc load
-  return BigInt(100000000)
+  return BigInt(100000000);
+  
+  // Note: Code below is unreachable due to early return above
+  // Keeping for reference if dynamic pricing is needed in the future
+  /*
   const { db, chain } = context;
   let roundedTimestamp = BigInt(Math.floor(Number(timestamp) / 300) * 300);
 
   let usdtPriceData;
-  let i = 0;
-  while (!usdtPriceData) {
-    i++;
+  let attempts = 0;
+  while (!usdtPriceData && attempts < MAX_PRICE_LOOKUP_ATTEMPTS) {
+    attempts++;
     usdtPriceData = await db.find(usdtPrice, {
       timestamp: roundedTimestamp,
       chainId: chain.id,
@@ -216,5 +281,12 @@ export const fetchUsdtPrice = async (
     }
   }
 
+  if (!usdtPriceData) {
+    throw new Error(
+      `No USDT price data found after ${MAX_PRICE_LOOKUP_ATTEMPTS} attempts for chain ${chain.name} (searched back to timestamp ${roundedTimestamp})`
+    );
+  }
+
   return usdtPriceData.price;
+  */
 };

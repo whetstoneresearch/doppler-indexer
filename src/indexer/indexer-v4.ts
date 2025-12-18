@@ -33,7 +33,7 @@ ponder.on("UniswapV4Initializer:Create", async ({ event, context }) => {
   
   const creatorAddress = event.transaction.from.toLowerCase() as `0x${string}`;  
     
-  const [baseToken, quoteInfo, poolData] = await Promise.all([
+  const [baseToken] = await Promise.all([
     insertTokenIfNotExists({
       tokenAddress: assetAddress,
       creatorAddress,
@@ -41,11 +41,6 @@ ponder.on("UniswapV4Initializer:Create", async ({ event, context }) => {
       context,
       isDerc20: true,
       poolAddress: poolAddress,
-    }),
-    getQuoteInfo(numeraireAddress, timestamp, context),
-    getV4PoolData({
-      hook: poolAddress,
-      context,
     }),
     insertTokenIfNotExists({
       tokenAddress: numeraireAddress,
@@ -55,6 +50,14 @@ ponder.on("UniswapV4Initializer:Create", async ({ event, context }) => {
       isDerc20: false,
     }),
   ]);
+
+  const quoteInfo = await getQuoteInfo(numeraireAddress, timestamp, context);
+
+  const poolData = await getV4PoolData({
+    hook: poolAddress,
+    context,
+    quoteInfo,
+  });
 
   const { totalSupply } = baseToken;
 
