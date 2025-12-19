@@ -83,7 +83,7 @@ export async function getQuoteInfo(quoteAddress: Address, timestamp: bigint | nu
   // Token decimals (actual token decimals)
   const quoteDecimals = 
     (isQuoteZora || isQuoteFxh || isQuoteNoice || isQuoteMon || creatorCoinInfo.isQuoteCreatorCoin || isQuoteEth) ? 18
-    : (isQuoteUsdc || isQuoteUsdt || isQuoteEurc) ? 6
+    : (isQuoteUsdc || isQuoteUsdt) ? 6
     // assumes 18 decimals for unknown quote tokens
     : 18;
   
