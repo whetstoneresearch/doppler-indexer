@@ -47,7 +47,8 @@ export function processSwapCalculations(
   poolEntity: typeof pool.$inferSelect,
   params: SwapHandlerParams,
   usdPrice: bigint,
-  quoteDecimals: number = 18
+  quoteDecimals: number = 18,
+  quotePriceDecimals: number = 8
 ): ProcessedSwapData {
   const { amount0, amount1, sqrtPriceX96, isCoinBuy } = params;
   const { isToken0, reserves0, reserves1, fee } = poolEntity;
@@ -99,13 +100,13 @@ export function processSwapCalculations(
     quoteBalance: nextReservesQuote,
     price,
     quotePriceUSD: usdPrice,
-    decimals: quoteDecimals,
+    decimals: quotePriceDecimals,
     assetDecimals: 18,
     quoteDecimals: quoteDecimals,
   });
   
   const swapValueUsd = ((reserveQuoteDelta < 0n ? -reserveQuoteDelta : reserveQuoteDelta) * 
-    usdPrice) / (BigInt(10) ** BigInt(quoteDecimals));
+    usdPrice) / (BigInt(10) ** BigInt(quotePriceDecimals));
   
   return {
     price,
@@ -146,7 +147,8 @@ export async function handleOptimizedSwap(
     poolEntity,
     params,
     quoteInfo.quotePrice!,
-    quoteInfo.quoteDecimals
+    quoteInfo.quoteDecimals,
+    quoteInfo.quotePriceDecimals
   );
 
   const tokenEntity = await db.find(token, {
