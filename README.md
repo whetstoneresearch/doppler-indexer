@@ -2,9 +2,9 @@
 
 ## Multicurve Quickstart
 
-- Prereqs: Bun installed and Postgres reachable; copy `.env.local.example` to `.env.local` and set required RPC URLs and DB connection.
-- Dev run: `bun run dev --config ./ponder.config.multicurve.ts`
-- Prod run: `bun run start --config ./ponder.config.multicurve.ts`
+- Prereqs: pnpm installed and Postgres reachable; copy `.env.local.example` to `.env.local` and set required RPC URLs and DB connection.
+- Dev run: `pnpm run dev --config ./ponder.config.multicurve.ts`
+- Prod run: `pnpm run start --config ./ponder.config.multicurve.ts`
 
 This uses the `ponder.config.multicurve.ts` file to index the Multicurve setup. Logs will show chains and contracts being synced according to that config.
 
@@ -35,4 +35,5 @@ Swap the config path to target a different setup, for example:
   - Base: `PONDER_RPC_URL_8453`
   - Unichain: `PONDER_RPC_URL_130`
   - Ink: `PONDER_RPC_URL_57073`
+  - Monad: `PONDER_RPC_URL_143`
 - The database connection defaults to Postgres at `postgresql://postgres:postgres@localhost:5432/default` (see `docker-compose.yml`).
