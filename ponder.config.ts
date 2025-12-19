@@ -145,7 +145,7 @@ export default createConfig({
     },
     EurcUsdcPrice: {
       chain: "base",
-      startBlock: 39224595,
+      startBlock: 38212428,
       interval: BLOCK_INTERVALS.FIVE_MINUTES
     }
   },
