@@ -83,13 +83,15 @@ export async function getQuoteInfo(quoteAddress: Address, timestamp: bigint | nu
   // Token decimals (actual token decimals)
   const quoteDecimals = 
     (isQuoteZora || isQuoteFxh || isQuoteNoice || isQuoteMon || creatorCoinInfo.isQuoteCreatorCoin || isQuoteEth) ? 18
-    : (isQuoteUsdc || isQuoteUsdt) ? 6
+    : (isQuoteUsdc || isQuoteUsdt || isQuoteEurc) ? 6
     // assumes 18 decimals for unknown quote tokens
     : 18;
   
   // Price feed decimals (decimals of the USD price value)
+  // Chainlink feeds use 8 decimals, EURC uses 18 (from computePriceFromSqrtPriceX96)
   const quotePriceDecimals =
     (isQuoteEth || isQuoteUsdc || isQuoteUsdt) ? 8 // Chainlink feeds use 8 decimals
+    : isQuoteEurc ? 18 // EURC price computed from sqrtPriceX96 has 18 decimals
     : quoteDecimals;
   
   // Short circuit price fetching if timestamp is null
