@@ -47,8 +47,8 @@ export const baseSepoliaConfig: ChainConfig = {
         "0x8e891d249f1ecbffa6143c03eb1b12843aef09d3",
         "0x870386944938130457606451820a351420888434"
       ] as Address[],
-      v4Migrator: "0xe713efce3c639432fc3ca902f34edaf15ebcf3ac" as Address,
-      v4MigratorHook: "0x508812fcdd4972a59b66eb2cad3772279c052000" as Address,
+      v4Migrator: "0xf326d8cdb65a4ad334cfbdd7d3a3cb27be8b770d" as Address,
+      v4MigratorHook: "0x9d0c38a80647e53d5a8a319b39de2b66b8586500" as Address,
       v4MulticurveInitializer:
         "0x359b5952a254baaa0105381825daedb8986bb55c" as Address,
       v4MulticurveInitializerHook:
@@ -126,8 +126,8 @@ export const baseConfig: ChainConfig = {
       ] as Address[],
       stateView: "0xa3c0c9b65bad0b08107aa264b0f3db444b867a71" as Address,
       dopplerLens: "0x094d926a969b3024ca46d2186bf13fd5cdba9ce2" as Address,
-      v4Migrator: "0xa24e35a5d71d02a59b41e7c93567626302da1958" as Address,
-      v4MigratorHook: "0x1370ad7fda3b054eca3532a066b968433e736000" as Address,
+      v4Migrator: "0x166109c4ee7fe69164631caa937daa5f5cebfef0" as Address,
+      v4MigratorHook: "0x45178a8d6d368d612b7552b217802b7f97262000" as Address,
       v4MulticurveInitializer:
         "0x65de470da664a5be139a5d812be5fda0d76cc951" as Address,
       v4MulticurveInitializerHook:
