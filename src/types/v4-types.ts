@@ -10,7 +10,7 @@ export interface V4Addresses {
   stateView: Address;
   dopplerLens: Address;
   v4Migrator: Address | Address[];
-  v4MigratorHook: Address;
+  v4MigratorHook: Address | Address[];
   v4MulticurveInitializer: Address;
   v4MulticurveInitializerHook: Address;
   v4ScheduledMulticurveInitializer: Address;
