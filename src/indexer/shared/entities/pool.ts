@@ -366,9 +366,12 @@ function getMigrationType(assetData: AssetData, chainName: Network): string {
     || assetData.liquidityMigrator.toLowerCase() === chainConfigs[chainName].addresses.v3.nimCustomV3Migrator.toLowerCase()
   ) {
     return "v3";
-  } else if (assetData.liquidityMigrator.toLowerCase() === chainConfigs[chainName].addresses.v4.v4Migrator.toLowerCase()) {
-    return "v4";
   } else {
+    const v4Migrator = chainConfigs[chainName].addresses.v4.v4Migrator;
+    const v4Migrators = Array.isArray(v4Migrator) ? v4Migrator : [v4Migrator];
+    if (v4Migrators.some(m => m.toLowerCase() === assetData.liquidityMigrator.toLowerCase())) {
+      return "v4";
+    }
     return "unknown";
   }
 }
