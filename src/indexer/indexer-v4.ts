@@ -1,8 +1,10 @@
 import { ponder } from "ponder:registry";
-import { getPoolId, getV4PoolData } from "@app/utils/v4-utils";
+import { getPoolId, getV4PoolData, isV4MigratorHook } from "@app/utils/v4-utils";
+import { computeV4Price } from "@app/utils/v4-utils/computeV4Price";
 import { insertTokenIfNotExists } from "./shared/entities/token";
 import { insertPoolIfNotExistsV4, updatePool } from "./shared/entities/pool";
 import { insertAssetIfNotExists, updateAsset } from "./shared/entities/asset";
+import { fetchV4MigrationPool, updateV4Pool } from "./shared/entities/v4pools";
 
 import { insertV4ConfigIfNotExists } from "./shared/entities/v4Config";
 import { getReservesV4 } from "@app/utils/v4-utils/getV4PoolData";
@@ -470,3 +472,340 @@ ponder.on(
     );
   },
 );
+
+ponder.on("PoolManager:Swap", async ({ event, context }) => {
+  const { id: poolId, sender, amount0, amount1, sqrtPriceX96, liquidity, tick, fee } = event.args;
+  const { timestamp } = event.block;
+  const { hash: txHash, from: txFrom } = event.transaction;
+  const { chain, client } = context;
+
+  const v4Pool = await fetchV4MigrationPool({
+    poolId: poolId as `0x${string}`,
+    context,
+  });
+
+  if (!v4Pool || !v4Pool.migratedFromPool) {
+    return;
+  }
+
+  if (!isV4MigratorHook(v4Pool.hooks, chain.name)) {
+    return;
+  }
+
+  const quoteInfo = await getQuoteInfo(v4Pool.quoteToken, timestamp, context);
+
+  const newTick = Number(tick);
+  const price = PriceService.computePriceFromSqrtPriceX96({
+    sqrtPriceX96,
+    isToken0: v4Pool.isToken0,
+    decimals: 18,
+    quoteDecimals: quoteInfo.quoteDecimals,
+  });
+
+  const amountIn = amount0 > 0n ? BigInt(amount0) : BigInt(amount1);
+  const amountOut = amount0 < 0n ? BigInt(-amount0) : BigInt(-amount1);
+  const isZeroForOne = amount0 > 0n;
+
+  const type = SwapService.determineSwapType({
+    isToken0: v4Pool.isToken0,
+    amount0: amount0 > 0n ? BigInt(amount0) : BigInt(-amount0),
+    amount1: amount1 > 0n ? BigInt(amount1) : BigInt(-amount1),
+  });
+
+  let existingToken = await context.db.find(token, {
+    address: v4Pool.asset!,
+    chainId: chain.id,
+  });
+  
+  if (!existingToken) {
+    existingToken = await insertTokenIfNotExists({
+      tokenAddress: v4Pool.asset!,
+      creatorAddress: txFrom.toLowerCase() as Address,
+      timestamp,
+      context,
+      isDerc20: true,
+    });
+  }
+  
+  const { totalSupply } = existingToken;
+
+  const marketCapUsd = MarketDataService.calculateMarketCap({
+    price,
+    quotePriceUSD: quoteInfo.quotePrice ?? 0n,
+    totalSupply,
+    decimals: quoteInfo.quotePriceDecimals,
+  });
+
+  let quoteDelta: bigint;
+  if (v4Pool.isToken0) {
+    quoteDelta = amount1 > 0n ? BigInt(amount1) : BigInt(-amount1);
+  } else {
+    quoteDelta = amount0 > 0n ? BigInt(amount0) : BigInt(-amount0);
+  }
+  const swapValueUsd = (quoteDelta * (quoteInfo.quotePrice ?? 0n)) / 
+    (BigInt(10) ** BigInt(quoteInfo.quotePriceDecimals));
+
+  const swapData = SwapOrchestrator.createSwapData({
+    poolAddress: v4Pool.migratedFromPool, // Use parent pool address for tracking
+    sender: sender.toLowerCase() as Address,
+    transactionHash: txHash,
+    transactionFrom: txFrom,
+    blockNumber: event.block.number,
+    timestamp,
+    assetAddress: v4Pool.asset!,
+    quoteAddress: v4Pool.quoteToken,
+    isToken0: v4Pool.isToken0,
+    amountIn,
+    amountOut,
+    price,
+    usdPrice: quoteInfo.quotePrice ?? 0n,
+  });
+
+  const feeAmount = (amountIn * BigInt(fee)) / 1000000n;
+  
+  const entityUpdaters = {
+    updatePool,
+    updateFifteenMinuteBucketUsd,
+    updateAsset,
+  };
+
+  const newReserves0 = v4Pool.reserves0 + BigInt(amount0);
+  const newReserves1 = v4Pool.reserves1 + BigInt(amount1);
+
+  const dollarLiquidity = MarketDataService.calculateLiquidity({
+    assetBalance: v4Pool.isToken0 ? newReserves0 : newReserves1,
+    quoteBalance: v4Pool.isToken0 ? newReserves1 : newReserves0,
+    price,
+    quotePriceUSD: quoteInfo.quotePrice ?? 0n,
+    decimals: quoteInfo.quotePriceDecimals,
+    assetDecimals: 18,
+    quoteDecimals: quoteInfo.quoteDecimals,
+  });
+
+  const marketMetrics = {
+    liquidityUsd: dollarLiquidity,
+    marketCapUsd,
+    swapValueUsd,
+  };
+
+  await Promise.all([
+    SwapOrchestrator.performSwapUpdates(
+      {
+        swapData,
+        swapType: type,
+        metrics: marketMetrics,
+        poolData: {
+          parentPoolAddress: v4Pool.migratedFromPool,
+          price,
+          tickLower: 0,
+          currentTick: newTick,
+          graduationTick: 0,
+          type: "v4-migrated",
+          baseToken: v4Pool.baseToken,
+        },
+        chainId: chain.id,
+        context,
+      },
+      entityUpdaters
+    ),    
+    updateV4Pool({
+      poolId: poolId as `0x${string}`,
+      context,
+      update: {
+        price,
+        tick: newTick,
+        sqrtPriceX96,
+        liquidity,
+        volumeUsd: v4Pool.volumeUsd + swapValueUsd,
+        lastSwapTimestamp: timestamp,
+        lastRefreshed: timestamp,
+        totalFee0: isZeroForOne ? v4Pool.totalFee0 + feeAmount : v4Pool.totalFee0,
+        totalFee1: !isZeroForOne ? v4Pool.totalFee1 + feeAmount : v4Pool.totalFee1,
+        reserves0: newReserves0,
+        reserves1: newReserves1,
+        dollarLiquidity,
+      },
+    }),
+    updatePool({
+      poolAddress: v4Pool.migratedFromPool,
+      context,
+      update: {
+        price,
+        sqrtPrice: sqrtPriceX96,
+        tick: newTick,
+        lastRefreshed: timestamp,
+        lastSwapTimestamp: timestamp,
+        dollarLiquidity,
+        marketCapUsd,
+      },
+    }),
+  ]);
+});
+
+ponder.on("PoolManager:ModifyLiquidity", async ({ event, context }) => {
+  const { id: poolId, sender, tickLower, tickUpper, liquidityDelta, salt } = event.args;
+  const { timestamp } = event.block;
+  const { chain, client } = context;
+
+  const v4Pool = await fetchV4MigrationPool({
+    poolId: poolId as `0x${string}`,
+    context,
+  });
+
+  if (!v4Pool || !v4Pool.migratedFromPool) {
+    return;
+  }
+
+  if (!isV4MigratorHook(v4Pool.hooks, chain.name)) {
+    return;
+  }
+
+  const quoteInfo = await getQuoteInfo(v4Pool.quoteToken, timestamp, context);
+
+  const newLiquidity = liquidityDelta > 0n
+    ? v4Pool.liquidity + BigInt(liquidityDelta)
+    : v4Pool.liquidity - BigInt(-liquidityDelta);
+
+  const tick = v4Pool.tick;
+  let reserves0Delta = 0n;
+  let reserves1Delta = 0n;
+
+  if (tick < tickLower) {
+    reserves0Delta = getAmount0Delta({
+      tickLower: Number(tickLower),
+      tickUpper: Number(tickUpper),
+      liquidity: liquidityDelta,
+      roundUp: false,
+    });
+  } else if (tick < tickUpper) {
+    reserves0Delta = getAmount0Delta({
+      tickLower: tick,
+      tickUpper: Number(tickUpper),
+      liquidity: liquidityDelta,
+      roundUp: false,
+    });
+    reserves1Delta = getAmount1Delta({
+      tickLower: Number(tickLower),
+      tickUpper: tick,
+      liquidity: liquidityDelta,
+      roundUp: false,
+    });
+  } else {
+    reserves1Delta = getAmount1Delta({
+      tickLower: Number(tickLower),
+      tickUpper: Number(tickUpper),
+      liquidity: liquidityDelta,
+      roundUp: false,
+    });
+  }
+
+  const newReserves0 = v4Pool.reserves0 + reserves0Delta;
+  const newReserves1 = v4Pool.reserves1 + reserves1Delta;
+
+  const dollarLiquidity = MarketDataService.calculateLiquidity({
+    assetBalance: v4Pool.isToken0 ? newReserves0 : newReserves1,
+    quoteBalance: v4Pool.isToken0 ? newReserves1 : newReserves0,
+    price: v4Pool.price,
+    quotePriceUSD: quoteInfo.quotePrice ?? 0n,
+    decimals: quoteInfo.quotePriceDecimals,
+    assetDecimals: 18,
+    quoteDecimals: quoteInfo.quoteDecimals,
+  });
+
+  await updateV4Pool({
+    poolId: poolId as `0x${string}`,
+    context,
+    update: {
+      liquidity: newLiquidity,
+      reserves0: newReserves0,
+      reserves1: newReserves1,
+      dollarLiquidity,
+      lastRefreshed: timestamp,
+    },
+  });
+});
+
+ponder.on("PoolManager:Donate", async ({ event, context }) => {
+  const { id: poolId, amount0, amount1 } = event.args;
+  const { timestamp } = event.block;
+  const { chain } = context;
+
+  const v4Pool = await fetchV4MigrationPool({
+    poolId: poolId as `0x${string}`,
+    context,
+  });
+
+  if (!v4Pool || !v4Pool.migratedFromPool) {
+    return;
+  }
+
+  if (!isV4MigratorHook(v4Pool.hooks, chain.name)) {
+    return;
+  }
+
+  const newReserves0 = v4Pool.reserves0 + amount0;
+  const newReserves1 = v4Pool.reserves1 + amount1;
+
+  const quoteInfo = await getQuoteInfo(v4Pool.quoteToken, timestamp, context);
+
+  const dollarLiquidity = MarketDataService.calculateLiquidity({
+    assetBalance: v4Pool.isToken0 ? newReserves0 : newReserves1,
+    quoteBalance: v4Pool.isToken0 ? newReserves1 : newReserves0,
+    price: v4Pool.price,
+    quotePriceUSD: quoteInfo.quotePrice ?? 0n,
+    decimals: quoteInfo.quotePriceDecimals,
+    assetDecimals: 18,
+    quoteDecimals: quoteInfo.quoteDecimals,
+  });
+
+  await updateV4Pool({
+    poolId: poolId as `0x${string}`,
+    context,
+    update: {
+      reserves0: newReserves0,
+      reserves1: newReserves1,
+      dollarLiquidity,
+      lastRefreshed: timestamp,
+    },
+  });
+});
+
+ponder.on("PoolManager:Initialize", async ({ event, context }) => {
+  const { id: poolId, hooks, sqrtPriceX96, tick } = event.args;
+  const { timestamp } = event.block;
+  const { chain } = context;
+
+  if (!isV4MigratorHook(hooks, chain.name)) {
+    return;
+  }
+
+  const existingV4Pool = await fetchV4MigrationPool({
+    poolId: poolId as `0x${string}`,
+    context,
+  });
+
+  if (!existingV4Pool) {
+    console.warn(`V4 pool ${poolId} initialized via V4Migrator but not found in database yet`);
+    return;
+  }
+
+  const quoteInfo = await getQuoteInfo(existingV4Pool.quoteToken, timestamp, context);
+
+  const price = computeV4Price({
+    currentTick: Number(tick),
+    isToken0: existingV4Pool.isToken0,
+    baseTokenDecimals: 18,
+    quoteTokenDecimals: quoteInfo.quoteDecimals,
+  });
+
+  await updateV4Pool({
+    poolId: poolId as `0x${string}`,
+    context,
+    update: {
+      price,
+      tick: Number(tick),
+      sqrtPriceX96: sqrtPriceX96,
+      lastRefreshed: timestamp,
+    },
+  });
+});

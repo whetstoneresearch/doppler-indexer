@@ -4,11 +4,13 @@ import { insertV3MigrationPoolIfNotExists } from "./shared/entities/migrationPoo
 import { insertAssetIfNotExists, updateAsset } from "./shared/entities/asset";
 import { insertTokenIfNotExists, updateToken } from "./shared/entities/token";
 import { insertV2MigrationPoolIfNotExists } from "./shared/entities/v2Pool";
+import { insertV4MigrationPoolIfNotExists } from "./shared/entities/v4pools";
 import { updateUserAsset } from "./shared/entities/userAsset";
 import { insertUserAssetIfNotExists } from "./shared/entities/userAsset";
 import { insertUserIfNotExists, updateUser } from "./shared/entities/user";
 import { fetchExistingPool, updatePool } from "./shared/entities/pool";
 import { zeroAddress } from "viem";
+import { getV4MigratorForAsset } from "@app/utils/v4-utils";
 
 ponder.on("Airlock:Migrate", async ({ event, context }) => {
   const { timestamp } = event.block;
@@ -86,6 +88,45 @@ ponder.on("Airlock:Migrate", async ({ event, context }) => {
       },
     }),
   ]);
+  } else if (parentPool.migrationType === "v4") {    
+    const migratorAddress = getV4MigratorForAsset(
+      assetEntity.liquidityMigrator,
+      context.chain.name
+    );
+
+    if (!migratorAddress) {
+      console.warn(`Unsupported V4 migrator for asset ${assetId} on chain ${context.chain.name}`);
+      return;
+    }
+
+    const v4PoolEntity = await insertV4MigrationPoolIfNotExists({
+      migratorAddress,
+      assetAddress: assetId,
+      numeraireAddress: assetEntity.numeraire,
+      parentPoolAddress: parentPool.address,
+      timestamp,
+      context,
+    });
+
+    await Promise.all([
+      updatePool({
+        poolAddress: parentPool.address,
+        context,
+        update: {
+          migratedAt: timestamp,
+          migrated: true,
+          migratedToV4PoolId: v4PoolEntity.poolId,
+        },
+      }),
+      updateAsset({
+        assetAddress: assetId,
+        context,
+        update: {
+          migratedAt: timestamp,
+          migrated: true,
+        },
+      }),
+    ]);
   }
 });
 
