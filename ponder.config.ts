@@ -372,7 +372,7 @@ export default createConfig({
         },
         monad: {
           startBlock: monad.startBlock,
-          address: base.addresses.v4.poolManager
+          address: monad.addresses.v4.poolManager
         }
       },
     },
