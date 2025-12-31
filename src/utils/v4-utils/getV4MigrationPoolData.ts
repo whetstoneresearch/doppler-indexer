@@ -9,6 +9,11 @@ import { getQuoteInfo, QuoteInfo } from "@app/utils/getQuoteInfo";
 import { getAssetData } from "@app/utils/getAssetData";
 import { zeroAddress } from "viem";
 
+export interface BeneficiaryData {
+  beneficiary: Address;
+  shares: string;
+}
+
 export interface V4MigrationPoolData {
   poolKey: PoolKey;
   poolId: `0x${string}`;
@@ -21,6 +26,14 @@ export interface V4MigrationPoolData {
   quoteInfo: QuoteInfo;
   reserves0: bigint;
   reserves1: bigint;
+  lockDuration: number;
+  beneficiaries: BeneficiaryData[] | null;
+}
+
+interface V4MigratorAssetData {
+  poolKey: PoolKey;
+  lockDuration: number;
+  beneficiaries: BeneficiaryData[] | null;
 }
 
 async function fetchV4MigratorAssetData(
@@ -28,7 +41,7 @@ async function fetchV4MigratorAssetData(
   migratorAddress: Address,
   token0: Address,
   token1: Address
-): Promise<{ poolKey: PoolKey }> {  
+): Promise<V4MigratorAssetData> {  
   try {
     const assetData = await client.readContract({
       abi: V4MigratorABILegacy,
@@ -44,8 +57,10 @@ async function fetchV4MigratorAssetData(
         tickSpacing: assetData.poolKey.tickSpacing,
         hooks: assetData.poolKey.hooks,
       },
+      lockDuration: assetData.lockDuration,
+      beneficiaries: null, // Legacy ABI doesn't have beneficiaries
     };
-  } catch (legacyError) {
+  } catch (legacyError) {    
     try {
       const assetData = await client.readContract({
         abi: V4MigratorABI,
@@ -61,6 +76,11 @@ async function fetchV4MigratorAssetData(
           tickSpacing: assetData.poolKey.tickSpacing,
           hooks: assetData.poolKey.hooks,
         },
+        lockDuration: assetData.lockDuration,
+        beneficiaries: assetData.beneficiaries.map((b) => ({
+          beneficiary: b.beneficiary,
+          shares: b.shares.toString(),
+        })),
       };
     } catch (fullError) {      
       throw legacyError;
@@ -91,7 +111,7 @@ export const getV4MigrationPoolData = async ({
     ? numeraireAddress
     : assetAddress;
 
-  const { poolKey } = await fetchV4MigratorAssetData(
+  const { poolKey, lockDuration, beneficiaries } = await fetchV4MigratorAssetData(
     client,
     migratorAddress,
     token0 as Address,
@@ -165,6 +185,8 @@ export const getV4MigrationPoolData = async ({
     quoteInfo,
     reserves0,
     reserves1,
+    lockDuration,
+    beneficiaries,
   };
 };
 

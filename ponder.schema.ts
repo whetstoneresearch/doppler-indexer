@@ -457,6 +457,8 @@ export const v4pools = onchainTable(
     migratedFromPool: t.hex(), // Original Doppler pool address
     migratedAt: t.bigint().notNull(),
     migratorVersion: t.text().notNull().default("v4"),
+    lockDuration: t.integer(), // Lock duration in seconds (from V4Migrator)
+    beneficiaries: t.jsonb(), // Array of { beneficiary: address, shares: bigint } (from V4Migrator)
 
     // Metrics
     price: t.bigint().notNull(),

@@ -136,6 +136,8 @@ export const insertV4MigrationPoolIfNotExists = async ({
     migratedFromPool: parentPoolAddress.toLowerCase() as `0x${string}`,
     migratedAt: timestamp,
     migratorVersion: "v4",
+    lockDuration: migrationData.lockDuration,
+    beneficiaries: migrationData.beneficiaries,
     price: migrationData.price,
     volumeUsd: 0n,
     dollarLiquidity,
