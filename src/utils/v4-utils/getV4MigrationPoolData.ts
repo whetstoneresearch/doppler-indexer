@@ -1,6 +1,6 @@
 import { Address } from "viem";
 import { Context } from "ponder:registry";
-import { V4MigratorABI, StateViewABI } from "@app/abis";
+import { V4MigratorABI, V4MigratorABILegacy, StateViewABI } from "@app/abis";
 import { PoolKey, Slot0Data } from "@app/types/v4-types";
 import { getPoolId } from "./getPoolId";
 import { computeV4Price } from "./computeV4Price";
@@ -21,6 +21,51 @@ export interface V4MigrationPoolData {
   quoteInfo: QuoteInfo;
   reserves0: bigint;
   reserves1: bigint;
+}
+
+async function fetchV4MigratorAssetData(
+  client: Context["client"],
+  migratorAddress: Address,
+  token0: Address,
+  token1: Address
+): Promise<{ poolKey: PoolKey }> {  
+  try {
+    const assetData = await client.readContract({
+      abi: V4MigratorABILegacy,
+      address: migratorAddress,
+      functionName: "getAssetData",
+      args: [token0, token1],
+    });
+    return {
+      poolKey: {
+        currency0: assetData.poolKey.currency0,
+        currency1: assetData.poolKey.currency1,
+        fee: assetData.poolKey.fee,
+        tickSpacing: assetData.poolKey.tickSpacing,
+        hooks: assetData.poolKey.hooks,
+      },
+    };
+  } catch (legacyError) {
+    try {
+      const assetData = await client.readContract({
+        abi: V4MigratorABI,
+        address: migratorAddress,
+        functionName: "getAssetData",
+        args: [token0, token1],
+      });
+      return {
+        poolKey: {
+          currency0: assetData.poolKey.currency0,
+          currency1: assetData.poolKey.currency1,
+          fee: assetData.poolKey.fee,
+          tickSpacing: assetData.poolKey.tickSpacing,
+          hooks: assetData.poolKey.hooks,
+        },
+      };
+    } catch (fullError) {      
+      throw legacyError;
+    }
+  }
 }
 
 export const getV4MigrationPoolData = async ({
@@ -46,20 +91,12 @@ export const getV4MigrationPoolData = async ({
     ? numeraireAddress
     : assetAddress;
 
-  const assetData = await client.readContract({
-    abi: V4MigratorABI,
-    address: migratorAddress,
-    functionName: "getAssetData",
-    args: [token0, token1],
-  });
-
-  const poolKey: PoolKey = {
-    currency0: assetData.poolKey.currency0,
-    currency1: assetData.poolKey.currency1,
-    fee: assetData.poolKey.fee,
-    tickSpacing: assetData.poolKey.tickSpacing,
-    hooks: assetData.poolKey.hooks,
-  };
+  const { poolKey } = await fetchV4MigratorAssetData(
+    client,
+    migratorAddress,
+    token0 as Address,
+    token1 as Address
+  );
 
   const poolId = getPoolId(poolKey);
 
