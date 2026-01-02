@@ -8,6 +8,7 @@ import { chainConfigs } from "@app/config";
 import { getQuoteInfo, QuoteInfo } from "@app/utils/getQuoteInfo";
 import { getAssetData } from "@app/utils/getAssetData";
 import { zeroAddress } from "viem";
+import { getAmount0Delta, getAmount1Delta } from "@app/utils/v3-utils/computeGraduationThreshold";
 
 export interface BeneficiaryData {
   beneficiary: Address;
@@ -159,18 +160,27 @@ export const getV4MigrationPoolData = async ({
     quoteTokenDecimals: quoteInfo.quoteDecimals,
   });
 
-  // Calculate reserves from sqrtPriceX96 and liquidity
-  // For V4/V3 AMM pools:
-  // reserve0 = liquidity * 2^96 / sqrtPriceX96
-  // reserve1 = liquidity * sqrtPriceX96 / 2^96
-  const Q96 = 2n ** 96n;
-  const sqrtPrice = slot0Data.sqrtPrice;
+  const MIN_TICK = -887270;
+  const MAX_TICK = 887270;
+  const currentTick = slot0Data.tick;
+
   let reserves0 = 0n;
   let reserves1 = 0n;
-  
-  if (sqrtPrice > 0n) {
-    reserves0 = (liquidity * Q96) / sqrtPrice;
-    reserves1 = (liquidity * sqrtPrice) / Q96;
+
+  if (liquidity > 0n) {
+    reserves0 = getAmount0Delta({
+      tickLower: currentTick,
+      tickUpper: MAX_TICK,
+      liquidity,
+      roundUp: false,
+    });
+
+    reserves1 = getAmount1Delta({
+      tickLower: MIN_TICK,
+      tickUpper: currentTick,
+      liquidity,
+      roundUp: false,
+    });
   }
 
   return {
