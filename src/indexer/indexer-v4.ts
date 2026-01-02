@@ -657,12 +657,12 @@ ponder.on("PoolManager:ModifyLiquidity", async ({ event, context }) => {
   const { timestamp } = event.block;
   const { chain, client } = context;
 
-  const v4Pool = await fetchV4MigrationPool({
+  let v4Pool = await fetchV4MigrationPool({
     poolId: poolId as `0x${string}`,
     context,
   });
 
-  if (!v4Pool || !v4Pool.migratedFromPool) {
+  if (!v4Pool) {
     return;
   }
 
@@ -794,7 +794,7 @@ ponder.on("PoolManager:Donate", async ({ event, context }) => {
 });
 
 ponder.on("PoolManager:Initialize", async ({ event, context }) => {
-  const { id: poolId, hooks, sqrtPriceX96, tick } = event.args;
+  const { id: poolId, currency0, currency1, fee, tickSpacing, hooks, sqrtPriceX96, tick } = event.args;
   const { timestamp } = event.block;
   const { chain } = context;
 
@@ -802,14 +802,30 @@ ponder.on("PoolManager:Initialize", async ({ event, context }) => {
     return;
   }
 
-  const existingV4Pool = await fetchV4MigrationPool({
+  let existingV4Pool = await fetchV4MigrationPool({
     poolId: poolId as `0x${string}`,
     context,
   });
 
   if (!existingV4Pool) {
-    console.warn(`V4 pool ${poolId} initialized via V4Migrator but not found in database yet`);
-    return;
+    const { insertV4PoolFromInitialize } = await import("./shared/entities/v4pools");
+    existingV4Pool = await insertV4PoolFromInitialize({
+      poolId: poolId as `0x${string}`,
+      currency0: currency0 as `0x${string}`,
+      currency1: currency1 as `0x${string}`,
+      fee,
+      tickSpacing,
+      hooks: hooks as `0x${string}`,
+      sqrtPriceX96,
+      tick,
+      timestamp,
+      context,
+    });
+    
+    if (!existingV4Pool) {
+      console.warn(`Failed to create V4 pool ${poolId} from Initialize event`);
+      return;
+    }
   }
 
   const quoteInfo = await getQuoteInfo(existingV4Pool.quoteToken, timestamp, context);
