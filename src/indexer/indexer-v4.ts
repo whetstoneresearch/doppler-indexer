@@ -572,6 +572,16 @@ ponder.on("PoolManager:Swap", async ({ event, context }) => {
   const newReserves0 = v4Pool.reserves0 + BigInt(amount0);
   const newReserves1 = v4Pool.reserves1 + BigInt(amount1);
 
+  console.log(`[V4 Swap] Pool ${poolId}:`, {
+    prevReserves0: v4Pool.reserves0.toString(),
+    prevReserves1: v4Pool.reserves1.toString(),
+    amount0: amount0.toString(),
+    amount1: amount1.toString(),
+    newReserves0: newReserves0.toString(),
+    newReserves1: newReserves1.toString(),
+    txHash: event.transaction.hash,
+  });
+
   const dollarLiquidity = MarketDataService.calculateLiquidity({
     assetBalance: v4Pool.isToken0 ? newReserves0 : newReserves1,
     quoteBalance: v4Pool.isToken0 ? newReserves1 : newReserves0,
@@ -701,6 +711,19 @@ ponder.on("PoolManager:ModifyLiquidity", async ({ event, context }) => {
 
   const newReserves0 = v4Pool.reserves0 + reserves0Delta;
   const newReserves1 = v4Pool.reserves1 + reserves1Delta;
+
+  console.log(`[V4 ModifyLiquidity] Pool ${poolId}:`, {
+    tick,
+    tickLower: Number(tickLower),
+    tickUpper: Number(tickUpper),
+    liquidityDelta: liquidityDelta.toString(),
+    prevReserves0: v4Pool.reserves0.toString(),
+    prevReserves1: v4Pool.reserves1.toString(),
+    reserves0Delta: reserves0Delta.toString(),
+    reserves1Delta: reserves1Delta.toString(),
+    newReserves0: newReserves0.toString(),
+    newReserves1: newReserves1.toString(),
+  });
 
   const dollarLiquidity = MarketDataService.calculateLiquidity({
     assetBalance: v4Pool.isToken0 ? newReserves0 : newReserves1,
