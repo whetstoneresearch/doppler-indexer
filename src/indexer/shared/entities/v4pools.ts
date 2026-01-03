@@ -217,17 +217,6 @@ export const updateV4PoolReservesFromModifyLiquidity = async ({
   const newReserves0 = v4Pool.reserves0 + reserves0Delta;
   const newReserves1 = v4Pool.reserves1 + reserves1Delta;
 
-  console.log(`[V4 ModifyLiquidity - Initial] Pool ${poolId}:`, {
-    tick,
-    tickLower,
-    tickUpper,
-    liquidityDelta: liquidityDelta.toString(),
-    reserves0Delta: reserves0Delta.toString(),
-    reserves1Delta: reserves1Delta.toString(),
-    newReserves0: newReserves0.toString(),
-    newReserves1: newReserves1.toString(),
-  });
-
   await db.update(v4pools, {
     poolId: poolId.toLowerCase() as `0x${string}`,
     chainId: chain.id,

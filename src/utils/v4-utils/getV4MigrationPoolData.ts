@@ -183,16 +183,6 @@ export const getV4MigrationPoolData = async ({
     });
   }
 
-  console.log(`[V4 Migration] Pool ${poolId} initial reserves calculation:`, {
-    currentTick,
-    liquidity: liquidity.toString(),
-    sqrtPrice: slot0Data.sqrtPrice.toString(),
-    reserves0: reserves0.toString(),
-    reserves1: reserves1.toString(),
-    baseToken,
-    isToken0,
-  });
-
   return {
     poolKey,
     poolId: poolId.toLowerCase() as `0x${string}`,
