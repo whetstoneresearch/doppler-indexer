@@ -9,6 +9,7 @@ export {
   PoolManagerABI,
   DopplerLensQuoterABI,
   V4MigratorABI,
+  V4MigratorABILegacy,
 } from "./v4-abis";
 
 // shared abis

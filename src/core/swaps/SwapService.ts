@@ -54,7 +54,7 @@ export class SwapService {
       return "sell";
     } else if (!isToken0 && amount0 < 0n) {
       return "sell";
-    } else if (!isToken0 && amount0 < 0n) {
+    } else if (!isToken0 && amount0 > 0n) {
       return "buy";
     }
 

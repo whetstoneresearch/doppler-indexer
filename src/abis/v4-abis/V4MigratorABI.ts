@@ -1,3 +1,37 @@
+export const V4MigratorABILegacy = [
+  {
+    type: "function",
+    name: "getAssetData",
+    inputs: [
+      { name: "token0", type: "address", internalType: "address" },
+      { name: "token1", type: "address", internalType: "address" }
+    ],
+    outputs: [
+      {
+        name: "data",
+        type: "tuple",
+        internalType: "struct AssetData",
+        components: [
+          {
+            name: "poolKey",
+            type: "tuple",
+            internalType: "struct PoolKey",
+            components: [
+              { name: "currency0", type: "address", internalType: "Currency" },
+              { name: "currency1", type: "address", internalType: "Currency" },
+              { name: "fee", type: "uint24", internalType: "uint24" },
+              { name: "tickSpacing", type: "int24", internalType: "int24" },
+              { name: "hooks", type: "address", internalType: "IHooks" }
+            ]
+          },
+          { name: "lockDuration", type: "uint32", internalType: "uint32" }
+        ]
+      }
+    ],
+    stateMutability: "view"
+  },
+] as const;
+
 export const V4MigratorABI = [
   {
     type: "function",
