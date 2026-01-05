@@ -242,26 +242,31 @@ ponder.on("MonadUsdcPrice:block", async ({ event, context }) => {
   let slot0: readonly [bigint, number, number, number, number, number, boolean];
   
   try {
-    // Try Ponder's client first
-    slot0 = await client.readContract({
-      abi: UniswapV3PoolABI,
-      address: chainConfigs[chain.name].addresses.shared.monad.monUsdcPool,
-      functionName: "slot0",
-    });
+    try {
+      // Try Ponder's client first
+      slot0 = await client.readContract({
+        abi: UniswapV3PoolABI,
+        address: chainConfigs[chain.name].addresses.shared.monad.monUsdcPool,
+        functionName: "slot0",
+      });
+    } catch (error) {
+      // Fallback to direct RPC call bypassing Ponder's client abstraction
+      console.log(`MonadUsdcPrice: Ponder client failed at block ${blockNumber}, falling back to direct RPC. Error: ${error}`);
+      
+      const directClient = createPublicClient({
+        transport: http(process.env.PONDER_RPC_URL_143),
+      });
+      
+      slot0 = await directClient.readContract({
+        abi: UniswapV3PoolABI,
+        address: chainConfigs[chain.name].addresses.shared.monad.monUsdcPool,
+        functionName: "slot0",
+        blockNumber,
+      });
+    }
   } catch (error) {
-    // Fallback to direct RPC call bypassing Ponder's client abstraction
-    console.log(`MonadUsdcPrice: Ponder client failed at block ${blockNumber}, falling back to direct RPC. Error: ${error}`);
-    
-    const directClient = createPublicClient({
-      transport: http(process.env.PONDER_RPC_URL_143),
-    });
-    
-    slot0 = await directClient.readContract({
-      abi: UniswapV3PoolABI,
-      address: chainConfigs[chain.name].addresses.shared.monad.monUsdcPool,
-      functionName: "slot0",
-      blockNumber,
-    });
+    console.error(`MonadUsdcPrice: Failed at block ${blockNumber}, skipping. Error: ${error}`);
+    return;
   }
 
   const sqrtPriceX96 = slot0[0] as bigint;
