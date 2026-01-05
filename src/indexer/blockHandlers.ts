@@ -109,34 +109,77 @@ ponder.on("MonadChainlinkEthPriceFeed:block", async ({ event, context }) => {
 
 ponder.on("ZoraUsdcPrice:block", async ({ event, context }) => {
   const { db, client, chain } = context;
-  const { timestamp } = event.block;
+  const { timestamp, number: blockNumber } = event.block;
+  const poolAddress = chainConfigs[chain.name].addresses.zora.zoraTokenPool;
+  
+  const startTime = Date.now();
+  let rpcTime = 0;
+  let dbTime = 0;
 
-  const slot0 = await client.readContract({
-    abi: UniswapV3PoolABI,
-    address: chainConfigs[chain.name].addresses.zora.zoraTokenPool,
-    functionName: "slot0",
-  });
+  try {
+    // Step 1: RPC call to get slot0
+    const rpcStart = Date.now();
+    let slot0;
+    try {
+      slot0 = await client.readContract({
+        abi: UniswapV3PoolABI,
+        address: poolAddress,
+        functionName: "slot0",
+      });
+      rpcTime = Date.now() - rpcStart;
+    } catch (rpcError) {
+      rpcTime = Date.now() - rpcStart;
+      console.error(`[ZoraUsdcPrice] ✗ RPC FAILED | block=${blockNumber} | timestamp=${timestamp} | pool=${poolAddress} | rpcTime=${rpcTime}ms`);
+      console.error(`[ZoraUsdcPrice] RPC Error:`, rpcError);
+      throw rpcError;
+    }
 
-  const sqrtPriceX96 = slot0[0] as bigint;
+    // Step 2: Compute price
+    const sqrtPriceX96 = slot0[0] as bigint;
+    if (!sqrtPriceX96 || sqrtPriceX96 === 0n) {
+      console.warn(`[ZoraUsdcPrice] ⚠ ZERO sqrtPriceX96 | block=${blockNumber} | slot0=${JSON.stringify(slot0)}`);
+    }
 
-  const price = PriceService.computePriceFromSqrtPriceX96({
-    sqrtPriceX96,
-    isToken0: true,
-    decimals: 18,
-    quoteDecimals: 6,
-  });
+    const price = PriceService.computePriceFromSqrtPriceX96({
+      sqrtPriceX96,
+      isToken0: true,
+      decimals: 18,
+      quoteDecimals: 6,
+    });
 
-  const roundedTimestamp = BigInt(Math.floor(Number(timestamp) / 300) * 300);
-  const adjustedTimestamp = roundedTimestamp + 300n;
+    const roundedTimestamp = BigInt(Math.floor(Number(timestamp) / 300) * 300);
+    const adjustedTimestamp = roundedTimestamp + 300n;
 
-  await db
-    .insert(zoraUsdcPrice)
-    .values({
-      timestamp: adjustedTimestamp,
-      price,
-      chainId: chain.id,
-    })
-    .onConflictDoNothing();
+    // Step 3: DB write
+    const dbStart = Date.now();
+    try {
+      await db
+        .insert(zoraUsdcPrice)
+        .values({
+          timestamp: adjustedTimestamp,
+          price,
+          chainId: chain.id,
+        })
+        .onConflictDoNothing();
+      dbTime = Date.now() - dbStart;
+    } catch (dbError) {
+      dbTime = Date.now() - dbStart;
+      console.error(`[ZoraUsdcPrice] ✗ DB WRITE FAILED | block=${blockNumber} | adjustedTimestamp=${adjustedTimestamp} | dbTime=${dbTime}ms`);
+      console.error(`[ZoraUsdcPrice] DB Error:`, dbError);
+      throw dbError;
+    }
+
+    const totalTime = Date.now() - startTime;
+    // Log success every 100 blocks to avoid spam but still track progress
+    if (Number(blockNumber) % 100 === 0) {
+      console.log(`[ZoraUsdcPrice] ✓ block=${blockNumber} | ts=${adjustedTimestamp} | price=${price} | rpc=${rpcTime}ms | db=${dbTime}ms | total=${totalTime}ms`);
+    }
+  } catch (error) {
+    const totalTime = Date.now() - startTime;
+    console.error(`[ZoraUsdcPrice] ✗ HANDLER FAILED | block=${blockNumber} | timestamp=${timestamp} | totalTime=${totalTime}ms`);
+    console.error(`[ZoraUsdcPrice] Full error:`, error);
+    throw error; // Re-throw so Ponder knows it failed
+  }
 });
 
 ponder.on(
