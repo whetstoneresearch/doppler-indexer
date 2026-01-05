@@ -1,8 +1,9 @@
 import { ethPrice, zoraUsdcPrice, fxhWethPrice, noiceWethPrice, monadUsdcPrice, eurcUsdcPrice, usdcPrice, usdtPrice } from "ponder.schema";
 import { Context } from "ponder:registry";
-import { MarketDataService } from "@app/core";
+import { MarketDataService, PriceService } from "@app/core";
 import { chainConfigs } from "@app/config";
 import { parseUnits, zeroAddress } from "viem";
+import { UniswapV3PoolABI } from "@app/abis/v3-abis/UniswapV3PoolABI";
 
 // Maximum number of 5-minute intervals to search backwards for price data
 // 1000 attempts = ~3.5 days of historical data
@@ -42,7 +43,7 @@ export const fetchZoraPrice = async (
   timestamp: bigint,
   context: Context
 ): Promise<bigint> => {
-  const { db, chain } = context;
+  const { db, chain, client } = context;
   
   if (chain.name != "base") {
     return parseUnits("1", 18);
@@ -50,6 +51,7 @@ export const fetchZoraPrice = async (
 
   let roundedTimestamp = BigInt(Math.floor(Number(timestamp) / 300) * 300);
 
+  // Try database lookup first
   let zoraPriceData;
   let attempts = 0;
   while (!zoraPriceData && attempts < MAX_PRICE_LOOKUP_ATTEMPTS) {
@@ -64,20 +66,32 @@ export const fetchZoraPrice = async (
     }
   }
 
-  if (!zoraPriceData) {
-    throw new Error(
-      `No ZORA price data found after ${MAX_PRICE_LOOKUP_ATTEMPTS} attempts for chain ${chain.name} (searched back to timestamp ${roundedTimestamp})`
-    );
+  if (zoraPriceData) {
+    return zoraPriceData.price;
   }
 
-  return zoraPriceData.price;
+  // FALLBACK: Fetch directly from RPC if database lookup fails
+  const slot0 = await client.readContract({
+    abi: UniswapV3PoolABI,
+    address: chainConfigs[chain.name].addresses.zora.zoraTokenPool,
+    functionName: "slot0",
+  });
+
+  const sqrtPriceX96 = slot0[0] as bigint;
+
+  return PriceService.computePriceFromSqrtPriceX96({
+    sqrtPriceX96,
+    isToken0: true,
+    decimals: 18,
+    quoteDecimals: 6,
+  });
 };
 
 export const fetchFxhPrice = async (
   timestamp: bigint,
   context: Context,
 ): Promise<bigint> => {
-  const { db, chain } = context;
+  const { db, chain, client } = context;
 
   if (chain.name != "base") {
     return parseUnits("1", 18);
@@ -85,6 +99,7 @@ export const fetchFxhPrice = async (
   
   let roundedTimestamp = BigInt(Math.floor(Number(timestamp) / 300) * 300);
 
+  // Try database lookup first
   let fxhPriceData;
   let attempts = 0;
   while (!fxhPriceData && attempts < MAX_PRICE_LOOKUP_ATTEMPTS) {
@@ -99,20 +114,32 @@ export const fetchFxhPrice = async (
     }
   }
 
-  if (!fxhPriceData) {
-    throw new Error(
-      `No FXH price data found after ${MAX_PRICE_LOOKUP_ATTEMPTS} attempts for chain ${chain.name} (searched back to timestamp ${roundedTimestamp})`
-    );
+  if (fxhPriceData) {
+    return fxhPriceData.price;
   }
 
-  return fxhPriceData.price;
+  // FALLBACK: Fetch directly from RPC if database lookup fails
+  const slot0 = await client.readContract({
+    abi: UniswapV3PoolABI,
+    address: chainConfigs["base"].addresses.shared.fxHash.fxhWethPool,
+    functionName: "slot0",
+  });
+
+  const sqrtPriceX96 = slot0[0] as bigint;
+
+  return PriceService.computePriceFromSqrtPriceX96({
+    sqrtPriceX96,
+    isToken0: false,
+    decimals: 18,
+    quoteDecimals: 18,
+  });
 };
 
 export const fetchNoicePrice = async (
   timestamp: bigint,
   context: Context,
 ): Promise<bigint> => {
-  const { db, chain } = context;
+  const { db, chain, client } = context;
   
   if (chain.name != "base") {
     return parseUnits("1", 18);
@@ -120,6 +147,7 @@ export const fetchNoicePrice = async (
 
   let roundedTimestamp = BigInt(Math.floor(Number(timestamp) / 300) * 300);
 
+  // Try database lookup first
   let noicePriceData;
   let attempts = 0;
   while (!noicePriceData && attempts < MAX_PRICE_LOOKUP_ATTEMPTS) {
@@ -134,13 +162,25 @@ export const fetchNoicePrice = async (
     }
   }
 
-  if (!noicePriceData) {
-    throw new Error(
-      `No NOICE price data found after ${MAX_PRICE_LOOKUP_ATTEMPTS} attempts for chain ${chain.name} (searched back to timestamp ${roundedTimestamp})`
-    );
+  if (noicePriceData) {
+    return noicePriceData.price;
   }
 
-  return noicePriceData.price;
+  // FALLBACK: Fetch directly from RPC if database lookup fails
+  const slot0 = await client.readContract({
+    abi: UniswapV3PoolABI,
+    address: chainConfigs["base"].addresses.shared.noice.noiceWethPool,
+    functionName: "slot0",
+  });
+
+  const sqrtPriceX96 = slot0[0] as bigint;
+
+  return PriceService.computePriceFromSqrtPriceX96({
+    sqrtPriceX96,
+    isToken0: false,
+    decimals: 18,
+    quoteDecimals: 18,
+  });
 };
 
 export const fetchMonadPrice = async (
