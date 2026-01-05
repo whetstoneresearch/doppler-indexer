@@ -54,10 +54,7 @@ export default createConfig({
     },
     monad: {
       id: CHAIN_IDS.monad,
-      rpc: monadFallbackTransport({
-        primaryUrl: process.env.PONDER_RPC_URL_143!,
-        fallbackUrl: process.env.PONDER_RPC_URL_143_FALLBACK || "https://rpc-mainnet.monadinfra.com",
-      }),
+      rpc: http(process.env.PONDER_RPC_URL_143),
     }
   },
   blocks: {
