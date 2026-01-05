@@ -5,7 +5,7 @@ import { UniswapV3PoolABI } from "@app/abis/v3-abis/UniswapV3PoolABI";
 import { StateViewABI } from "@app/abis/v4-abis/StateViewABI";
 import { PriceService } from "@app/core";
 import { chainConfigs } from "@app/config";
-import { parseUnits, zeroAddress } from "viem";
+import { parseUnits, zeroAddress, createPublicClient, http, numberToHex } from "viem";
 
 ponder.on("BaseChainlinkEthPriceFeed:block", async ({ event, context }) => {
   const { db, client, chain } = context;
@@ -233,17 +233,36 @@ ponder.on("NoiceWethPrice:block", async ({ event, context }) => {
 
 ponder.on("MonadUsdcPrice:block", async ({ event, context }) => {
   const { db, client, chain } = context;
-  const { timestamp } = event.block;
+  const { timestamp, number: blockNumber } = event.block;
   
   if (chainConfigs[chain.name].addresses.shared.monad.monUsdcPool === zeroAddress) {
     return;
   }
   
-  const slot0 = await client.readContract({
-    abi: UniswapV3PoolABI,
-    address: chainConfigs[chain.name].addresses.shared.monad.monUsdcPool,
-    functionName: "slot0",
-  });
+  let slot0: readonly [bigint, number, number, number, number, number, boolean];
+  
+  try {
+    // Try Ponder's client first
+    slot0 = await client.readContract({
+      abi: UniswapV3PoolABI,
+      address: chainConfigs[chain.name].addresses.shared.monad.monUsdcPool,
+      functionName: "slot0",
+    });
+  } catch (error) {
+    // Fallback to direct RPC call bypassing Ponder's client abstraction
+    console.log(`MonadUsdcPrice: Ponder client failed at block ${blockNumber}, falling back to direct RPC. Error: ${error}`);
+    
+    const directClient = createPublicClient({
+      transport: http(process.env.PONDER_RPC_URL_143),
+    });
+    
+    slot0 = await directClient.readContract({
+      abi: UniswapV3PoolABI,
+      address: chainConfigs[chain.name].addresses.shared.monad.monUsdcPool,
+      functionName: "slot0",
+      blockNumber,
+    });
+  }
 
   const sqrtPriceX96 = slot0[0] as bigint;
 
