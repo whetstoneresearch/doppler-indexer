@@ -178,7 +178,6 @@ ponder.on("ZoraUsdcPrice:block", async ({ event, context }) => {
     const totalTime = Date.now() - startTime;
     console.error(`[ZoraUsdcPrice] ✗ HANDLER FAILED | block=${blockNumber} | timestamp=${timestamp} | totalTime=${totalTime}ms`);
     console.error(`[ZoraUsdcPrice] Full error:`, error);
-    throw error; // Re-throw so Ponder knows it failed
   }
 });
 
