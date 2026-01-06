@@ -3,6 +3,7 @@ import { getAbiItem, http } from "viem";
 import {
   UniswapV3InitializerABI,
   UniswapV4InitializerABI,
+  V4MigratorHookABI,
   UniswapV3PoolABI,
   AirlockABI,
   DERC20ABI,
@@ -216,6 +217,15 @@ export default createConfig({
           startBlock: baseSepolia.v4StartBlock,
           address: baseSepolia.addresses.v4.poolManager,
         },
+      },
+    },
+    UniswapV4MigratorHook: {
+      abi: V4MigratorHookABI,
+      chain: {
+        baseSepolia: {
+          startBlock: baseSepolia.v4StartBlock,
+          address: baseSepolia.addresses.v4.v4MigratorHook,
+        }
       },
     },
     UniswapV4Pool: {
