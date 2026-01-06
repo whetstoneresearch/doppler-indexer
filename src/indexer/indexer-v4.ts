@@ -642,10 +642,18 @@ ponder.on("PoolManager:Swap", async ({ event, context }) => {
   ]);
 });
 
-ponder.on("PoolManager:ModifyLiquidity", async ({ event, context }) => {
-  const { id: poolId, sender, tickLower, tickUpper, liquidityDelta, salt } = event.args;
+ponder.on("UniswapV4MigratorHook:ModifyLiquidity", async ({ event, context }) => {
+  const { key, params } = event.args;
+  const { tickLower, tickUpper, liquidityDelta } = params;
   const { timestamp } = event.block;
-  const { chain, client } = context;
+
+  const poolId = getPoolId({
+    currency0: key.currency0,
+    currency1: key.currency1,
+    fee: key.fee,
+    tickSpacing: key.tickSpacing,
+    hooks: key.hooks,
+  });
 
   let v4Pool = await fetchV4MigrationPool({
     poolId: poolId as `0x${string}`,
@@ -656,9 +664,7 @@ ponder.on("PoolManager:ModifyLiquidity", async ({ event, context }) => {
     return;
   }
 
-  if (!isV4MigratorHook(v4Pool.hooks, chain.name)) {
-    return;
-  }
+
 
   const quoteInfo = await getQuoteInfo(v4Pool.quoteToken, timestamp, context);
 

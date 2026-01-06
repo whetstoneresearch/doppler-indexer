@@ -10,6 +10,7 @@ export {
   DopplerLensQuoterABI,
   V4MigratorABI,
   V4MigratorABILegacy,
+  V4MigratorHookABI,
 } from "./v4-abis";
 
 // shared abis

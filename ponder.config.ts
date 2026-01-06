@@ -13,6 +13,7 @@ import {
   ZoraV4HookABI,
   ZoraCoinABI,
   ZoraCreatorCoinABI,
+  V4MigratorHookABI,
 } from "./src/abis";
 import { BLOCK_INTERVALS } from "./src/config/chains/constants";
 import { chainConfigs, CHAIN_IDS } from "./src/config/chains";
@@ -374,6 +375,19 @@ export default createConfig({
           startBlock: monad.startBlock,
           address: monad.addresses.v4.poolManager
         }
+      },
+    },
+    UniswapV4MigratorHook: {
+      abi: V4MigratorHookABI,
+      chain: {
+        base: {
+          startBlock: base.v4StartBlock,
+          address: base.addresses.v4.v4MigratorHook,
+        },
+        unichain: {
+          startBlock: unichain.v4StartBlock,
+          address: unichain.addresses.v4.v4MigratorHook,
+        },
       },
     },
     UniswapV4Pool: {
