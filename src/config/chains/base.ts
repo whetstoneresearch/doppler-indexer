@@ -64,6 +64,8 @@ export const baseSepoliaConfig: ChainConfig = {
         "0x5c10d3e14aae2ef95619b25e907e013260e832e4" as Address,
       v4ScheduledMulticurveInitializerHook:
         "0x5d663f9c993deff2d17ce4232d75f347df7dadc0" as Address,
+      DopplerHookInitializer: "0x98cd6478debe443069db863abb9626d94de9a544" as Address,
+      RehypHook: "0x636A756CeE08775CC18780F52dd90B634F18ad37" as Address
     },
     shared: {
       airlock: "0x3411306ce66c9469bff1535ba955503c4bde1c6e" as Address,
@@ -149,6 +151,8 @@ export const baseConfig: ChainConfig = {
         "0xa36715da46ddf4a769f3290f49af58bf8132ed8e" as Address,
       v4ScheduledMulticurveInitializerHook:
         "0x3e342a06f9592459d75721d6956b570f02ef2dc0" as Address,
+      DopplerHookInitializer: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
+      RehypHook: COMMON_ADDRESSES.ZERO_ADDRESS as Address
     },
     zora: {
       zoraFactory: "0x777777751622c0d3258f214F9DF38E35BF45baF3" as Address,
