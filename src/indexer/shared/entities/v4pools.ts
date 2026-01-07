@@ -6,6 +6,7 @@ import { getV4MigrationPoolData } from "@app/utils/v4-utils/getV4MigrationPoolDa
 import { QuoteToken, getQuoteInfo } from "@app/utils/getQuoteInfo";
 import { computeV4Price } from "@app/utils/v4-utils/computeV4Price";
 import { getAmount0Delta, getAmount1Delta } from "@app/utils/v3-utils/computeGraduationThreshold";
+import { addToV4MigrationPoolCache } from "../v4MigrationPoolCache";
 
 export const fetchExistingV4Pool = async ({
   poolId,
@@ -298,6 +299,9 @@ export const insertV4MigrationPoolIfNotExists = async ({
       isQuoteEth,
     });
 
+    // Add to in-memory cache for fast lookups in PoolManager:Swap handler
+    addToV4MigrationPoolCache(chain.id, migrationData.poolId);
+
     return {
       ...existingPool,
       baseToken: migrationData.baseToken.toLowerCase() as `0x${string}`,
@@ -330,7 +334,7 @@ export const insertV4MigrationPoolIfNotExists = async ({
     quoteDecimals: migrationData.quoteInfo.quoteDecimals,
   });
 
-  return await db.insert(v4pools).values({
+  const insertedPool = await db.insert(v4pools).values({
     poolId: migrationData.poolId,
     chainId: chain.id,
     currency0: migrationData.poolKey.currency0.toLowerCase() as `0x${string}`,
@@ -362,4 +366,9 @@ export const insertV4MigrationPoolIfNotExists = async ({
     isToken0: migrationData.isToken0,
     isQuoteEth,
   });
+
+  // Add to in-memory cache for fast lookups in PoolManager:Swap handler
+  addToV4MigrationPoolCache(chain.id, migrationData.poolId);
+
+  return insertedPool;
 };

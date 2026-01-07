@@ -5,6 +5,11 @@ import { insertTokenIfNotExists } from "./shared/entities/token";
 import { insertPoolIfNotExistsV4, updatePool } from "./shared/entities/pool";
 import { insertAssetIfNotExists, updateAsset } from "./shared/entities/asset";
 import { fetchV4MigrationPool, updateV4Pool } from "./shared/entities/v4pools";
+import {
+  initializeV4MigrationPoolCache,
+  isV4MigrationPoolCacheInitialized,
+  isKnownV4MigrationPool,
+} from "./shared/v4MigrationPoolCache";
 
 import { insertV4ConfigIfNotExists } from "./shared/entities/v4Config";
 import { getReservesV4 } from "@app/utils/v4-utils/getV4PoolData";
@@ -478,6 +483,14 @@ ponder.on("PoolManager:Swap", async ({ event, context }) => {
   const { timestamp } = event.block;
   const { hash: txHash, from: txFrom } = event.transaction;
   const { chain, client } = context;
+
+  if (!isV4MigrationPoolCacheInitialized()) {
+    await initializeV4MigrationPoolCache(context);
+  }
+
+  if (!isKnownV4MigrationPool(chain.id, poolId as string)) {
+    return;
+  }
 
   const v4Pool = await fetchV4MigrationPool({
     poolId: poolId as `0x${string}`,
