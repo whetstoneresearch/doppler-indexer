@@ -94,7 +94,7 @@ export const baseSepoliaConfig: ChainConfig = {
       }
     },
     stables: {
-      usdc: "0xaf33add7918f685b2a82c1077bd8c07d220ffa04" as Address,
+      usdc: "0x036cbd53842c5426634e7929541ec2318f3dcf7e" as Address,
       usdt: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
     },
     oracle: ORACLE_ADDRESSES,
