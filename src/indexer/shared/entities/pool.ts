@@ -1,5 +1,5 @@
 import { DERC20ABI } from "@app/abis";
-import { V4PoolData } from "@app/types";
+import { V4PoolData, DHookPoolData } from "@app/types";
 import { MarketDataService } from "@app/core";
 import { getAssetData } from "@app/utils/getAssetData";
 import { getV3PoolData } from "@app/utils/v3-utils";
@@ -262,6 +262,101 @@ export const insertPoolIfNotExistsV4 = async ({
     isQuoteEth,
     integrator: assetData.integrator,
     migrationType,
+  });
+};
+
+export const insertPoolIfNotExistsDHook = async ({
+  poolAddress,
+  timestamp,
+  poolData,
+  ethPrice,
+  context,
+}: {
+  poolAddress: Address;
+  timestamp: bigint;
+  ethPrice: bigint;
+  context: Context;
+  poolData: DHookPoolData;
+}): Promise<typeof pool.$inferSelect> => {
+  const { db, chain, client } = context;
+  const address = poolAddress.toLowerCase() as `0x${string}`;
+  const existingPool = await db.find(pool, {
+    address,
+    chainId: chain.id,
+  });
+
+  if (existingPool) {
+    return existingPool;
+  }
+
+  const { poolKey, slot0Data, liquidity, price, poolConfig } = poolData;
+  const { fee } = poolKey;
+
+  const assetAddr = poolConfig.isToken0 ? poolKey.currency0 : poolKey.currency1;
+  const numeraireAddr = poolConfig.isToken0
+    ? poolKey.currency1
+    : poolKey.currency0;
+
+  const [totalSupply, assetData, quoteInfo] = await Promise.all([
+    client.readContract({
+      address: assetAddr,
+      abi: DERC20ABI,
+      functionName: "totalSupply",
+    }),
+    getAssetData(assetAddr, context),
+    getQuoteInfo(numeraireAddr, timestamp, context)
+  ]);
+
+  const dollarLiquidity = MarketDataService.calculateLiquidity({
+    assetBalance: 0n,
+    quoteBalance: 0n,
+    price,
+    quotePriceUSD: quoteInfo.quotePrice!,
+    decimals: quoteInfo.quotePriceDecimals,
+    assetDecimals: 18,
+    quoteDecimals: quoteInfo.quoteDecimals
+  });
+
+  const marketCapUsd = MarketDataService.calculateMarketCap({
+    price,
+    quotePriceUSD: quoteInfo.quotePrice!,
+    totalSupply,
+    decimals: quoteInfo.quotePriceDecimals
+  });
+
+  const isQuoteEth = quoteInfo.quoteToken === QuoteToken.Eth;
+  return await db.insert(pool).values({
+    address,
+    chainId: chain.id,
+    tick: slot0Data.tick,
+    sqrtPrice: slot0Data.sqrtPrice,
+    liquidity: liquidity,
+    createdAt: timestamp,
+    asset: assetAddr,
+    baseToken: assetAddr,
+    quoteToken: numeraireAddr,
+    price,
+    fee,
+    type: "dhook",
+    dollarLiquidity: dollarLiquidity ?? 0n,
+    dailyVolume: address,
+    volumeUsd: 0n,
+    percentDayChange: 0,
+    totalFee0: 0n,
+    totalFee1: 0n,
+    maxThreshold: 0n,
+    minThreshold: 0n,
+    graduationBalance: 0n,
+    graduationPercentage: 0,
+    graduationTick: poolConfig.farTick,
+    isToken0: poolConfig.isToken0,
+    marketCapUsd,
+    reserves0: 0n,
+    reserves1: 0n,
+    poolKey: JSON.stringify(poolKey),
+    isQuoteEth,
+    integrator: assetData.integrator,
+    migrationType: "dhook",
   });
 };
 

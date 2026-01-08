@@ -87,3 +87,20 @@ export interface QuoteExactSingleParams {
   exactAmount: bigint;
   hookData: Hex;
 }
+
+export interface DHookPoolConfig {
+  numeraire: Address;
+  totalTokensOnBondingCurve: bigint;
+  dopplerHook: Address;
+  status: number;
+  farTick: number;
+  isToken0: boolean;
+}
+
+export interface DHookPoolData {
+  poolKey: PoolKey;
+  slot0Data: Slot0Data;
+  liquidity: bigint;
+  price: bigint;
+  poolConfig: DHookPoolConfig;
+}
