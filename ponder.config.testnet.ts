@@ -4,6 +4,7 @@ import {
   UniswapV3InitializerABI,
   UniswapV4InitializerABI,
   V4MigratorHookABI,
+  DopplerHookInitializerABI,
   UniswapV3PoolABI,
   AirlockABI,
   DERC20ABI,
@@ -154,6 +155,15 @@ export default createConfig({
           address: baseSepolia.addresses.v4.v4Initializer,
         },
       },
+    },
+    DopplerHookInitializer: {
+      abi: DopplerHookInitializerABI,
+      chain: {
+        baseSepolia: {
+          startBlock: 35674465,
+          address: baseSepolia.addresses.v4.DopplerHookInitializer
+        }
+      }
     },
     DERC20: {
       abi: DERC20ABI,
