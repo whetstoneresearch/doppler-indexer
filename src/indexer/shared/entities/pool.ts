@@ -324,6 +324,13 @@ export const insertPoolIfNotExistsDHook = async ({
     decimals: quoteInfo.quotePriceDecimals
   });
 
+  const poolType =
+    poolData.poolConfig.dopplerHook === chainConfigs[context.chain.name].addresses.v4.DopplerHookInitializer
+      ? 'rehyp'
+      : 'dhook';
+  
+  let migrationType = getMigrationType(assetData, chain.name);
+  
   const isQuoteEth = quoteInfo.quoteToken === QuoteToken.Eth;
   return await db.insert(pool).values({
     address,
@@ -337,7 +344,7 @@ export const insertPoolIfNotExistsDHook = async ({
     quoteToken: numeraireAddr,
     price,
     fee,
-    type: "dhook",
+    type: poolType,
     dollarLiquidity: dollarLiquidity ?? 0n,
     dailyVolume: address,
     volumeUsd: 0n,
@@ -356,7 +363,7 @@ export const insertPoolIfNotExistsDHook = async ({
     poolKey: JSON.stringify(poolKey),
     isQuoteEth,
     integrator: assetData.integrator,
-    migrationType: "dhook",
+    migrationType: migrationType,
   });
 };
 
