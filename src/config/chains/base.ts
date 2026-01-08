@@ -64,6 +64,10 @@ export const baseSepoliaConfig: ChainConfig = {
         "0x5c10d3e14aae2ef95619b25e907e013260e832e4" as Address,
       v4ScheduledMulticurveInitializerHook:
         "0x5d663f9c993deff2d17ce4232d75f347df7dadc0" as Address,
+      dopplerHookInitializer:
+        "0x98cd6478debe443069db863abb9626d94de9a544" as Address,
+      rehypeDopplerHook:
+        "0x636a756cee08775cc18780f52dd90b634f18ad37" as Address,
     },
     shared: {
       airlock: "0x3411306ce66c9469bff1535ba955503c4bde1c6e" as Address,

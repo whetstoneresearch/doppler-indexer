@@ -14,6 +14,7 @@ import {
   ZoraV4HookABI,
   ZoraCoinABI,
   ZoraCreatorCoinABI,
+  DopplerHookInitializerABI,
 } from "./src/abis";
 import { BLOCK_INTERVALS } from "./src/config/chains/constants";
 import { chainConfigs, CHAIN_IDS } from "./src/config/chains";
@@ -351,6 +352,15 @@ export default createConfig({
           startBlock: baseSepolia.startBlock,
           address:
             baseSepolia.addresses.v4.v4ScheduledMulticurveInitializerHook,
+        },
+      },
+    },
+    DopplerHookInitializer: {
+      abi: DopplerHookInitializerABI,
+      chain: {
+        baseSepolia: {
+          startBlock: baseSepolia.v4StartBlock,
+          address: baseSepolia.addresses.v4.dopplerHookInitializer,
         },
       },
     },

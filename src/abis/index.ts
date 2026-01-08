@@ -11,6 +11,7 @@ export {
   V4MigratorABI,
   V4MigratorABILegacy,
   V4MigratorHookABI,
+  DopplerHookInitializerABI,
 } from "./v4-abis";
 
 // shared abis

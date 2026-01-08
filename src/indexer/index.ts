@@ -5,3 +5,4 @@ export * from "./indexer-v4";
 // export * from "./indexer-v4-migrated";
 export * from "./blockHandlers";
 export * from "./indexer-zora";
+export * from "./indexer-rehype";

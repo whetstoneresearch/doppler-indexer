@@ -5,3 +5,4 @@ export { PoolManagerABI } from "./PoolManagerABI";
 export { DopplerLensQuoterABI } from "./DopplerLensQuoterABI";
 export { V4MigratorABI, V4MigratorABILegacy } from "./V4MigratorABI";
 export { V4MigratorHookABI } from "./V4MigratorHookABI";
+export { DopplerHookInitializerABI } from "./DopplerHookInitializerABI";
