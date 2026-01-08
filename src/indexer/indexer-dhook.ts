@@ -94,8 +94,7 @@ ponder.on("DopplerHookInitializer:Swap", async ({ event, context }) => {
     hooks: poolKeyTuple.hooks,
   };
 
-  const computedPoolId = getPoolId(poolKey);
-  const poolAddress = computedPoolId.toLowerCase() as `0x${string}`;
+  const poolAddress = (poolId as string).toLowerCase() as `0x${string}`;
 
   const poolEntity = await db.find(pool, {
     address: poolAddress,
@@ -112,7 +111,7 @@ ponder.on("DopplerHookInitializer:Swap", async ({ event, context }) => {
     abi: StateViewABI,
     address: stateView,
     functionName: "getSlot0",
-    args: [computedPoolId],
+    args: [poolId],
   });
 
   const [sqrtPriceX96, currentTick] = slot0;
@@ -169,7 +168,7 @@ ponder.on("DopplerHookInitializer:Swap", async ({ event, context }) => {
 
   const swapData = SwapOrchestrator.createSwapData({
     poolAddress,
-    sender: event.transaction.from,
+    sender: sender,
     transactionHash: event.transaction.hash,
     transactionFrom: event.transaction.from,
     blockNumber: event.block.number,
@@ -348,50 +347,6 @@ ponder.on("DopplerHookInitializer:ModifyLiquidity", async ({ event, context }) =
       sqrtPrice: sqrtPriceX96,
       tick,
       lastRefreshed: timestamp,
-    },
-  });
-});
-
-ponder.on("DopplerHookInitializer:Graduate", async ({ event, context }) => {
-  const { asset: assetAddress } = event.args;
-  const timestamp = event.block.timestamp;
-  const { chain, db } = context;
-
-  const address = assetAddress.toLowerCase() as `0x${string}`;
-
-  const assetEntity = await db.find(asset, {
-    address,
-    chainId: chain.id,
-  });
-
-  if (!assetEntity) {
-    console.warn(`Asset not found for Graduate: ${address}`);
-    return;
-  }
-
-  const poolAddress = assetEntity.poolAddress;
-
-  if (!poolAddress) {
-    console.warn(`Pool address not found for graduated asset: ${address}`);
-    return;
-  }
-
-  await updatePool({
-    poolAddress: poolAddress as Address,
-    context,
-    update: {
-      migrated: true,
-      migratedAt: timestamp,
-      graduationPercentage: 100,
-    },
-  });
-
-  await updateAsset({
-    assetAddress: address,
-    context,
-    update: {
-      migrated: true,
-      migratedAt: timestamp,
     },
   });
 });
