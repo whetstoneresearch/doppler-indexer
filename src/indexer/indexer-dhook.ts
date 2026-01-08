@@ -1,116 +1,19 @@
 import { ponder } from "ponder:registry";
 import { getPoolId } from "@app/utils/v4-utils";
-import { computeV4Price } from "@app/utils/v4-utils/computeV4Price";
 import { insertTokenIfNotExists } from "./shared/entities/token";
 import { insertPoolIfNotExistsDHook, updatePool } from "./shared/entities/pool";
 import { insertAssetIfNotExists, updateAsset } from "./shared/entities/asset";
-import { SwapService, SwapOrchestrator, PriceService, MarketDataService } from "@app/core";
-import { TickMath } from "@uniswap/v3-sdk";
+import { SwapOrchestrator, PriceService, MarketDataService } from "@app/core";
 import { updateFifteenMinuteBucketUsd } from "@app/utils/time-buckets";
 import { chainConfigs } from "@app/config/chains";
 import { pool, token, asset } from "ponder:schema";
-import { DopplerHookInitializerABI, StateViewABI, DERC20ABI } from "@app/abis";
-import { Address, zeroAddress } from "viem";
-import { getQuoteInfo, QuoteInfo } from "@app/utils/getQuoteInfo";
+import { Address } from "viem";
+import { getQuoteInfo } from "@app/utils/getQuoteInfo";
 import { getAmount0Delta, getAmount1Delta } from "@app/utils/v3-utils/computeGraduationThreshold";
-import { DHookPoolData, DHookPoolConfig, PoolKey, Slot0Data } from "@app/types/v4-types";
-import { Context } from "ponder:registry";
+import { PoolKey } from "@app/types/v4-types";
+import { getDHookPoolData } from "@app/utils/dhook-utils";
+import { StateViewABI } from "@app/abis";
 
-/**
- * Get DHook pool data from DopplerHookInitializer.getState()
- */
-const getDHookPoolData = async ({
-  assetAddress,
-  initializerAddress,
-  context,
-  quoteInfo,
-}: {
-  assetAddress: Address;
-  initializerAddress: Address;
-  context: Context;
-  quoteInfo: QuoteInfo;
-}): Promise<DHookPoolData> => {
-  const { client, chain } = context;
-  const { stateView } = chainConfigs[chain.name].addresses.v4;
-
-  // Get state from DopplerHookInitializer
-  const state = await client.readContract({
-    abi: DopplerHookInitializerABI,
-    address: initializerAddress,
-    functionName: "getState",
-    args: [assetAddress],
-  });
-
-  const [numeraire, totalTokensOnBondingCurve, dopplerHook, , status, poolKeyTuple, farTick] = state;
-
-  const poolKey: PoolKey = {
-    currency0: poolKeyTuple.currency0,
-    currency1: poolKeyTuple.currency1,
-    fee: poolKeyTuple.fee,
-    tickSpacing: poolKeyTuple.tickSpacing,
-    hooks: poolKeyTuple.hooks,
-  };
-
-  const poolId = getPoolId(poolKey);
-
-  // Get slot0 and liquidity from StateView
-  const [slot0, liquidity] = await client.multicall({
-    contracts: [
-      {
-        abi: StateViewABI,
-        address: stateView,
-        functionName: "getSlot0",
-        args: [poolId],
-      },
-      {
-        abi: StateViewABI,
-        address: stateView,
-        functionName: "getLiquidity",
-        args: [poolId],
-      },
-    ],
-  });
-
-  const slot0Data: Slot0Data = {
-    sqrtPrice: slot0.result?.[0] ?? 0n,
-    tick: slot0.result?.[1] ?? 0,
-    protocolFee: slot0.result?.[2] ?? 0,
-    lpFee: slot0.result?.[3] ?? 0,
-  };
-
-  const liquidityResult = liquidity?.result ?? 0n;
-
-  // Determine if asset is token0
-  const isToken0 = assetAddress.toLowerCase() === poolKey.currency0.toLowerCase();
-
-  const price = computeV4Price({
-    isToken0,
-    currentTick: slot0Data.tick,
-    baseTokenDecimals: 18,
-    quoteTokenDecimals: quoteInfo.quoteDecimals,
-  });
-
-  const poolConfig: DHookPoolConfig = {
-    numeraire,
-    totalTokensOnBondingCurve,
-    dopplerHook,
-    status,
-    farTick,
-    isToken0,
-  };
-
-  return {
-    poolKey,
-    slot0Data,
-    liquidity: liquidityResult,
-    price,
-    poolConfig,
-  };
-};
-
-// ============================================
-// Create Event Handler
-// ============================================
 ponder.on("DopplerHookInitializer:Create", async ({ event, context }) => {
   const { poolOrHook, asset: assetId, numeraire } = event.args;
   const { block, transaction } = event;
@@ -120,10 +23,8 @@ ponder.on("DopplerHookInitializer:Create", async ({ event, context }) => {
   const numeraireAddress = numeraire.toLowerCase() as `0x${string}`;
   const creatorAddress = transaction.from.toLowerCase() as `0x${string}`;
 
-  // Get initializer address from config
   const initializerAddress = chainConfigs[context.chain.name].addresses.v4.DopplerHookInitializer;
 
-  // Insert tokens
   const [baseToken] = await Promise.all([
     insertTokenIfNotExists({
       tokenAddress: assetAddress,
@@ -144,7 +45,6 @@ ponder.on("DopplerHookInitializer:Create", async ({ event, context }) => {
 
   const quoteInfo = await getQuoteInfo(numeraireAddress, timestamp, context);
 
-  // Get pool data from DopplerHookInitializer
   const poolData = await getDHookPoolData({
     assetAddress,
     initializerAddress,
@@ -152,7 +52,6 @@ ponder.on("DopplerHookInitializer:Create", async ({ event, context }) => {
     quoteInfo,
   });
 
-  // Compute poolId as the pool address
   const poolId = getPoolId(poolData.poolKey);
   const poolAddress = poolId.toLowerCase() as `0x${string}`;
 
@@ -182,9 +81,6 @@ ponder.on("DopplerHookInitializer:Create", async ({ event, context }) => {
   });
 });
 
-// ============================================
-// Swap Event Handler
-// ============================================
 ponder.on("DopplerHookInitializer:Swap", async ({ event, context }) => {
   const { sender, poolKey: poolKeyTuple, poolId, params, amount0, amount1 } = event.args;
   const timestamp = event.block.timestamp;
@@ -198,11 +94,9 @@ ponder.on("DopplerHookInitializer:Swap", async ({ event, context }) => {
     hooks: poolKeyTuple.hooks,
   };
 
-  // Use computed poolId as address
   const computedPoolId = getPoolId(poolKey);
   const poolAddress = computedPoolId.toLowerCase() as `0x${string}`;
 
-  // Find existing pool
   const poolEntity = await db.find(pool, {
     address: poolAddress,
     chainId: chain.id,
@@ -213,7 +107,6 @@ ponder.on("DopplerHookInitializer:Swap", async ({ event, context }) => {
     return;
   }
 
-  // Get current slot0 from StateView
   const { stateView } = chainConfigs[chain.name].addresses.v4;
   const slot0 = await client.readContract({
     abi: StateViewABI,
@@ -226,7 +119,6 @@ ponder.on("DopplerHookInitializer:Swap", async ({ event, context }) => {
 
   const quoteInfo = await getQuoteInfo(poolEntity.quoteToken, timestamp, context);
 
-  // Calculate price from current tick
   const price = PriceService.computePriceFromSqrtPriceX96({
     sqrtPriceX96,
     isToken0: poolEntity.isToken0,
@@ -234,14 +126,12 @@ ponder.on("DopplerHookInitializer:Swap", async ({ event, context }) => {
     quoteDecimals: quoteInfo.quoteDecimals,
   });
 
-  // Determine swap type from amounts
   const isCoinBuy = poolEntity.isToken0 ? amount0 < 0n : amount1 < 0n;
   const type = isCoinBuy ? "buy" : "sell";
 
   const amountIn = amount0 > 0n ? BigInt(amount0) : BigInt(amount1);
   const amountOut = amount0 < 0n ? BigInt(-amount0) : BigInt(-amount1);
 
-  // Get token for market cap calculation
   const tokenEntity = await db.find(token, {
     address: poolEntity.baseToken,
     chainId: chain.id,
@@ -259,7 +149,6 @@ ponder.on("DopplerHookInitializer:Swap", async ({ event, context }) => {
     decimals: quoteInfo.quotePriceDecimals,
   });
 
-  // Calculate new reserves
   const newReserves0 = poolEntity.reserves0 + BigInt(amount0);
   const newReserves1 = poolEntity.reserves1 + BigInt(amount1);
 
@@ -273,7 +162,6 @@ ponder.on("DopplerHookInitializer:Swap", async ({ event, context }) => {
     quoteDecimals: quoteInfo.quoteDecimals,
   });
 
-  // Calculate swap value
   const quoteDelta = poolEntity.isToken0 ? amount1 : amount0;
   const swapValueUsd =
     ((quoteDelta < 0n ? -quoteDelta : quoteDelta) * quoteInfo.quotePrice!) /
@@ -327,7 +215,6 @@ ponder.on("DopplerHookInitializer:Swap", async ({ event, context }) => {
     entityUpdaters
   );
 
-  // Update pool with new values
   await updatePool({
     poolAddress,
     context,
@@ -345,9 +232,6 @@ ponder.on("DopplerHookInitializer:Swap", async ({ event, context }) => {
   });
 });
 
-// ============================================
-// ModifyLiquidity Event Handler
-// ============================================
 ponder.on("DopplerHookInitializer:ModifyLiquidity", async ({ event, context }) => {
   const { key: poolKeyTuple, params } = event.args;
   const timestamp = event.block.timestamp;
@@ -376,7 +260,6 @@ ponder.on("DopplerHookInitializer:ModifyLiquidity", async ({ event, context }) =
 
   const { tickLower, tickUpper, liquidityDelta } = params;
 
-  // Get current tick from StateView
   const { stateView } = chainConfigs[chain.name].addresses.v4;
   const slot0 = await client.readContract({
     abi: StateViewABI,
@@ -388,7 +271,6 @@ ponder.on("DopplerHookInitializer:ModifyLiquidity", async ({ event, context }) =
   const tick = slot0[1];
   const sqrtPriceX96 = slot0[0];
 
-  // Calculate reserve changes based on position
   let token0Reserve = poolEntity.reserves0;
   let token1Reserve = poolEntity.reserves1;
   let newLiquidity = poolEntity.liquidity + liquidityDelta;
@@ -470,9 +352,6 @@ ponder.on("DopplerHookInitializer:ModifyLiquidity", async ({ event, context }) =
   });
 });
 
-// ============================================
-// Graduate Event Handler
-// ============================================
 ponder.on("DopplerHookInitializer:Graduate", async ({ event, context }) => {
   const { asset: assetAddress } = event.args;
   const timestamp = event.block.timestamp;
@@ -480,7 +359,6 @@ ponder.on("DopplerHookInitializer:Graduate", async ({ event, context }) => {
 
   const address = assetAddress.toLowerCase() as `0x${string}`;
 
-  // Find the asset to get poolAddress
   const assetEntity = await db.find(asset, {
     address,
     chainId: chain.id,
@@ -498,7 +376,6 @@ ponder.on("DopplerHookInitializer:Graduate", async ({ event, context }) => {
     return;
   }
 
-  // Mark pool as graduated/migrated
   await updatePool({
     poolAddress: poolAddress as Address,
     context,
@@ -509,7 +386,6 @@ ponder.on("DopplerHookInitializer:Graduate", async ({ event, context }) => {
     },
   });
 
-  // Update asset as migrated
   await updateAsset({
     assetAddress: address,
     context,
