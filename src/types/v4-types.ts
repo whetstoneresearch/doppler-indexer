@@ -16,7 +16,7 @@ export interface V4Addresses {
   v4ScheduledMulticurveInitializer: Address;
   v4ScheduledMulticurveInitializerHook: Address;
   DopplerHookInitializer: Address;
-  RehypHook: Address;
+  RehypeHook: Address;
 }
 
 /**

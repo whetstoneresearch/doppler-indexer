@@ -326,7 +326,7 @@ export const insertPoolIfNotExistsDHook = async ({
 
   const poolType =
     poolData.poolConfig.dopplerHook === chainConfigs[context.chain.name].addresses.v4.DopplerHookInitializer
-      ? 'rehyp'
+      ? 'rehype'
       : 'dhook';
   
   let migrationType = getMigrationType(assetData, chain.name);

@@ -1,4 +1,4 @@
-export const RehypHookABI = [
+export const RehypeHookABI = [
   {
     "type": "constructor",
     "inputs": [

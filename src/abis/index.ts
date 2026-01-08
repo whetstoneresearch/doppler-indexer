@@ -23,4 +23,4 @@ export { ZoraCoinABI } from "./ZoraCoinABI";
 export { ZoraV4HookABI } from "./ZoraV4HookABI";
 export { ZoraCreatorCoinABI } from "./ZoraCreatorCoinABI";
 export { DopplerHookInitializerABI } from "./DopplerHookInitializerABI";
-export { RehypHookABI } from "./RehypHookABI";
+export { RehypeHookABI } from "./RehypeHookABI";
