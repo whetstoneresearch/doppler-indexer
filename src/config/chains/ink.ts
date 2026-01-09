@@ -40,6 +40,8 @@ export const inkConfig: ChainConfig = {
       v4MulticurveInitializerHook: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
       v4ScheduledMulticurveInitializer: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
       v4ScheduledMulticurveInitializerHook: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
+      DopplerHookInitializer: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
+      RehypeHook: COMMON_ADDRESSES.ZERO_ADDRESS as Address
     },
     shared: {
       airlock: "0x660eAaEdEBc968f8f3694354FA8EC0b4c5Ba8D12" as Address,

@@ -40,6 +40,8 @@ export const unichainConfig: ChainConfig = {
       v4MulticurveInitializerHook: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
       v4ScheduledMulticurveInitializer: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
       v4ScheduledMulticurveInitializerHook: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
+      DopplerHookInitializer: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
+      RehypeHook: COMMON_ADDRESSES.ZERO_ADDRESS as Address
     },
     shared: {
       airlock: "0x77EbfBAE15AD200758E9E2E61597c0B07d731254" as Address,
