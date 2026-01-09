@@ -162,9 +162,14 @@ ponder.on("DopplerHookInitializer:Swap", async ({ event, context }) => {
   });
 
   const quoteDelta = poolEntity.isToken0 ? amount1 : amount0;
-  const swapValueUsd =
-    ((quoteDelta < 0n ? -quoteDelta : quoteDelta) * quoteInfo.quotePrice!) /
-    BigInt(10) ** BigInt(quoteInfo.quotePriceDecimals);
+  const swapValueUsd = MarketDataService.calculateVolume({
+    amountIn: quoteDelta < 0n ? -quoteDelta : quoteDelta,
+    amountOut: 0n,
+    quotePriceUSD: quoteInfo.quotePrice!,
+    isQuoteUSD: false,
+    quoteDecimals: quoteInfo.quoteDecimals,
+    decimals: quoteInfo.quotePriceDecimals,
+  });
 
   const swapData = SwapOrchestrator.createSwapData({
     poolAddress,
