@@ -197,7 +197,14 @@ ponder.on("UniswapV4Pool:Swap", async ({ event, context }) => {
 
   // Calculate swap value using quote token delta
   const quoteDelta = totalProceeds - totalProceedsPrev;
-  const swapValueUsd = ((quoteDelta < 0n ? -quoteDelta : quoteDelta) * quoteInfo.quotePrice!) / (BigInt(10) ** BigInt(quoteInfo.quotePriceDecimals));
+  const swapValueUsd = MarketDataService.calculateVolume({
+    amountIn: quoteDelta < 0n ? -quoteDelta : quoteDelta,
+    amountOut: 0n,
+    quotePriceUSD: quoteInfo.quotePrice!,
+    isQuoteUSD: false,
+    quoteDecimals: quoteInfo.quoteDecimals,
+    decimals: quoteInfo.quotePriceDecimals,
+  });
 
   const swapData = SwapOrchestrator.createSwapData({
     poolAddress: address,
@@ -555,8 +562,14 @@ ponder.on("PoolManager:Swap", async ({ event, context }) => {
   } else {
     quoteDelta = amount0 > 0n ? BigInt(amount0) : BigInt(-amount0);
   }
-  const swapValueUsd = (quoteDelta * (quoteInfo.quotePrice ?? 0n)) / 
-    (BigInt(10) ** BigInt(quoteInfo.quotePriceDecimals));
+  const swapValueUsd = MarketDataService.calculateVolume({
+    amountIn: quoteDelta,
+    amountOut: 0n,
+    quotePriceUSD: quoteInfo.quotePrice ?? 0n,
+    isQuoteUSD: false,
+    quoteDecimals: quoteInfo.quoteDecimals,
+    decimals: quoteInfo.quotePriceDecimals,
+  });
 
   const swapData = SwapOrchestrator.createSwapData({
     poolAddress: v4Pool.migratedFromPool, // Use parent pool address for tracking

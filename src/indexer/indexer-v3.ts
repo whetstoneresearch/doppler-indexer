@@ -374,10 +374,14 @@ ponder.on("LockableUniswapV3Pool:Swap", async ({ event, context }) => {
     totalSupply: totalSupply,
     decimals: quoteInfo.quotePriceDecimals,
   });
-  let swapValueUsd =
-    ((reserveQuoteDelta < 0n ? -reserveQuoteDelta : reserveQuoteDelta) *
-      quoteInfo.quotePrice!) /
-    (BigInt(10) ** BigInt(quoteInfo.quotePriceDecimals));
+  let swapValueUsd = MarketDataService.calculateVolume({
+    amountIn: reserveQuoteDelta < 0n ? -reserveQuoteDelta : reserveQuoteDelta,
+    amountOut: 0n,
+    quotePriceUSD: quoteInfo.quotePrice!,
+    isQuoteUSD: false,
+    quoteDecimals: quoteInfo.quoteDecimals,
+    decimals: quoteInfo.quotePriceDecimals,
+  });
 
   // Create swap data
   const swapData = SwapOrchestrator.createSwapData({
@@ -716,10 +720,14 @@ ponder.on("UniswapV3Pool:Swap", async ({ event, context }) => {
     decimals: quoteInfo.quotePriceDecimals
   });
 
-  const swapValueUsd =
-    ((reserveQuoteDelta < 0n ? -reserveQuoteDelta : reserveQuoteDelta) *
-      quoteInfo.quotePrice!) /
-    (BigInt(10) ** BigInt(quoteInfo.quotePriceDecimals));
+  const swapValueUsd = MarketDataService.calculateVolume({
+    amountIn: reserveQuoteDelta < 0n ? -reserveQuoteDelta : reserveQuoteDelta,
+    amountOut: 0n,
+    quotePriceUSD: quoteInfo.quotePrice!,
+    isQuoteUSD: false,
+    quoteDecimals: quoteInfo.quoteDecimals,
+    decimals: quoteInfo.quotePriceDecimals,
+  });
 
   // Create swap data
   const swapData = SwapOrchestrator.createSwapData({
@@ -892,12 +900,14 @@ ponder.on("MigrationPool:Swap(address indexed sender, address indexed recipient,
     decimals: quoteInfo.quotePriceDecimals
   });
 
-  const swapValueUsd =
-    ((quoteTokenReserveDelta < 0n
-      ? -quoteTokenReserveDelta
-      : quoteTokenReserveDelta) *
-      quoteInfo.quotePrice!) /
-    (BigInt(10) ** BigInt(quoteInfo.quotePriceDecimals));
+  const swapValueUsd = MarketDataService.calculateVolume({
+    amountIn: quoteTokenReserveDelta < 0n ? -quoteTokenReserveDelta : quoteTokenReserveDelta,
+    amountOut: 0n,
+    quotePriceUSD: quoteInfo.quotePrice!,
+    isQuoteUSD: false,
+    quoteDecimals: quoteInfo.quoteDecimals,
+    decimals: quoteInfo.quotePriceDecimals,
+  });
 
   // Create swap data
   const swapData = SwapOrchestrator.createSwapData({

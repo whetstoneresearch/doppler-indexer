@@ -105,9 +105,15 @@ export function processSwapCalculations(
     quoteDecimals: quoteDecimals,
   });
   
-  const swapValueUsd = ((reserveQuoteDelta < 0n ? -reserveQuoteDelta : reserveQuoteDelta) * 
-    usdPrice) / (BigInt(10) ** BigInt(quotePriceDecimals));
-  
+  const swapValueUsd = MarketDataService.calculateVolume({
+    amountIn: reserveQuoteDelta < 0n ? -reserveQuoteDelta : reserveQuoteDelta,
+    amountOut: 0n,
+    quotePriceUSD: usdPrice,
+    isQuoteUSD: false,
+    quoteDecimals: quoteDecimals,
+    decimals: quotePriceDecimals,
+  });
+
   return {
     price,
     dollarLiquidity,
