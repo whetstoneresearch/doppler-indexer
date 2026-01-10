@@ -35,9 +35,49 @@ export interface QuoteInfo {
   quotePriceDecimals: number; // Price feed decimals (e.g., 8 for Chainlink feeds)
 }
 
+interface QuoteTypeCache {
+  type: QuoteToken;
+  decimals: number;
+  priceDecimals: number;
+}
+const quoteTypeCache = new Map<string, QuoteTypeCache>();
+
+function getQuoteTypeCacheKey(chainId: number, address: string): string {
+  return `${chainId}:${address.toLowerCase()}`;
+}
+
+interface CreatorCoinCacheEntry {
+  poolAddress: string | null;
+  price: bigint | null;
+  timestamp: number;
+}
+const creatorCoinCache = new Map<string, CreatorCoinCacheEntry>();
+const CREATOR_COIN_CACHE_TTL = 60_000; // 60 seconds
+
 export async function getQuoteInfo(quoteAddress: Address, timestamp: bigint | null, context: Context): Promise<QuoteInfo> {
   quoteAddress = quoteAddress.toLowerCase() as Address;
-  
+  const cacheKey = getQuoteTypeCacheKey(context.chain.id, quoteAddress);
+
+  const cachedType = quoteTypeCache.get(cacheKey);
+  if (cachedType) {
+    if (timestamp === null) {
+      return {
+        quoteToken: cachedType.type,
+        quotePrice: null,
+        quoteDecimals: cachedType.decimals,
+        quotePriceDecimals: cachedType.priceDecimals
+      };
+    }
+
+    const quotePrice = await fetchPriceForQuoteType(cachedType.type, timestamp, context, quoteAddress);
+    return {
+      quoteToken: cachedType.type,
+      quotePrice,
+      quoteDecimals: cachedType.decimals,
+      quotePriceDecimals: cachedType.priceDecimals
+    };
+  }
+
   const nativeEthAddress = zeroAddress;
   const wethAddress = chainConfigs[context.chain.name].addresses.shared.weth.toLowerCase();
   const zoraAddress = chainConfigs[context.chain.name].addresses.zora.zoraToken.toLowerCase();
@@ -47,7 +87,7 @@ export async function getQuoteInfo(quoteAddress: Address, timestamp: bigint | nu
   const usdcAddress = chainConfigs[context.chain.name].addresses.stables.usdc.toLowerCase();
   const usdtAddress = chainConfigs[context.chain.name].addresses.stables.usdt.toLowerCase();
   const eurcAddress = chainConfigs[context.chain.name].addresses.shared.eurc.eurcAddress.toLowerCase();
-  
+
   const isQuoteEth = (quoteAddress === nativeEthAddress || quoteAddress === wethAddress);
   const isQuoteZora = quoteAddress != zeroAddress && quoteAddress === zoraAddress;
   const isQuoteFxh = quoteAddress != zeroAddress && quoteAddress === fxhAddress;
@@ -56,10 +96,10 @@ export async function getQuoteInfo(quoteAddress: Address, timestamp: bigint | nu
   const isQuoteUsdc = quoteAddress != zeroAddress && quoteAddress === usdcAddress;
   const isQuoteUsdt = quoteAddress != zeroAddress && quoteAddress === usdtAddress;
   const isQuoteEurc = quoteAddress != zeroAddress && quoteAddress === eurcAddress;
-  
+
   let creatorCoinInfo;
   if (!(isQuoteZora || isQuoteFxh || isQuoteNoice || isQuoteMon || isQuoteUsdc || isQuoteUsdt || isQuoteEurc)) {
-    creatorCoinInfo = await getCreatorCoinInfo(quoteAddress, context);    
+    creatorCoinInfo = await getCreatorCoinInfo(quoteAddress, context);
   } else {
     creatorCoinInfo = {
       isQuoteCreatorCoin: false,
@@ -67,8 +107,8 @@ export async function getQuoteInfo(quoteAddress: Address, timestamp: bigint | nu
       price: null
     };
   }
-    
-  const quoteToken = 
+
+  const quoteToken =
     isQuoteZora ? QuoteToken.Zora
     : isQuoteFxh ? QuoteToken.Fxh
     : isQuoteNoice ? QuoteToken.Noice
@@ -79,20 +119,28 @@ export async function getQuoteInfo(quoteAddress: Address, timestamp: bigint | nu
     : creatorCoinInfo.isQuoteCreatorCoin ? QuoteToken.CreatorCoin
     : isQuoteEth ? QuoteToken.Eth
     : QuoteToken.Unknown;
-    
+
   // Token decimals (actual token decimals)
-  const quoteDecimals = 
+  const quoteDecimals =
     (isQuoteZora || isQuoteFxh || isQuoteNoice || isQuoteMon || creatorCoinInfo.isQuoteCreatorCoin || isQuoteEth) ? 18
     : (isQuoteUsdc || isQuoteUsdt || isQuoteEurc) ? 6
     // assumes 18 decimals for unknown quote tokens
     : 18;
-  
+
   // Price feed decimals (decimals of the USD price value)
   // Chainlink feeds use 8 decimals, EURC uses 18 (from computePriceFromSqrtPriceX96)
   const quotePriceDecimals =
     (isQuoteEth || isQuoteUsdc || isQuoteUsdt) ? 8 // Chainlink feeds use 8 decimals
     : isQuoteEurc ? 18 // EURC price computed from sqrtPriceX96 has 18 decimals
     : quoteDecimals;
+
+  if (quoteToken !== QuoteToken.Unknown) {
+    quoteTypeCache.set(cacheKey, {
+      type: quoteToken,
+      decimals: quoteDecimals,
+      priceDecimals: quotePriceDecimals
+    });
+  }
   
   // Short circuit price fetching if timestamp is null
   if (timestamp === null) {
@@ -161,18 +209,40 @@ interface CreatorCoinInfo {
 
 async function getCreatorCoinInfo(quoteAddress: Address, context: Context): Promise<CreatorCoinInfo> {
   const { db, chain } = context;
-  
+  const cacheKey = getQuoteTypeCacheKey(chain.id, quoteAddress);
+
+  const cachedEntry = creatorCoinCache.get(cacheKey);
+  if (cachedEntry && (Date.now() - cachedEntry.timestamp) < CREATOR_COIN_CACHE_TTL) {
+    if (cachedEntry.poolAddress === null) {
+      return {
+        isQuoteCreatorCoin: false,
+        creatorCoinPoolId: null,
+        price: null
+      };
+    }
+    return {
+      isQuoteCreatorCoin: true,
+      creatorCoinPoolId: cachedEntry.poolAddress as Address,
+      price: cachedEntry.price
+    };
+  }
+
   const coinEntity = await db.find(
     token, {
       address: quoteAddress,
       chainId: chain.id,
     }
   );
-  
+
   const isQuoteCreatorCoin = coinEntity?.isCreatorCoin ?? false;
   const creatorCoinPoolId = isQuoteCreatorCoin ? coinEntity?.pool : null;
-  
+
   if (!isQuoteCreatorCoin || !creatorCoinPoolId) {
+    creatorCoinCache.set(cacheKey, {
+      poolAddress: null,
+      price: null,
+      timestamp: Date.now()
+    });
     return {
       isQuoteCreatorCoin: false,
       creatorCoinPoolId: null,
@@ -183,30 +253,88 @@ async function getCreatorCoinInfo(quoteAddress: Address, context: Context): Prom
       address: creatorCoinPoolId as Address,
       chainId: chain.id,
     });
-    
+
     if (!poolEntity) {
       console.error(
         `Creator coin pool ${creatorCoinPoolId} not found in database for token ${quoteAddress}. ` +
         `This should not happen - creator coin pools are created via ZoraFactory:CreatorCoinCreated events.`
       );
+      creatorCoinCache.set(cacheKey, {
+        poolAddress: creatorCoinPoolId,
+        price: null,
+        timestamp: Date.now()
+      });
       return {
         isQuoteCreatorCoin: true,
         creatorCoinPoolId,
         price: null
       };
     }
-    
+
     const price = PriceService.computePriceFromSqrtPriceX96({
       sqrtPriceX96: poolEntity.sqrtPrice,
       isToken0: poolEntity.isToken0,
       decimals: 18,
       quoteDecimals: 18
     });
-    
+
+    creatorCoinCache.set(cacheKey, {
+      poolAddress: creatorCoinPoolId,
+      price,
+      timestamp: Date.now()
+    });
+
     return {
       isQuoteCreatorCoin,
       creatorCoinPoolId,
       price
     };
+  }
+}
+
+// Helper function to fetch price based on quote type (used when cache hit)
+async function fetchPriceForQuoteType(
+  quoteType: QuoteToken,
+  timestamp: bigint,
+  context: Context,
+  quoteAddress: Address
+): Promise<bigint> {
+  switch (quoteType) {
+    case QuoteToken.Eth:
+      return fetchEthPrice(timestamp, context);
+    case QuoteToken.Zora:
+      return fetchZoraPrice(timestamp, context);
+    case QuoteToken.Fxh: {
+      const [ethPrice, fxhWethPrice] = await Promise.all([
+        fetchEthPrice(timestamp, context),
+        fetchFxhPrice(timestamp, context),
+      ]);
+      return fxhWethPrice! * ethPrice / 10n ** 8n;
+    }
+    case QuoteToken.Noice: {
+      const [ethPrice, noiceWethPrice] = await Promise.all([
+        fetchEthPrice(timestamp, context),
+        fetchNoicePrice(timestamp, context),
+      ]);
+      return noiceWethPrice! * ethPrice / 10n ** 8n;
+    }
+    case QuoteToken.Mon:
+      return fetchMonadPrice(timestamp, context);
+    case QuoteToken.Usdc:
+      return fetchUsdcPrice(timestamp, context);
+    case QuoteToken.Usdt:
+      return fetchUsdtPrice(timestamp, context);
+    case QuoteToken.Eurc:
+      return fetchEurcPrice(timestamp, context);
+    case QuoteToken.CreatorCoin: {
+      const creatorCoinInfo = await getCreatorCoinInfo(quoteAddress, context);
+      if (creatorCoinInfo.price === null) {
+        return BigInt(1) / (BigInt(10) ** BigInt(21));
+      }
+      const zoraPrice = await fetchZoraPrice(timestamp, context);
+      return (creatorCoinInfo.price * zoraPrice) / WAD;
+    }
+    default:
+      return BigInt(1) / (BigInt(10) ** BigInt(21));
   }
 }
