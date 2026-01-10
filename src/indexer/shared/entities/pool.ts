@@ -15,6 +15,7 @@ import { chainConfigs } from "@app/config";
 import { AssetData } from "@app/types";
 import { Network } from "@app/types/config-types";
 import { eq, and } from "ponder";
+import { getCachedPool, setCachedPool, updateCachedPool } from "../poolCache";
 
 export const fetchExistingPool = async ({
   poolAddress,
@@ -25,6 +26,13 @@ export const fetchExistingPool = async ({
 }): Promise<typeof pool.$inferSelect | null> => {
   const { db, chain } = context;
   const address = poolAddress.toLowerCase() as `0x${string}`;
+
+  // Check cache first
+  const cachedPool = getCachedPool(chain.id, address);
+  if (cachedPool) {
+    return cachedPool;
+  }
+
   const existingPool = await db.find(pool, {
     address,
     chainId: chain.id,
@@ -33,6 +41,9 @@ export const fetchExistingPool = async ({
   if (!existingPool) {
     return null;
   }
+
+  // Cache the result
+  setCachedPool(chain.id, address, existingPool);
   return existingPool;
 };
 
@@ -43,17 +54,26 @@ export const insertPoolIfNotExists = async ({
 }: {
   poolAddress: Address;
   timestamp: bigint;
-  context: Context;  
+  context: Context;
 }): Promise<[typeof pool.$inferSelect, QuoteInfo]> => {
   const { db, chain, client } = context;
   const address = poolAddress.toLowerCase() as `0x${string}`;
+
+  // Check cache first
+  const cachedPool = getCachedPool(chain.id, address);
+  if (cachedPool) {
+    const quoteInfo = await getQuoteInfo(cachedPool.quoteToken, timestamp, context);
+    return [cachedPool, quoteInfo];
+  }
 
   const existingPool = await db.find(pool, {
     address,
     chainId: chain.id,
   });
-  
+
   if (existingPool) {
+    // Cache the existing pool
+    setCachedPool(chain.id, address, existingPool);
     const quoteInfo = await getQuoteInfo(existingPool.quoteToken, timestamp, context);
     return [existingPool, quoteInfo];
   }
@@ -91,7 +111,7 @@ export const insertPoolIfNotExists = async ({
   let migrationType = getMigrationType(assetData, chain.name);
 
   const isQuoteEth = quoteInfo.quoteToken === QuoteToken.Eth;
-  return [await db.insert(pool).values({
+  const newPool = await db.insert(pool).values({
     ...poolData,
     ...slot0Data,
     address,
@@ -119,9 +139,11 @@ export const insertPoolIfNotExists = async ({
     isQuoteEth,
     integrator: assetData.integrator,
     migrationType,
-  }),
-    quoteInfo
-  ];
+  });
+
+  // Cache the newly created pool
+  setCachedPool(chain.id, address, newPool);
+  return [newPool, quoteInfo];
 };
 
 export const updatePool = async ({
@@ -135,16 +157,20 @@ export const updatePool = async ({
 }) => {
   const { db, chain } = context;
   const address = poolAddress.toLowerCase() as `0x${string}`;
-  
-  const existingPool = await db.find(pool, {
-    address,
-    chainId: chain.id,
-  });
-  
+
+  // Check cache first, otherwise fetch from DB
+  let existingPool = getCachedPool(chain.id, address);
+  if (!existingPool) {
+    existingPool = await db.find(pool, {
+      address,
+      chainId: chain.id,
+    });
+  }
+
   if (!existingPool) {
     return;
   }
-  
+
   await db
     .update(pool, {
       address,
@@ -153,6 +179,9 @@ export const updatePool = async ({
     .set({
       ...update,
     });
+
+  // Update the cache with the new values
+  updateCachedPool(chain.id, address, update as Partial<typeof pool.$inferSelect>);
 };
 
 export const insertPoolIfNotExistsV4 = async ({
@@ -170,12 +199,21 @@ export const insertPoolIfNotExistsV4 = async ({
 }): Promise<typeof pool.$inferSelect> => {
   const { db, chain, client } = context;
   const address = poolAddress.toLowerCase() as `0x${string}`;
+
+  // Check cache first
+  const cachedPool = getCachedPool(chain.id, address);
+  if (cachedPool) {
+    return cachedPool;
+  }
+
   const existingPool = await db.find(pool, {
     address,
     chainId: chain.id,
   });
 
   if (existingPool) {
+    // Cache the existing pool
+    setCachedPool(chain.id, address, existingPool);
     return existingPool;
   }
 
@@ -231,7 +269,7 @@ export const insertPoolIfNotExistsV4 = async ({
   let migrationType = getMigrationType(assetData, chain.name);
 
   const isQuoteEth = quoteInfo.quoteToken === QuoteToken.Eth;
-  return await db.insert(pool).values({
+  const newPool = await db.insert(pool).values({
     address,
     chainId: chain.id,
     tick: slot0Data.tick,
@@ -263,6 +301,10 @@ export const insertPoolIfNotExistsV4 = async ({
     integrator: assetData.integrator,
     migrationType,
   });
+
+  // Cache the newly created pool
+  setCachedPool(chain.id, address, newPool);
+  return newPool;
 };
 
 export const insertPoolIfNotExistsDHook = async ({
@@ -280,12 +322,21 @@ export const insertPoolIfNotExistsDHook = async ({
 }): Promise<typeof pool.$inferSelect> => {
   const { db, chain, client } = context;
   const address = poolAddress.toLowerCase() as `0x${string}`;
+
+  // Check cache first
+  const cachedPool = getCachedPool(chain.id, address);
+  if (cachedPool) {
+    return cachedPool;
+  }
+
   const existingPool = await db.find(pool, {
     address,
     chainId: chain.id,
   });
 
   if (existingPool) {
+    // Cache the existing pool
+    setCachedPool(chain.id, address, existingPool);
     return existingPool;
   }
 
@@ -332,7 +383,7 @@ export const insertPoolIfNotExistsDHook = async ({
   let migrationType = getMigrationType(assetData, chain.name);
   
   const isQuoteEth = quoteInfo.quoteToken === QuoteToken.Eth;
-  return await db.insert(pool).values({
+  const newPool = await db.insert(pool).values({
     address,
     chainId: chain.id,
     tick: slot0Data.tick,
@@ -365,24 +416,42 @@ export const insertPoolIfNotExistsDHook = async ({
     integrator: assetData.integrator,
     migrationType: migrationType,
   });
+
+  // Cache the newly created pool
+  setCachedPool(chain.id, address, newPool);
+  return newPool;
 };
 
 export const insertLockableV3PoolIfNotExists = async ({
   poolAddress,
   timestamp,
-  context,  
+  context,
 }: {
   poolAddress: Address;
   timestamp: bigint;
-  context: Context;  
+  context: Context;
 }): Promise<[typeof pool.$inferSelect, QuoteInfo] | null> => {
   const { db, chain, client } = context;
   const address = poolAddress.toLowerCase() as `0x${string}`;
+
+  // Check cache first for early return
+  const cachedPool = getCachedPool(chain.id, address);
+  if (cachedPool) {
+    const quoteInfo = await getQuoteInfo(cachedPool.quoteToken, timestamp, context);
+    return [cachedPool, quoteInfo];
+  }
 
   const existingPool = await db.find(pool, {
     address,
     chainId: chain.id,
   });
+
+  if (existingPool) {
+    // Cache the existing pool
+    setCachedPool(chain.id, address, existingPool);
+    const quoteInfo = await getQuoteInfo(existingPool.quoteToken, timestamp, context);
+    return [existingPool, quoteInfo];
+  }
 
   const poolData = await getLockableV3PoolData({
     address,
@@ -395,7 +464,7 @@ export const insertLockableV3PoolIfNotExists = async ({
 
   const assetAddr = poolState.asset.toLowerCase() as `0x${string}`;
   const numeraireAddr = poolState.numeraire.toLowerCase() as `0x${string}`;
-  
+
   const quoteInfo = await getQuoteInfo(numeraireAddr, timestamp, context);
 
   const [assetTotalSupply, assetData] = await Promise.all([
@@ -415,16 +484,9 @@ export const insertLockableV3PoolIfNotExists = async ({
       decimals: quoteInfo.quotePriceDecimals
     }
   )
-  
-  if (existingPool) {
-    return [
-      existingPool,
-      quoteInfo,
-    ];
-  }
 
   const isQuoteEth = quoteInfo.quoteToken === QuoteToken.Eth;
-  return [await db.insert(pool).values({
+  const newPool = await db.insert(pool).values({
     ...poolData,
     ...slot0Data,
     address,
@@ -452,9 +514,11 @@ export const insertLockableV3PoolIfNotExists = async ({
     isStreaming: true,
     isQuoteEth,
     integrator: assetData.integrator,
-  }), 
-    quoteInfo
-  ];
+  });
+
+  // Cache the newly created pool
+  setCachedPool(chain.id, address, newPool);
+  return [newPool, quoteInfo];
 };
 
 function getMigrationType(assetData: AssetData, chainName: Network): string {
