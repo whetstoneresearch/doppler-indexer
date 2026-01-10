@@ -5,6 +5,29 @@ import { token } from "ponder.schema";
 import { Context } from "ponder:registry";
 import { Address, zeroAddress } from "viem";
 
+type TokenEntity = typeof token.$inferSelect;
+const tokenCache = new Map<string, TokenEntity>();
+
+function getTokenCacheKey(chainId: number, address: string): string {
+  return `${chainId}:${address.toLowerCase()}`;
+}
+
+function getCachedToken(chainId: number, address: string): TokenEntity | null {
+  return tokenCache.get(getTokenCacheKey(chainId, address)) ?? null;
+}
+
+function setCachedToken(chainId: number, address: string, tokenEntity: TokenEntity): void {
+  tokenCache.set(getTokenCacheKey(chainId, address), tokenEntity);
+}
+
+function updateCachedToken(chainId: number, address: string, updates: Partial<TokenEntity>): void {
+  const key = getTokenCacheKey(chainId, address);
+  const existing = tokenCache.get(key);
+  if (existing) {
+    tokenCache.set(key, { ...existing, ...updates });
+  }
+}
+
 export const appendTokenPool = async ({
   tokenAddress,
   isDerc20,
@@ -26,10 +49,13 @@ export const appendTokenPool = async ({
 }) => {
   const { db, chain } = context;
 
-  const existingToken = await db.find(token, {
-    address: tokenAddress,
-    chainId: chain.id,
-  });
+  let existingToken = getCachedToken(chain.id, tokenAddress);
+  if (!existingToken) {
+    existingToken = await db.find(token, {
+      address: tokenAddress,
+      chainId: chain.id,
+    });
+  }
 
   if (!existingToken) {
     await insertTokenIfNotExists({
@@ -41,7 +67,7 @@ export const appendTokenPool = async ({
     });
   }
 
-  return await db
+  const updatedToken = await db
     .update(token, {
       address: tokenAddress,
       chainId: chain.id,
@@ -53,6 +79,16 @@ export const appendTokenPool = async ({
       pool: poolAddress,
       creatorCoinPid,
     });
+
+  updateCachedToken(chain.id, tokenAddress, {
+    isDerc20,
+    isCreatorCoin,
+    isContentCoin,
+    pool: poolAddress,
+    creatorCoinPid,
+  });
+
+  return updatedToken;
 };
 
 export const insertTokenIfNotExists = async ({
@@ -77,16 +113,21 @@ export const insertTokenIfNotExists = async ({
   const multicallOptions = getMulticallOptions(chain);
   const address = tokenAddress.toLowerCase() as `0x${string}`;
 
-  const existingToken = await db.find(token, {
-    address,
-    chainId: chain.id,
-  });
+  let existingToken = getCachedToken(chain.id, address);
+  if (!existingToken) {
+    existingToken = await db.find(token, {
+      address,
+      chainId: chain.id,
+    });
+  }
 
   if (existingToken?.isDerc20 && !existingToken?.pool && poolAddress) {
     await db.update(token, { address, chainId: chain.id }).set({
       pool: poolAddress,
     });
+    updateCachedToken(chain.id, address, { pool: poolAddress });
   } else if (existingToken) {
+    setCachedToken(chain.id, address, existingToken);
     return existingToken;
   }
 
@@ -94,7 +135,7 @@ export const insertTokenIfNotExists = async ({
 
   // ignore pool field for native tokens
   if (address == zeroAddress) {
-    return await db.insert(token).values({
+    const newToken = await db.insert(token).values({
       address: address.toLowerCase() as `0x${string}`,
       chainId: chain.id,
       name: "Ether",
@@ -106,8 +147,10 @@ export const insertTokenIfNotExists = async ({
       totalSupply: 0n,
       isDerc20: false,
     });
+    setCachedToken(chain.id, address, newToken);
+    return newToken;
   } else if (address == zoraAddress.toLowerCase()) {
-    return await db.insert(token).values({
+    const newToken = await db.insert(token).values({
       address: address.toLowerCase() as `0x${string}`,
       chainId: chain.id,
       name: "Zora",
@@ -119,6 +162,8 @@ export const insertTokenIfNotExists = async ({
       totalSupply: 10000000000000000000000000000n,
       isDerc20: false,
     });
+    setCachedToken(chain.id, address, newToken);
+    return newToken;
   } else {
     const [
       nameResult,
@@ -203,7 +248,7 @@ export const insertTokenIfNotExists = async ({
         );
       }
     }
-    return await context.db
+    const newToken = await context.db
       .insert(token)
       .values({
         address: address.toLowerCase() as `0x${string}`,
@@ -224,6 +269,9 @@ export const insertTokenIfNotExists = async ({
       .onConflictDoUpdate((row) => ({
         pool: row.pool,
       }));
+
+    setCachedToken(chain.id, address, newToken);
+    return newToken;
   }
 };
 
@@ -240,10 +288,15 @@ export const updateToken = async ({
 
   const address = tokenAddress.toLowerCase() as `0x${string}`;
 
-  return await db
+  const updatedToken = await db
     .update(token, {
       address,
       chainId: chain.id,
     })
     .set(update);
+
+  // Update cache with new values
+  updateCachedToken(chain.id, address, update as Partial<TokenEntity>);
+
+  return updatedToken;
 };
