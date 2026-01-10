@@ -9,29 +9,34 @@ import { StateViewABI } from "@app/abis/v4-abis/StateViewABI";
 
 const MAX_PRICE_LOOKUP_ATTEMPTS = 1000;
 
-const FALLBACK_CACHE_TTL_MS = 30_000;
-const fallbackPriceCache = new Map<string, { price: bigint; timestamp: number }>();
+const priceCache = new Map<string, { price: bigint; timestamp: bigint }>();
+const PRICE_CACHE_WINDOW = 300n; // 5 minutes - accept cached price if within this window
+const MAX_CACHE_SIZE = 1000;
 
-function getCachedFallbackPrice(key: string): bigint | null {
-  const entry = fallbackPriceCache.get(key);
+function getCachedPrice(key: string, requestedTimestamp: bigint): bigint | null {
+  const entry = priceCache.get(key);
   if (!entry) return null;
-  if (Date.now() - entry.timestamp > FALLBACK_CACHE_TTL_MS) {
-    fallbackPriceCache.delete(key);
-    return null;
+
+  const timeDiff = requestedTimestamp > entry.timestamp
+    ? requestedTimestamp - entry.timestamp
+    : entry.timestamp - requestedTimestamp;
+
+  if (timeDiff <= PRICE_CACHE_WINDOW) {
+    return entry.price;
   }
-  return entry.price;
+  return null;
 }
 
-function setCachedFallbackPrice(key: string, price: bigint): void {
-  if (fallbackPriceCache.size > 100) {
-    const now = Date.now();
-    for (const [k, v] of fallbackPriceCache) {
-      if (now - v.timestamp > FALLBACK_CACHE_TTL_MS) {
-        fallbackPriceCache.delete(k);
-      }
+function setCachedPrice(key: string, price: bigint, timestamp: bigint): void {
+  const existing = priceCache.get(key);
+
+  if (!existing || timestamp > existing.timestamp) {
+    if (priceCache.size >= MAX_CACHE_SIZE && !existing) {
+      const firstKey = priceCache.keys().next().value;
+      if (firstKey) priceCache.delete(firstKey);
     }
+    priceCache.set(key, { price, timestamp });
   }
-  fallbackPriceCache.set(key, { price, timestamp: Date.now() });
 }
 
 export const fetchEthPrice = async (
@@ -39,7 +44,13 @@ export const fetchEthPrice = async (
   context: Context
 ): Promise<bigint> => {
   const { db, chain, client } = context;
+  const cacheKey = `eth:${chain.id}`;
   let roundedTimestamp = BigInt(Math.floor(Number(timestamp) / 300) * 300);
+
+  const cachedDbPrice = getCachedPrice(cacheKey, roundedTimestamp);
+  if (cachedDbPrice !== null) {
+    return cachedDbPrice;
+  }
 
   let ethPriceData;
   let attempts = 0;
@@ -56,13 +67,8 @@ export const fetchEthPrice = async (
   }
 
   if (ethPriceData) {
+    setCachedPrice(cacheKey, ethPriceData.price, ethPriceData.timestamp);
     return ethPriceData.price;
-  }
-
-  const cacheKey = `eth:${chain.id}`;
-  const cachedPrice = getCachedFallbackPrice(cacheKey);
-  if (cachedPrice !== null) {
-    return cachedPrice;
   }
 
   console.warn(`[fetchEthPrice] DB lookup failed for chain ${chain.name}, falling back to Chainlink RPC`);
@@ -73,7 +79,7 @@ export const fetchEthPrice = async (
     functionName: "latestAnswer",
   });
 
-  setCachedFallbackPrice(cacheKey, latestAnswer);
+  setCachedPrice(cacheKey, latestAnswer, roundedTimestamp);
   return latestAnswer;
 };
 
@@ -82,12 +88,18 @@ export const fetchZoraPrice = async (
   context: Context
 ): Promise<bigint> => {
   const { db, chain, client } = context;
-  
+
   if (chain.name != "base") {
     return parseUnits("1", 18);
   }
 
+  const cacheKey = `zora:${chain.id}`;
   let roundedTimestamp = BigInt(Math.floor(Number(timestamp) / 300) * 300);
+
+  const cachedDbPrice = getCachedPrice(cacheKey, roundedTimestamp);
+  if (cachedDbPrice !== null) {
+    return cachedDbPrice;
+  }
 
   let zoraPriceData;
   let attempts = 0;
@@ -104,13 +116,8 @@ export const fetchZoraPrice = async (
   }
 
   if (zoraPriceData) {
+    setCachedPrice(cacheKey, zoraPriceData.price, zoraPriceData.timestamp);
     return zoraPriceData.price;
-  }
-
-  const cacheKey = `zora:${chain.id}`;
-  const cachedPrice = getCachedFallbackPrice(cacheKey);
-  if (cachedPrice !== null) {
-    return cachedPrice;
   }
 
   console.warn(`[fetchZoraPrice] DB lookup failed for chain ${chain.name}, falling back to Uniswap V3 RPC`);
@@ -130,7 +137,7 @@ export const fetchZoraPrice = async (
     quoteDecimals: 6,
   });
 
-  setCachedFallbackPrice(cacheKey, price);
+  setCachedPrice(cacheKey, price, roundedTimestamp);
   return price;
 };
 
@@ -143,8 +150,14 @@ export const fetchFxhPrice = async (
   if (chain.name != "base") {
     return parseUnits("1", 18);
   }
-  
+
+  const cacheKey = `fxh:${chain.id}`;
   let roundedTimestamp = BigInt(Math.floor(Number(timestamp) / 300) * 300);
+
+  const cachedDbPrice = getCachedPrice(cacheKey, roundedTimestamp);
+  if (cachedDbPrice !== null) {
+    return cachedDbPrice;
+  }
 
   let fxhPriceData;
   let attempts = 0;
@@ -161,13 +174,8 @@ export const fetchFxhPrice = async (
   }
 
   if (fxhPriceData) {
+    setCachedPrice(cacheKey, fxhPriceData.price, fxhPriceData.timestamp);
     return fxhPriceData.price;
-  }
-
-  const cacheKey = `fxh:${chain.id}`;
-  const cachedPrice = getCachedFallbackPrice(cacheKey);
-  if (cachedPrice !== null) {
-    return cachedPrice;
   }
 
   console.warn(`[fetchFxhPrice] DB lookup failed for chain ${chain.name}, falling back to Uniswap V3 RPC`);
@@ -187,7 +195,7 @@ export const fetchFxhPrice = async (
     quoteDecimals: 18,
   });
 
-  setCachedFallbackPrice(cacheKey, price);
+  setCachedPrice(cacheKey, price, roundedTimestamp);
   return price;
 };
 
@@ -196,12 +204,18 @@ export const fetchNoicePrice = async (
   context: Context,
 ): Promise<bigint> => {
   const { db, chain, client } = context;
-  
+
   if (chain.name != "base") {
     return parseUnits("1", 18);
   }
 
+  const cacheKey = `noice:${chain.id}`;
   let roundedTimestamp = BigInt(Math.floor(Number(timestamp) / 300) * 300);
+
+  const cachedDbPrice = getCachedPrice(cacheKey, roundedTimestamp);
+  if (cachedDbPrice !== null) {
+    return cachedDbPrice;
+  }
 
   let noicePriceData;
   let attempts = 0;
@@ -218,13 +232,8 @@ export const fetchNoicePrice = async (
   }
 
   if (noicePriceData) {
+    setCachedPrice(cacheKey, noicePriceData.price, noicePriceData.timestamp);
     return noicePriceData.price;
-  }
-
-  const cacheKey = `noice:${chain.id}`;
-  const cachedPrice = getCachedFallbackPrice(cacheKey);
-  if (cachedPrice !== null) {
-    return cachedPrice;
   }
 
   console.warn(`[fetchNoicePrice] DB lookup failed for chain ${chain.name}, falling back to Uniswap V3 RPC`);
@@ -244,7 +253,7 @@ export const fetchNoicePrice = async (
     quoteDecimals: 18,
   });
 
-  setCachedFallbackPrice(cacheKey, price);
+  setCachedPrice(cacheKey, price, roundedTimestamp);
   return price;
 };
 
@@ -258,10 +267,16 @@ export const fetchMonadPrice = async (
     return parseUnits("1", 18);
   }
 
-  let roundedTimestamp = BigInt(Math.floor(Number(timestamp) / 300) * 300);
-
   if (chainConfigs[chain.name].addresses.shared.monad.monUsdcPool == zeroAddress) {
     return BigInt(2) * (BigInt(10 ** 16));
+  }
+
+  const cacheKey = `monad:${chain.id}`;
+  let roundedTimestamp = BigInt(Math.floor(Number(timestamp) / 300) * 300);
+
+  const cachedDbPrice = getCachedPrice(cacheKey, roundedTimestamp);
+  if (cachedDbPrice !== null) {
+    return cachedDbPrice;
   }
 
   let monadPriceData;
@@ -279,13 +294,8 @@ export const fetchMonadPrice = async (
   }
 
   if (monadPriceData) {
+    setCachedPrice(cacheKey, monadPriceData.price, monadPriceData.timestamp);
     return monadPriceData.price;
-  }
-
-  const cacheKey = `monad:${chain.id}`;
-  const cachedPrice = getCachedFallbackPrice(cacheKey);
-  if (cachedPrice !== null) {
-    return cachedPrice;
   }
 
   console.warn(`[fetchMonadPrice] DB lookup failed for chain ${chain.name}, falling back to Uniswap V3 RPC`);
@@ -305,7 +315,7 @@ export const fetchMonadPrice = async (
     quoteDecimals: 6,
   });
 
-  setCachedFallbackPrice(cacheKey, price);
+  setCachedPrice(cacheKey, price, roundedTimestamp);
   return price;
 };
 
@@ -319,7 +329,13 @@ export const fetchEurcPrice = async (
     return parseUnits("115", 16);
   }
 
+  const cacheKey = `eurc:${chain.id}`;
   let roundedTimestamp = BigInt(Math.floor(Number(timestamp) / 300) * 300);
+
+  const cachedDbPrice = getCachedPrice(cacheKey, roundedTimestamp);
+  if (cachedDbPrice !== null) {
+    return cachedDbPrice;
+  }
 
   let eurcPriceData;
   let attempts = 0;
@@ -336,18 +352,13 @@ export const fetchEurcPrice = async (
   }
 
   if (eurcPriceData) {
+    setCachedPrice(cacheKey, eurcPriceData.price, eurcPriceData.timestamp);
     return eurcPriceData.price;
   }
 
   if (!chainConfigs[chain.name].addresses.shared.eurc ||
       chainConfigs[chain.name].addresses.shared.eurc!.eurcUsdcPool === zeroAddress) {
     return parseUnits("115", 16);
-  }
-
-  const cacheKey = `eurc:${chain.id}`;
-  const cachedPrice = getCachedFallbackPrice(cacheKey);
-  if (cachedPrice !== null) {
-    return cachedPrice;
   }
 
   console.warn(`[fetchEurcPrice] DB lookup failed for chain ${chain.name}, falling back to V4 StateView RPC`);
@@ -368,7 +379,7 @@ export const fetchEurcPrice = async (
     quoteDecimals: 6,
   });
 
-  setCachedFallbackPrice(cacheKey, price);
+  setCachedPrice(cacheKey, price, roundedTimestamp);
   return price;
 };
 
