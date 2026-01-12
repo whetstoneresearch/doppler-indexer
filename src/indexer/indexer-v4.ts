@@ -10,7 +10,7 @@ import {
   isV4MigrationPoolCacheInitialized,
   isKnownV4MigrationPool,
 } from "./shared/v4MigrationPoolCache";
-import { validatePoolCurrencies } from "./shared/validatePool";
+import { validatePoolCurrencies, shouldSkipPool } from "./shared/validatePool";
 
 import { insertV4ConfigIfNotExists } from "./shared/entities/v4Config";
 import { getReservesV4 } from "@app/utils/v4-utils/getV4PoolData";
@@ -114,6 +114,10 @@ ponder.on("UniswapV4Pool:Swap", async ({ event, context }) => {
   const { chain } = context;
   const { currentTick, totalProceeds, totalTokensSold } = event.args;
   const timestamp = event.block.timestamp;
+
+  if (await shouldSkipPool(context, address)) {
+    return;
+  }
 
   const v4PoolData = 
     await getV4PoolData({
@@ -355,6 +359,10 @@ ponder.on(
     const poolId = getPoolId(key);
     const poolAddress = poolId.toLowerCase() as `0x${string}`;
 
+    if (await shouldSkipPool(context, poolAddress)) {
+      return;
+    }
+
     const poolEntity = await insertMulticurvePoolV4Optimized({
       creatorAddress,
       poolAddress,
@@ -456,6 +464,10 @@ ponder.on(
     const { poolId, sender, amount0, amount1 } = event.args;
     const timestamp = event.block.timestamp;
 
+    if (await shouldSkipPool(context, poolId)) {
+      return;
+    }
+
     const poolEntity = await context.db.find(pool, {
       address: poolId,
       chainId: context.chain.id,
@@ -507,6 +519,10 @@ ponder.on("PoolManager:Swap", async ({ event, context }) => {
   const { timestamp } = event.block;
   const { hash: txHash, from: txFrom } = event.transaction;
   const { chain, client } = context;
+
+  if (await shouldSkipPool(context, poolId)) {
+    return;
+  }
 
   if (!isV4MigrationPoolCacheInitialized()) {
     await initializeV4MigrationPoolCache(context);
@@ -698,6 +714,10 @@ ponder.on("UniswapV4MigratorHook:ModifyLiquidity", async ({ event, context }) =>
     hooks: key.hooks,
   });
 
+  if (await shouldSkipPool(context, poolId)) {
+    return;
+  }
+
   let v4Pool = await fetchV4MigrationPool({
     poolId: poolId as `0x${string}`,
     context,
@@ -778,6 +798,10 @@ ponder.on("PoolManager:Donate", async ({ event, context }) => {
   const { id: poolId, amount0, amount1 } = event.args;
   const { timestamp } = event.block;
   const { chain } = context;
+
+  if (await shouldSkipPool(context, poolId)) {
+    return;
+  }
 
   const v4Pool = await fetchV4MigrationPool({
     poolId: poolId as `0x${string}`,

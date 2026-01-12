@@ -17,7 +17,7 @@ import { updateFifteenMinuteBucketUsd } from "@app/utils/time-buckets";
 import { fetchV3MigrationPool, updateMigrationPool } from "./shared/entities/migrationPool";
 import { insertAssetIfNotExists, updateAsset } from "./shared/entities";
 import { LockableUniswapV3InitializerABI, UniswapV3PoolABI } from "@app/abis";
-import { validatePoolCurrencies } from "./shared/validatePool";
+import { validatePoolCurrencies, shouldSkipPool } from "./shared/validatePool";
 
 ponder.on("UniswapV3Initializer:Create", async ({ event, context }) => {
   const { poolOrHook, asset, numeraire } = event.args;
@@ -138,7 +138,11 @@ ponder.on("LockableUniswapV3Initializer:Lock", async ({ event, context }) => {
 ponder.on("LockableUniswapV3Pool:Mint", async ({ event, context }) => {
   const address = event.log.address.toLowerCase() as `0x${string}`;
   const { tickLower, tickUpper, amount, owner, amount0, amount1 } = event.args;
-  const timestamp = event.block.timestamp;  
+  const timestamp = event.block.timestamp;
+
+  if (await shouldSkipPool(context, address)) {
+    return;
+  }
 
   // Price is returned in terms of quote asset
   const result = await insertLockableV3PoolIfNotExists({
@@ -219,6 +223,10 @@ ponder.on("LockableUniswapV3Pool:Burn", async ({ event, context }) => {
   const timestamp = event.block.timestamp;
   const { tickLower, tickUpper, owner, amount, amount0, amount1 } = event.args;
 
+  if (await shouldSkipPool(context, address)) {
+    return;
+  }
+
   const result = await insertLockableV3PoolIfNotExists({
     poolAddress: address,
     timestamp,
@@ -293,6 +301,10 @@ ponder.on("LockableUniswapV3Pool:Swap", async ({ event, context }) => {
   const address = event.log.address.toLowerCase() as `0x${string}`;
   const timestamp = event.block.timestamp;
   const { amount0, amount1, sqrtPriceX96 } = event.args;
+
+  if (await shouldSkipPool(context, address)) {
+    return;
+  }
 
   const slot0 = await context.client.readContract({
     abi: UniswapV3PoolABI,
@@ -473,7 +485,11 @@ ponder.on("LockableUniswapV3Pool:Swap", async ({ event, context }) => {
 ponder.on("UniswapV3Pool:Mint", async ({ event, context }) => {
   const address = event.log.address.toLowerCase() as `0x${string}`;
   const { tickLower, tickUpper, amount, owner, amount0, amount1 } = event.args;
-  const timestamp = event.block.timestamp;  
+  const timestamp = event.block.timestamp;
+
+  if (await shouldSkipPool(context, address)) {
+    return;
+  }
 
   const [{
     baseToken,
@@ -557,7 +573,11 @@ ponder.on("UniswapV3Pool:Mint", async ({ event, context }) => {
 ponder.on("UniswapV3Pool:Burn", async ({ event, context }) => {
   const address = event.log.address.toLowerCase() as `0x${string}`;
   const timestamp = event.block.timestamp;
-  const { tickLower, tickUpper, owner, amount, amount0, amount1 } = event.args;  
+  const { tickLower, tickUpper, owner, amount, amount0, amount1 } = event.args;
+
+  if (await shouldSkipPool(context, address)) {
+    return;
+  }
 
   const [{
     baseToken,
@@ -639,6 +659,10 @@ ponder.on("UniswapV3Pool:Swap", async ({ event, context }) => {
   const address = event.log.address.toLowerCase() as `0x${string}`;
   const timestamp = event.block.timestamp;
   const { amount0, amount1, sqrtPriceX96 } = event.args;
+
+  if (await shouldSkipPool(context, address)) {
+    return;
+  }
 
   const slot0 = await context.client.readContract({
     abi: UniswapV3PoolABI,
@@ -819,8 +843,12 @@ ponder.on("UniswapV3Pool:Swap", async ({ event, context }) => {
 ponder.on("MigrationPool:Swap(address indexed sender, address indexed recipient, int256 amount0, int256 amount1, uint160 sqrtPriceX96, uint128 liquidity, int24 tick)", async ({ event, context }) => {
   const { timestamp } = event.block;
   const { amount0, amount1, sqrtPriceX96 } = event.args;
-  
+
   const address = event.log.address.toLowerCase() as `0x${string}`;
+
+  if (await shouldSkipPool(context, address)) {
+    return;
+  }
 
   const slot0 = await context.client.readContract({
     abi: UniswapV3PoolABI,

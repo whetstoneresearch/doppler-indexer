@@ -14,7 +14,7 @@ import { chainConfigs } from "@app/config";
 import { token, pool } from "ponder:schema";
 import { insertZoraPoolV4Optimized } from "./shared/entities/zora/pool";
 import { getQuoteInfo, QuoteToken } from "@app/utils/getQuoteInfo";
-import { validatePoolCurrencies } from "./shared/validatePool";
+import { validatePoolCurrencies, shouldSkipPool } from "./shared/validatePool";
 
 // ponder.on("ZoraFactory:CoinCreatedV4", async ({ event, context }) => {
 //   const { db, chain } = context;
@@ -212,6 +212,10 @@ ponder.on("ZoraFactory:CreatorCoinCreated", async ({ event, context }) => {
 ponder.on("ZoraV4CreatorCoinHook:Swapped", async ({ event, context }) => {
   const { poolKeyHash, swapSender, amount0, amount1, sqrtPriceX96, isCoinBuy } = event.args;
   const timestamp = event.block.timestamp;
+
+  if (await shouldSkipPool(context, poolKeyHash)) {
+    return;
+  }
 
   const slot0 = await context.client.readContract({
     abi: StateViewABI,

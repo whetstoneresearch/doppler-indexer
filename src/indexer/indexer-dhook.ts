@@ -13,7 +13,7 @@ import { getAmount0Delta, getAmount1Delta } from "@app/utils/v3-utils/computeGra
 import { PoolKey } from "@app/types/v4-types";
 import { getDHookPoolData } from "@app/utils/dhook-utils";
 import { StateViewABI } from "@app/abis";
-import { validatePoolCurrencies } from "./shared/validatePool";
+import { validatePoolCurrencies, shouldSkipPool } from "./shared/validatePool";
 
 ponder.on("DopplerHookInitializer:Create", async ({ event, context }) => {
   const { poolOrHook, asset: assetId, numeraire } = event.args;
@@ -95,6 +95,12 @@ ponder.on("DopplerHookInitializer:Swap", async ({ event, context }) => {
   const timestamp = event.block.timestamp;
   const { chain, client, db } = context;
 
+  const poolAddress = (poolId as string).toLowerCase() as `0x${string}`;
+
+  if (await shouldSkipPool(context, poolAddress)) {
+    return;
+  }
+
   const poolKey: PoolKey = {
     currency0: poolKeyTuple.currency0,
     currency1: poolKeyTuple.currency1,
@@ -102,8 +108,6 @@ ponder.on("DopplerHookInitializer:Swap", async ({ event, context }) => {
     tickSpacing: poolKeyTuple.tickSpacing,
     hooks: poolKeyTuple.hooks,
   };
-
-  const poolAddress = (poolId as string).toLowerCase() as `0x${string}`;
 
   const poolEntity = await db.find(pool, {
     address: poolAddress,
@@ -260,6 +264,10 @@ ponder.on("DopplerHookInitializer:ModifyLiquidity", async ({ event, context }) =
 
   const computedPoolId = getPoolId(poolKey);
   const poolAddress = computedPoolId.toLowerCase() as `0x${string}`;
+
+  if (await shouldSkipPool(context, poolAddress)) {
+    return;
+  }
 
   const poolEntity = await db.find(pool, {
     address: poolAddress,
