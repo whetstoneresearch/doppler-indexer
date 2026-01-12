@@ -14,6 +14,7 @@ import {
   ZoraCoinABI,
   ZoraCreatorCoinABI,
   V4MigratorHookABI,
+  DopplerHookInitializerABI,
 } from "./src/abis";
 import { BLOCK_INTERVALS } from "./src/config/chains/constants";
 import { chainConfigs, CHAIN_IDS } from "./src/config/chains";
@@ -252,6 +253,10 @@ export default createConfig({
           address: base.addresses.v4.v4ScheduledMulticurveInitializerHook,
         },
       },
+    },
+    DopplerHookInitializer: {
+      abi: DopplerHookInitializerABI,
+      chain: {},
     },
     UniswapV4MigratorHook: {
       abi: V4MigratorHookABI,
