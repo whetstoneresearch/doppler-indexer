@@ -53,6 +53,10 @@ export default createConfig({
       id: CHAIN_IDS.ink,
       rpc: http(process.env.PONDER_RPC_URL_130),
     },
+    monad: {
+      id: CHAIN_IDS.monad,
+      rpc: http(process.env.PONDER_RPC_URL_143)
+    }
   },
   blocks: {
     BaseSepoliaChainlinkEthPriceFeed: {
@@ -96,7 +100,7 @@ export default createConfig({
       interval: 99999999999,
     },
     MonadUsdcPrice: {
-      chain: "base",
+      chain: "monad",
       startBlock: monad.startBlock,
       interval: 99999999999,
     },
