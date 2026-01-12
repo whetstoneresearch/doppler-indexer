@@ -28,6 +28,7 @@ import { handleOptimizedSwap } from "./shared/swap-optimizer";
 import { StateViewABI } from "@app/abis";
 import { zeroAddress } from "viem";
 import { getQuoteInfo } from "@app/utils/getQuoteInfo";
+import { validatePoolCurrencies } from "./shared/validatePool";
 
 ponder.on(
   "UniswapV4ScheduledMulticurveInitializer:Create",
@@ -52,6 +53,14 @@ ponder.on(
     const assetAddress = assetId.toLowerCase() as `0x${string}`;
     const creatorAddress =
       event.transaction.from.toLowerCase() as `0x${string}`;
+
+    const validation = await validatePoolCurrencies(
+      context, poolAddress, poolKey.currency0, poolKey.currency1, timestamp
+    );
+    if (!validation.valid) {
+      console.log(`[UniswapV4ScheduledMulticurveInitializer:Create] Skipping invalid pool ${poolAddress}: ${validation.reason}`);
+      return;
+    }
 
     const poolEntity = await insertMulticurvePoolV4Optimized({
       poolAddress,

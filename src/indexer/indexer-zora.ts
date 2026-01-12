@@ -14,6 +14,7 @@ import { chainConfigs } from "@app/config";
 import { token, pool } from "ponder:schema";
 import { insertZoraPoolV4Optimized } from "./shared/entities/zora/pool";
 import { getQuoteInfo, QuoteToken } from "@app/utils/getQuoteInfo";
+import { validatePoolCurrencies } from "./shared/validatePool";
 
 // ponder.on("ZoraFactory:CoinCreatedV4", async ({ event, context }) => {
 //   const { db, chain } = context;
@@ -134,9 +135,17 @@ ponder.on("ZoraFactory:CreatorCoinCreated", async ({ event, context }) => {
   const currencyAddress = currency.toLowerCase() as `0x${string}`;
   const callerId = caller.toLowerCase() as `0x${string}`;
 
+  const validation = await validatePoolCurrencies(
+    context, poolAddress, coinAddress, currencyAddress, timestamp
+  );
+  if (!validation.valid) {
+    console.log(`[ZoraFactory:CreatorCoinCreated] Skipping invalid pool ${poolAddress}: ${validation.reason}`);
+    return;
+  }
+
   const quoteInfo = await getQuoteInfo(currencyAddress, timestamp, context);
   const isQuoteZora = quoteInfo.quoteToken === QuoteToken.Zora;
-  
+
   // Optimized parallel operations with single upsert for tokens
   const [assetTokenEntity] = await Promise.all([
     upsertTokenWithPool({

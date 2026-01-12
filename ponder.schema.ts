@@ -511,6 +511,20 @@ export const scheduledPools = onchainTable(
   })
 )
 
+export const invalidPools = onchainTable(
+  "invalid_pools",
+  (t) => ({
+    poolAddress: t.hex().notNull(),
+    chainId: t.integer().notNull(),
+    reason: t.text().notNull(),
+    invalidCurrency: t.hex(),
+    createdAt: t.bigint().notNull(),
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.poolAddress, table.chainId] }),
+  })
+);
+
 export const userAsset = onchainTable(
   "user_asset",
   (t) => ({

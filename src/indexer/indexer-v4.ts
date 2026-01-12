@@ -10,6 +10,7 @@ import {
   isV4MigrationPoolCacheInitialized,
   isKnownV4MigrationPool,
 } from "./shared/v4MigrationPoolCache";
+import { validatePoolCurrencies } from "./shared/validatePool";
 
 import { insertV4ConfigIfNotExists } from "./shared/entities/v4Config";
 import { getReservesV4 } from "@app/utils/v4-utils/getV4PoolData";
@@ -37,9 +38,17 @@ ponder.on("UniswapV4Initializer:Create", async ({ event, context }) => {
   const poolAddress = poolOrHook.toLowerCase() as `0x${string}`;
   const assetAddress = assetId.toLowerCase() as `0x${string}`;
   const numeraireAddress = numeraire.toLowerCase() as `0x${string}`;
-  
-  const creatorAddress = event.transaction.from.toLowerCase() as `0x${string}`;  
-    
+
+  const creatorAddress = event.transaction.from.toLowerCase() as `0x${string}`;
+
+  const validation = await validatePoolCurrencies(
+    context, poolAddress, assetAddress, numeraireAddress, timestamp
+  );
+  if (!validation.valid) {
+    console.log(`[UniswapV4Initializer:Create] Skipping invalid pool ${poolAddress}: ${validation.reason}`);
+    return;
+  }
+
   const [baseToken] = await Promise.all([
     insertTokenIfNotExists({
       tokenAddress: assetAddress,
@@ -299,6 +308,14 @@ ponder.on(
     const assetAddress = assetId.toLowerCase() as `0x${string}`;
     const creatorAddress =
       event.transaction.from.toLowerCase() as `0x${string}`;
+
+    const validation = await validatePoolCurrencies(
+      context, poolAddress, poolKey.currency0, poolKey.currency1, timestamp
+    );
+    if (!validation.valid) {
+      console.log(`[UniswapV4MulticurveInitializer:Create] Skipping invalid pool ${poolAddress}: ${validation.reason}`);
+      return;
+    }
 
     const poolEntity = await insertMulticurvePoolV4Optimized({
       poolAddress,

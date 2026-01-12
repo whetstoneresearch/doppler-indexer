@@ -17,6 +17,7 @@ import { updateFifteenMinuteBucketUsd } from "@app/utils/time-buckets";
 import { fetchV3MigrationPool, updateMigrationPool } from "./shared/entities/migrationPool";
 import { insertAssetIfNotExists, updateAsset } from "./shared/entities";
 import { LockableUniswapV3InitializerABI, UniswapV3PoolABI } from "@app/abis";
+import { validatePoolCurrencies } from "./shared/validatePool";
 
 ponder.on("UniswapV3Initializer:Create", async ({ event, context }) => {
   const { poolOrHook, asset, numeraire } = event.args;
@@ -25,7 +26,15 @@ ponder.on("UniswapV3Initializer:Create", async ({ event, context }) => {
   const creatorId = event.transaction.from.toLowerCase() as `0x${string}`;
   const numeraireId = numeraire.toLowerCase() as `0x${string}`;
   const assetId = asset.toLowerCase() as `0x${string}`;
-  const poolOrHookId = poolOrHook.toLowerCase() as `0x${string}`;  
+  const poolOrHookId = poolOrHook.toLowerCase() as `0x${string}`;
+
+  const validation = await validatePoolCurrencies(
+    context, poolOrHookId, assetId, numeraireId, timestamp
+  );
+  if (!validation.valid) {
+    console.log(`[UniswapV3Initializer:Create] Skipping invalid pool ${poolOrHookId}: ${validation.reason}`);
+    return;
+  }
 
   await insertTokenIfNotExists({
     tokenAddress: assetId,
@@ -63,7 +72,15 @@ ponder.on("LockableUniswapV3Initializer:Create", async ({ event, context }) => {
   const creatorId = event.transaction.from.toLowerCase() as `0x${string}`;
   const numeraireId = numeraire.toLowerCase() as `0x${string}`;
   const assetId = asset.toLowerCase() as `0x${string}`;
-  const poolOrHookId = poolOrHook.toLowerCase() as `0x${string}`;  
+  const poolOrHookId = poolOrHook.toLowerCase() as `0x${string}`;
+
+  const validation = await validatePoolCurrencies(
+    context, poolOrHookId, assetId, numeraireId, timestamp
+  );
+  if (!validation.valid) {
+    console.log(`[LockableUniswapV3Initializer:Create] Skipping invalid pool ${poolOrHookId}: ${validation.reason}`);
+    return;
+  }
 
   await insertTokenIfNotExists({
     tokenAddress: assetId,

@@ -13,6 +13,7 @@ import { getAmount0Delta, getAmount1Delta } from "@app/utils/v3-utils/computeGra
 import { PoolKey } from "@app/types/v4-types";
 import { getDHookPoolData } from "@app/utils/dhook-utils";
 import { StateViewABI } from "@app/abis";
+import { validatePoolCurrencies } from "./shared/validatePool";
 
 ponder.on("DopplerHookInitializer:Create", async ({ event, context }) => {
   const { poolOrHook, asset: assetId, numeraire } = event.args;
@@ -54,6 +55,14 @@ ponder.on("DopplerHookInitializer:Create", async ({ event, context }) => {
 
   const poolId = getPoolId(poolData.poolKey);
   const poolAddress = poolId.toLowerCase() as `0x${string}`;
+
+  const validation = await validatePoolCurrencies(
+    context, poolAddress, poolData.poolKey.currency0, poolData.poolKey.currency1, timestamp
+  );
+  if (!validation.valid) {
+    console.log(`[DopplerHookInitializer:Create] Skipping invalid pool ${poolAddress}: ${validation.reason}`);
+    return;
+  }
 
   const { totalSupply } = baseToken;
 
