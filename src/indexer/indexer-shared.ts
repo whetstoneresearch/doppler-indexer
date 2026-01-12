@@ -11,6 +11,7 @@ import { insertUserIfNotExists, updateUser } from "./shared/entities/user";
 import { fetchExistingPool, updatePool } from "./shared/entities/pool";
 import { zeroAddress } from "viem";
 import { getV4MigratorForAsset } from "@app/utils/v4-utils";
+import { validatePoolCurrencies } from "./shared/validatePool";
 
 ponder.on("Airlock:Migrate", async ({ event, context }) => {
   const { timestamp } = event.block;
@@ -29,6 +30,14 @@ ponder.on("Airlock:Migrate", async ({ event, context }) => {
   });
 
   if (!parentPool) {
+    return;
+  }
+
+  const validation = await validatePoolCurrencies(
+    context, migrationPoolAddress, parentPool.baseToken, parentPool.quoteToken, timestamp
+  );
+  if (!validation.valid) {
+    console.log(`[Airlock:Migrate] Skipping invalid migration pool ${migrationPoolAddress}: ${validation.reason}`);
     return;
   }
 

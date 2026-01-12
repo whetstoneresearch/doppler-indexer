@@ -847,11 +847,19 @@ ponder.on("PoolManager:Initialize", async ({ event, context }) => {
       timestamp,
       context,
     });
-    
+
     if (!existingV4Pool) {
       console.warn(`Failed to create V4 pool ${poolId} from Initialize event`);
       return;
     }
+  }
+
+  const validation = await validatePoolCurrencies(
+    context, poolId as `0x${string}`, currency0 as `0x${string}`, currency1 as `0x${string}`, timestamp
+  );
+  if (!validation.valid) {
+    console.log(`[PoolManager:Initialize] Skipping invalid pool ${poolId}: ${validation.reason}`);
+    return;
   }
 
   const quoteInfo = await getQuoteInfo(existingV4Pool.quoteToken, timestamp, context);
