@@ -13,6 +13,7 @@ import {
   ZoraV4HookABI,
   ZoraCoinABI,
   ZoraCreatorCoinABI,
+  V4MigratorHookABI,
 } from "./src/abis";
 import { BLOCK_INTERVALS } from "./src/config/chains/constants";
 import { chainConfigs, CHAIN_IDS } from "./src/config/chains";
@@ -252,5 +253,9 @@ export default createConfig({
         },
       },
     },
+    UniswapV4MigratorHook: {
+      abi: V4MigratorHookABI,
+      chain: {}
+    }
   },
 });
