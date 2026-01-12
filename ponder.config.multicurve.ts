@@ -90,6 +90,21 @@ export default createConfig({
       startBlock: 30530166,
       interval: BLOCK_INTERVALS.FIVE_MINUTES, // every 5 minutes
     },
+    MonadChainlinkEthPriceFeed: {
+      chain: "base",
+      startBlock: 0,
+      interval: 99999999999,
+    },
+    MonadUsdcPrice: {
+      chain: "base",
+      startBlock: 0,
+      interval: 99999999999,
+    },
+    EurcUsdcPrice: {
+      chain: "base",
+      startBlock: 0,
+      interval: 99999999999,
+    },
   },
   contracts: {
     Airlock: {
