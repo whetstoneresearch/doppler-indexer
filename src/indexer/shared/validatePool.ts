@@ -23,6 +23,8 @@ export async function validatePoolCurrencies(
 ): Promise<ValidationResult> {
   const { client, chain } = context;
 
+  console.log(`[validatePoolCurrencies] Validating pool ${poolAddress} with currency0=${currency0}, currency1=${currency1}`);
+
   if (!isInvalidPoolCacheInitialized()) {
     await initializeInvalidPoolCache(context);
   }
@@ -32,7 +34,9 @@ export async function validatePoolCurrencies(
   }
 
   if (currency0 !== zeroAddress) {
-    if (await isEOA(client, currency0)) {
+    const isEOA0 = await isEOA(client, currency0);
+    console.log(`[validatePoolCurrencies] currency0 ${currency0} isEOA=${isEOA0}`);
+    if (isEOA0) {
       await markPoolAsInvalid(
         context,
         poolAddress as `0x${string}`,
@@ -46,7 +50,9 @@ export async function validatePoolCurrencies(
   }
 
   if (currency1 !== zeroAddress) {
-    if (await isEOA(client, currency1)) {
+    const isEOA1 = await isEOA(client, currency1);
+    console.log(`[validatePoolCurrencies] currency1 ${currency1} isEOA=${isEOA1}`);
+    if (isEOA1) {
       await markPoolAsInvalid(
         context,
         poolAddress as `0x${string}`,

@@ -11,7 +11,9 @@ export async function isEOA(client: ClientWithGetCode, address: Address): Promis
 
   try {
     const code = await client.getCode({ address });
-    return !code || code === "0x";
+    const result = !code || code === "0x";
+    console.log(`[isEOA] address=${address} code=${code ? code.slice(0, 20) + '...' : 'null/undefined'} isEOA=${result}`);
+    return result;
   } catch (error) {
     // If getCode fails, something is wrong - treat as invalid
     console.warn(`[isEOA] getCode failed for ${address}, treating as EOA:`, error);
