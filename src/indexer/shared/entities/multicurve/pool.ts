@@ -48,25 +48,36 @@ export const insertMulticurvePoolV4Optimized = async ({
   let poolState;
   let baseToken;
   let quoteToken;
-  poolState = await client.readContract({
-    abi: UniswapV4MulticurveInitializerABI,
-    address: scheduled ? chainConfigs[chain.name].addresses.v4.v4ScheduledMulticurveInitializer : chainConfigs[chain.name].addresses.v4.v4MulticurveInitializer,
-    functionName: "getState",
-    args: [poolKey.currency0],
-  });
 
-  if (poolState[2].hooks === zeroAddress) {
-    baseToken = poolKey.currency1;
-    quoteToken = poolKey.currency0;
+  const initializerAddress = scheduled
+    ? chainConfigs[chain.name].addresses.v4.v4ScheduledMulticurveInitializer
+    : chainConfigs[chain.name].addresses.v4.v4MulticurveInitializer;
+
+  try {
     poolState = await client.readContract({
       abi: UniswapV4MulticurveInitializerABI,
-      address: scheduled ? chainConfigs[chain.name].addresses.v4.v4ScheduledMulticurveInitializer : chainConfigs[chain.name].addresses.v4.v4MulticurveInitializer,
+      address: initializerAddress,
       functionName: "getState",
-      args: [poolKey.currency1],
+      args: [poolKey.currency0],
     });
-  } else {
-    baseToken = poolKey.currency0;
-    quoteToken = poolKey.currency1;
+
+    if (poolState[2].hooks === zeroAddress) {
+      baseToken = poolKey.currency1;
+      quoteToken = poolKey.currency0;
+      poolState = await client.readContract({
+        abi: UniswapV4MulticurveInitializerABI,
+        address: initializerAddress,
+        functionName: "getState",
+        args: [poolKey.currency1],
+      });
+    } else {
+      baseToken = poolKey.currency0;
+      quoteToken = poolKey.currency1;
+    }
+  } catch (error) {
+    // If getState fails, this is not a valid multicurve pool (e.g., currency is not an asset registered with the initializer)
+    console.warn(`[insertMulticurvePoolV4Optimized] Failed to get state for pool ${poolAddress}, currencies: ${poolKey.currency0}, ${poolKey.currency1}. Skipping.`);
+    return null;
   }
 
   const [quoteInfo, baseTokenEntity] = await Promise.all([
