@@ -54,13 +54,18 @@ export async function markPoolAsInvalid(
 ): Promise<void> {
   addToInvalidPoolCache(chainId, poolAddress);
 
-  await context.db.insert(invalidPools).values({
-    poolAddress,
-    chainId,
-    reason,
-    invalidCurrency,
-    createdAt: timestamp ?? BigInt(Date.now()),
-  });
-
-  console.log(`[InvalidPoolCache] Marked pool ${poolAddress} as invalid: ${reason}`);
+  try {
+    const result = await context.db.insert(invalidPools).values({
+      poolAddress,
+      chainId,
+      reason,
+      invalidCurrency,
+      createdAt: timestamp ?? BigInt(Date.now()),
+    });
+    console.log(`[InvalidPoolCache] DB insert result:`, result);
+    console.log(`[InvalidPoolCache] Marked pool ${poolAddress} as invalid: ${reason}`);
+  } catch (error) {
+    console.error(`[InvalidPoolCache] Failed to insert invalid pool ${poolAddress}:`, error);
+    throw error;
+  }
 }
