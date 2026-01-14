@@ -25,6 +25,7 @@ import {
 import { getMulticallOptions } from "@app/core/utils";
 import { chainConfigs } from "@app/config";
 import { getQuoteInfo, QuoteInfo } from "@app/utils/getQuoteInfo";
+import { isPrecompileAddress } from "../validation";
 
 export const getV4PoolData = async ({
   hook,
@@ -34,7 +35,7 @@ export const getV4PoolData = async ({
   hook: Address;
   context: Context;
   quoteInfo?: QuoteInfo;
-}): Promise<V4PoolData> => {
+}): Promise<V4PoolData | null> => {
   const { stateView } = chainConfigs[context.chain.name].addresses.v4;
   const { client, chain } = context;
 
@@ -53,6 +54,11 @@ export const getV4PoolData = async ({
     tickSpacing: poolKey[3],
     hooks: poolKey[4],
   };
+
+  // Skip events where either currency in the pool is a precompile address
+  if (isPrecompileAddress(key.currency0) || isPrecompileAddress(key.currency1)) {
+    return null;
+  }
 
   const poolId = getPoolId(key);
 

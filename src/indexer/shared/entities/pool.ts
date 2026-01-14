@@ -64,17 +64,16 @@ export const insertPoolIfNotExists = async ({
     context,
   });
 
+  if (!poolData) {
+    return null;
+  }
+
   const { slot0Data, liquidity, price, fee, token0, poolState } = poolData;
 
   const isToken0 = token0.toLowerCase() === poolState.asset.toLowerCase();
 
   const assetAddr = poolState.asset.toLowerCase() as `0x${string}`;
   const numeraireAddr = poolState.numeraire.toLowerCase() as `0x${string}`;
-
-  // Skip events where asset or numeraire is a precompile address
-  if (isPrecompileAddress(assetAddr) || isPrecompileAddress(numeraireAddr)) {
-    return null;
-  }
 
   const quoteInfo = await getQuoteInfo(numeraireAddr, timestamp, context);
   
@@ -395,17 +394,16 @@ export const insertLockableV3PoolIfNotExists = async ({
     context,
   });
 
+  if (!poolData) {
+    return null;
+  }
+
   const { slot0Data, liquidity, price, fee, token0, poolState } = poolData;
 
   const isToken0 = token0.toLowerCase() === poolState.asset.toLowerCase();
 
   const assetAddr = poolState.asset.toLowerCase() as `0x${string}`;
   const numeraireAddr = poolState.numeraire.toLowerCase() as `0x${string}`;
-
-  // Skip events where asset or numeraire is a precompile address
-  if (isPrecompileAddress(assetAddr) || isPrecompileAddress(numeraireAddr)) {
-    return null;
-  }
   
   const quoteInfo = await getQuoteInfo(numeraireAddr, timestamp, context);
 

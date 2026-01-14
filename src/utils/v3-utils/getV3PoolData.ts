@@ -11,6 +11,7 @@ import { LockableUniswapV3InitializerABI } from "@app/abis";
 import { chainConfigs } from "@app/config";
 import { PriceService } from "@app/core/pricing";
 import { getQuoteInfo } from "../getQuoteInfo";
+import { isPrecompileAddress } from "../validation";
 
 export const getSlot0Data = async ({
   address,
@@ -88,6 +89,11 @@ export const getV3MigrationPoolData = async ({
     context,
   });
 
+  // Skip events where asset or numeraire is a precompile address
+  if (isPrecompileAddress(token0) || isPrecompileAddress(token1)) {
+    return null;
+  }
+
   const { reserve0, reserve1 } = await getV3PoolReserves({
     token0,
     token1,
@@ -130,7 +136,7 @@ export const getV3PoolData = async ({
 }: {
   address: Address;
   context: Context;
-}): Promise<V3PoolData> => {
+}): Promise<V3PoolData | null> => {
   const poolState = await getPoolState({
     poolAddress: address,
     context,
@@ -140,6 +146,11 @@ export const getV3PoolData = async ({
     address,
     context,
   });
+
+  // Skip events where asset or numeraire is a precompile address
+  if (isPrecompileAddress(token0) || isPrecompileAddress(token1)) {
+    return null;
+  }
 
   const { reserve0, reserve1 } = await getV3PoolReserves({
     token0,
@@ -183,11 +194,16 @@ export const getLockableV3PoolData = async ({
 }: {
   address: Address;
   context: Context;
-}): Promise<LockableV3PoolData> => {
+}): Promise<LockableV3PoolData | null> => {
   const { slot0Data, liquidity, token0, token1, fee } = await getSlot0Data({
     address,
     context,
   });
+
+  // Skip events where asset or numeraire is a precompile address
+  if (isPrecompileAddress(token0) || isPrecompileAddress(token1)) {
+    return null;
+  }
 
   const poolState = await getLockablePoolState({
     poolAddress: address,

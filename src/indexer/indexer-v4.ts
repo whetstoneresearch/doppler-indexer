@@ -72,6 +72,10 @@ ponder.on("UniswapV4Initializer:Create", async ({ event, context }) => {
     quoteInfo,
   });
 
+  if (!poolData) {
+    return;
+  }
+
   const { totalSupply } = baseToken;
 
   const [poolEntity] = await Promise.all([
@@ -118,7 +122,7 @@ ponder.on("UniswapV4Pool:Swap", async ({ event, context }) => {
       context,
     });
 
-  if (isPrecompileAddress(v4PoolData.poolKey.currency0) || isPrecompileAddress(v4PoolData.poolKey.currency1)) {
+  if (!v4PoolData) {
     return;
   }
   

@@ -11,11 +11,16 @@ import { insertUserIfNotExists, updateUser } from "./shared/entities/user";
 import { fetchExistingPool, updatePool } from "./shared/entities/pool";
 import { zeroAddress } from "viem";
 import { getV4MigratorForAsset } from "@app/utils/v4-utils";
+import { isPrecompileAddress } from "@app/utils/validation";
 
 ponder.on("Airlock:Migrate", async ({ event, context }) => {
   const { timestamp } = event.block;
   const assetId = event.args.asset.toLowerCase() as `0x${string}`;
   const migrationPoolAddress = event.args.pool.toLowerCase() as `0x${string}`;
+
+  if (isPrecompileAddress(assetId)) {
+    return;
+  }
 
   const assetEntity = await insertAssetIfNotExists({
     assetAddress: assetId,

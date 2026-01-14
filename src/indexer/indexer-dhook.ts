@@ -13,6 +13,7 @@ import { getAmount0Delta, getAmount1Delta } from "@app/utils/v3-utils/computeGra
 import { PoolKey } from "@app/types/v4-types";
 import { getDHookPoolData } from "@app/utils/dhook-utils";
 import { StateViewABI } from "@app/abis";
+import { isPrecompileAddress } from "@app/utils/validation";
 
 ponder.on("DopplerHookInitializer:Create", async ({ event, context }) => {
   const { poolOrHook, asset: assetId, numeraire } = event.args;
@@ -22,6 +23,10 @@ ponder.on("DopplerHookInitializer:Create", async ({ event, context }) => {
   const assetAddress = assetId.toLowerCase() as `0x${string}`;
   const numeraireAddress = numeraire.toLowerCase() as `0x${string}`;
   const creatorAddress = transaction.from.toLowerCase() as `0x${string}`;
+
+  if (isPrecompileAddress(assetAddress) || isPrecompileAddress(numeraireAddress)) {
+    return;
+  }
 
   const initializerAddress = chainConfigs[context.chain.name].addresses.v4.DopplerHookInitializer;
 
@@ -93,6 +98,10 @@ ponder.on("DopplerHookInitializer:Swap", async ({ event, context }) => {
     tickSpacing: poolKeyTuple.tickSpacing,
     hooks: poolKeyTuple.hooks,
   };
+
+  if (isPrecompileAddress(poolKey.currency0) || isPrecompileAddress(poolKey.currency1)) {
+    return;
+  }
 
   const poolAddress = (poolId as string).toLowerCase() as `0x${string}`;
 
@@ -248,6 +257,10 @@ ponder.on("DopplerHookInitializer:ModifyLiquidity", async ({ event, context }) =
     tickSpacing: poolKeyTuple.tickSpacing,
     hooks: poolKeyTuple.hooks,
   };
+
+  if (isPrecompileAddress(poolKey.currency0) || isPrecompileAddress(poolKey.currency1)) {
+    return;
+  }
 
   const computedPoolId = getPoolId(poolKey);
   const poolAddress = computedPoolId.toLowerCase() as `0x${string}`;

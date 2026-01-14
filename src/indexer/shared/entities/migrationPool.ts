@@ -36,7 +36,7 @@ export const insertV3MigrationPoolIfNotExists = async ({
   parentPoolAddress: Address;
   timestamp: bigint;
   context: Context;
-}): Promise<typeof migrationPool.$inferSelect> => {
+}): Promise<typeof migrationPool.$inferSelect | null> => {
   const { db, chain } = context;
 
   const existingPool = await db.find(migrationPool, {
@@ -53,6 +53,10 @@ export const insertV3MigrationPoolIfNotExists = async ({
     baseToken: assetAddress,
     context,
   });
+
+  if (!poolData) {
+    return null;
+  }
 
   const { price, token0, token1, reserve0, reserve1, isToken0, fee } = poolData;
 
