@@ -1,6 +1,7 @@
 import { PriceService, SwapOrchestrator, SwapService, MarketDataService } from "@app/core";
 import { CHAINLINK_ETH_DECIMALS, WAD } from "@app/utils/constants";
 import { computeGraduationThresholdDelta } from "@app/utils/v3-utils/computeGraduationThreshold";
+import { isPrecompileAddress } from "@app/utils/validation";
 import { ponder } from "ponder:registry";
 import {
   insertLockableV3PoolIfNotExists,
@@ -25,7 +26,12 @@ ponder.on("UniswapV3Initializer:Create", async ({ event, context }) => {
   const creatorId = event.transaction.from.toLowerCase() as `0x${string}`;
   const numeraireId = numeraire.toLowerCase() as `0x${string}`;
   const assetId = asset.toLowerCase() as `0x${string}`;
-  const poolOrHookId = poolOrHook.toLowerCase() as `0x${string}`;  
+  const poolOrHookId = poolOrHook.toLowerCase() as `0x${string}`;
+
+  // Skip events where asset or numeraire is a precompile address
+  if (isPrecompileAddress(assetId) || isPrecompileAddress(numeraireId)) {
+    return;
+  }
 
   await insertTokenIfNotExists({
     tokenAddress: assetId,
@@ -42,11 +48,17 @@ ponder.on("UniswapV3Initializer:Create", async ({ event, context }) => {
     isDerc20: false,
   });
 
-  const [poolEntity, _] = await insertPoolIfNotExists({
+  const result = await insertPoolIfNotExists({
     poolAddress: poolOrHookId,
     context,
     timestamp    
   });
+
+  if (!result) {
+    return;
+  }
+
+  const [poolEntity, _] = result;
 
   await insertAssetIfNotExists({
     assetAddress: assetId,
@@ -63,7 +75,12 @@ ponder.on("LockableUniswapV3Initializer:Create", async ({ event, context }) => {
   const creatorId = event.transaction.from.toLowerCase() as `0x${string}`;
   const numeraireId = numeraire.toLowerCase() as `0x${string}`;
   const assetId = asset.toLowerCase() as `0x${string}`;
-  const poolOrHookId = poolOrHook.toLowerCase() as `0x${string}`;  
+  const poolOrHookId = poolOrHook.toLowerCase() as `0x${string}`;
+
+  // Skip events where asset or numeraire is a precompile address
+  if (isPrecompileAddress(assetId) || isPrecompileAddress(numeraireId)) {
+    return;
+  }
 
   await insertTokenIfNotExists({
     tokenAddress: assetId,
@@ -458,6 +475,16 @@ ponder.on("UniswapV3Pool:Mint", async ({ event, context }) => {
   const { tickLower, tickUpper, amount, owner, amount0, amount1 } = event.args;
   const timestamp = event.block.timestamp;  
 
+  const result = await insertPoolIfNotExists({
+    poolAddress: address,
+    timestamp,
+    context,    
+  });
+
+  if (!result) {
+    return;
+  }
+
   const [{
     baseToken,
     isToken0,
@@ -466,11 +493,7 @@ ponder.on("UniswapV3Pool:Mint", async ({ event, context }) => {
     reserves0,
     reserves1,
     maxThreshold,
-  }, quoteInfo] = await insertPoolIfNotExists({
-    poolAddress: address,
-    timestamp,
-    context,    
-  });
+  }, quoteInfo] = result;
 
   const reserveAssetBefore = isToken0 ? reserves0 : reserves1;
   const reserveQuoteBefore = isToken0 ? reserves1 : reserves0;
@@ -542,6 +565,16 @@ ponder.on("UniswapV3Pool:Burn", async ({ event, context }) => {
   const timestamp = event.block.timestamp;
   const { tickLower, tickUpper, owner, amount, amount0, amount1 } = event.args;  
 
+  const result = await insertPoolIfNotExists({
+    poolAddress: address,
+    timestamp,
+    context,    
+  });
+
+  if (!result) {
+    return;
+  }
+  
   const [{
     baseToken,
     isToken0,
@@ -550,11 +583,7 @@ ponder.on("UniswapV3Pool:Burn", async ({ event, context }) => {
     reserves0,
     reserves1,
     maxThreshold,
-  }, quoteInfo] = await insertPoolIfNotExists({
-    poolAddress: address,
-    timestamp,
-    context    
-  });
+  }, quoteInfo] = result;
 
   const reserveAssetBefore = isToken0 ? reserves0 : reserves1;
   const reserveQuoteBefore = isToken0 ? reserves1 : reserves0;
@@ -632,6 +661,16 @@ ponder.on("UniswapV3Pool:Swap", async ({ event, context }) => {
   
   const tick = slot0[1];
 
+  const result = await insertPoolIfNotExists({
+    poolAddress: address,
+    timestamp,
+    context,    
+  });
+
+  if (!result) {
+    return;
+  }
+
   const [{
     isToken0,
     baseToken,
@@ -643,11 +682,7 @@ ponder.on("UniswapV3Pool:Swap", async ({ event, context }) => {
     totalFee1,
     graduationBalance,
     migrated,
-  }, quoteInfo] = await insertPoolIfNotExists({
-    poolAddress: address,
-    timestamp,
-    context    
-  });
+  }, quoteInfo] = result;
 
   if (migrated) {
     return;
@@ -829,11 +864,17 @@ ponder.on("MigrationPool:Swap(address indexed sender, address indexed recipient,
 
   const parentPool = v3MigrationPool!.parentPool.toLowerCase() as `0x${string}`;
 
-  const [{ baseToken, quoteToken }, quoteInfo] = await insertPoolIfNotExists({
-    poolAddress: parentPool,
+  const result = await insertPoolIfNotExists({
+    poolAddress: address,
     timestamp,
-    context    
+    context,    
   });
+
+  if (!result) {
+    return;
+  }
+
+  const [{ baseToken, quoteToken }, quoteInfo] = result;
   
   const price = PriceService.computePriceFromSqrtPriceX96({
     sqrtPriceX96,

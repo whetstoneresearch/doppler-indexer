@@ -15,6 +15,7 @@ import { chainConfigs } from "@app/config";
 import { AssetData } from "@app/types";
 import { Network } from "@app/types/config-types";
 import { eq, and } from "ponder";
+import { isPrecompileAddress } from "@app/utils/validation";
 
 export const fetchExistingPool = async ({
   poolAddress,
@@ -44,7 +45,7 @@ export const insertPoolIfNotExists = async ({
   poolAddress: Address;
   timestamp: bigint;
   context: Context;  
-}): Promise<[typeof pool.$inferSelect, QuoteInfo]> => {
+}): Promise<[typeof pool.$inferSelect, QuoteInfo] | null> => {
   const { db, chain, client } = context;
   const address = poolAddress.toLowerCase() as `0x${string}`;
 
@@ -69,6 +70,11 @@ export const insertPoolIfNotExists = async ({
 
   const assetAddr = poolState.asset.toLowerCase() as `0x${string}`;
   const numeraireAddr = poolState.numeraire.toLowerCase() as `0x${string}`;
+
+  // Skip events where asset or numeraire is a precompile address
+  if (isPrecompileAddress(assetAddr) || isPrecompileAddress(numeraireAddr)) {
+    return null;
+  }
 
   const quoteInfo = await getQuoteInfo(numeraireAddr, timestamp, context);
   
@@ -395,6 +401,11 @@ export const insertLockableV3PoolIfNotExists = async ({
 
   const assetAddr = poolState.asset.toLowerCase() as `0x${string}`;
   const numeraireAddr = poolState.numeraire.toLowerCase() as `0x${string}`;
+
+  // Skip events where asset or numeraire is a precompile address
+  if (isPrecompileAddress(assetAddr) || isPrecompileAddress(numeraireAddr)) {
+    return null;
+  }
   
   const quoteInfo = await getQuoteInfo(numeraireAddr, timestamp, context);
 

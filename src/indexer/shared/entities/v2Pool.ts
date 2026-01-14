@@ -18,7 +18,7 @@ export const insertV2PoolIfNotExists = async ({
   assetAddress: Address;
   timestamp: bigint;
   context: Context;
-}): Promise<typeof v2Pool.$inferSelect> => {
+}): Promise<typeof v2Pool.$inferSelect | null> => {
   const { db, chain } = context;  
 
   const { poolAddress, migrationPool, numeraire } =
@@ -39,11 +39,17 @@ export const insertV2PoolIfNotExists = async ({
     return existingV2Pool;
   }
 
-  const [{ baseToken }, quoteInfo] = await insertPoolIfNotExists({
+  const result = await insertPoolIfNotExists({
     poolAddress,
     timestamp,
     context    
   });
+
+  if (!result) {
+    return null;
+  }
+
+  const [{ baseToken }, quoteInfo] = result;
 
   const isToken0 = baseToken === assetAddress;
 

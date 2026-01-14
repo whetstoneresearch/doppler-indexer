@@ -1,6 +1,7 @@
 import { ponder } from "ponder:registry";
 import { getPoolId, getV4PoolData, isV4MigratorHook } from "@app/utils/v4-utils";
 import { computeV4Price } from "@app/utils/v4-utils/computeV4Price";
+import { isPrecompileAddress } from "@app/utils/validation";
 import { insertTokenIfNotExists } from "./shared/entities/token";
 import { insertPoolIfNotExistsV4, updatePool } from "./shared/entities/pool";
 import { insertAssetIfNotExists, updateAsset } from "./shared/entities/asset";
@@ -37,9 +38,14 @@ ponder.on("UniswapV4Initializer:Create", async ({ event, context }) => {
   const poolAddress = poolOrHook.toLowerCase() as `0x${string}`;
   const assetAddress = assetId.toLowerCase() as `0x${string}`;
   const numeraireAddress = numeraire.toLowerCase() as `0x${string}`;
-  
-  const creatorAddress = event.transaction.from.toLowerCase() as `0x${string}`;  
-    
+
+  const creatorAddress = event.transaction.from.toLowerCase() as `0x${string}`;
+
+  // Skip events where asset or numeraire is a precompile address
+  if (isPrecompileAddress(assetAddress) || isPrecompileAddress(numeraireAddress)) {
+    return;
+  }
+
   const [baseToken] = await Promise.all([
     insertTokenIfNotExists({
       tokenAddress: assetAddress,
@@ -111,6 +117,10 @@ ponder.on("UniswapV4Pool:Swap", async ({ event, context }) => {
       hook: address,
       context,
     });
+
+  if (isPrecompileAddress(v4PoolData.poolKey.currency0) || isPrecompileAddress(v4PoolData.poolKey.currency1)) {
+    return;
+  }
   
   const quoteAddress = v4PoolData.poolConfig.isToken0
     ? v4PoolData.poolKey.currency1
@@ -283,6 +293,11 @@ ponder.on(
     const { block } = event;
     const timestamp = block.timestamp;
 
+    // Skip events where asset is a precompile address
+    if (isPrecompileAddress(assetId)) {
+      return;
+    }
+
     const poolState = await context.client.readContract({
       abi: UniswapV4MulticurveInitializerABI,
       address:
@@ -292,6 +307,11 @@ ponder.on(
     });
 
     const poolKey = poolState[2];
+
+    // Skip events where either currency in the pool is a precompile address
+    if (isPrecompileAddress(poolKey.currency0) || isPrecompileAddress(poolKey.currency1)) {
+      return;
+    }
 
     const poolId = getPoolId(poolKey);
 
@@ -332,6 +352,11 @@ ponder.on(
     const { key, params } = event.args;
     const { block } = event;
     const timestamp = block.timestamp;
+
+    // Skip events where either currency in the pool is a precompile address
+    if (isPrecompileAddress(key.currency0) || isPrecompileAddress(key.currency1)) {
+      return;
+    }
 
     const creatorAddress =
       event.transaction.from.toLowerCase() as `0x${string}`;
@@ -448,6 +473,10 @@ ponder.on(
       return;
     }
 
+    if (isPrecompileAddress(poolEntity.baseToken) || isPrecompileAddress(poolEntity.quoteToken)) {
+      return;
+    }
+
     const slot0 = await context.client.readContract({
       abi: StateViewABI,
       address: chainConfigs[context.chain.name].addresses.v4.stateView,
@@ -505,6 +534,10 @@ ponder.on("PoolManager:Swap", async ({ event, context }) => {
   });
 
   if (!v4Pool || !v4Pool.migratedFromPool) {
+    return;
+  }
+
+  if (isPrecompileAddress(v4Pool.baseToken) || isPrecompileAddress(v4Pool.quoteToken)) {
     return;
   }
 
@@ -673,6 +706,10 @@ ponder.on("UniswapV4MigratorHook:ModifyLiquidity", async ({ event, context }) =>
   const { tickLower, tickUpper, liquidityDelta } = params;
   const { timestamp } = event.block;
 
+  if (isPrecompileAddress(key.currency0) || isPrecompileAddress(key.currency1)) {
+    return;
+  }
+
   const poolId = getPoolId({
     currency0: key.currency0,
     currency1: key.currency1,
@@ -771,6 +808,10 @@ ponder.on("PoolManager:Donate", async ({ event, context }) => {
     return;
   }
 
+  if (isPrecompileAddress(v4Pool.baseToken) || isPrecompileAddress(v4Pool.quoteToken)) {
+    return;
+  }
+
   if (!isV4MigratorHook(v4Pool.hooks, chain.name)) {
     return;
   }
@@ -806,6 +847,10 @@ ponder.on("PoolManager:Initialize", async ({ event, context }) => {
   const { id: poolId, currency0, currency1, fee, tickSpacing, hooks, sqrtPriceX96, tick } = event.args;
   const { timestamp } = event.block;
   const { chain } = context;
+
+  if (isPrecompileAddress(currency0) || isPrecompileAddress(currency1)) {
+    return;
+  }
 
   if (!isV4MigratorHook(hooks, chain.name)) {
     return;

@@ -14,6 +14,7 @@ import { chainConfigs } from "@app/config";
 import { token, pool } from "ponder:schema";
 import { insertZoraPoolV4Optimized } from "./shared/entities/zora/pool";
 import { getQuoteInfo, QuoteToken } from "@app/utils/getQuoteInfo";
+import { isPrecompileAddress } from "@app/utils/validation";
 
 // ponder.on("ZoraFactory:CoinCreatedV4", async ({ event, context }) => {
 //   const { db, chain } = context;
@@ -127,6 +128,11 @@ import { getQuoteInfo, QuoteToken } from "@app/utils/getQuoteInfo";
 
 ponder.on("ZoraFactory:CreatorCoinCreated", async ({ event, context }) => {
   const { coin, currency, poolKey, poolKeyHash, caller } = event.args;
+
+  if (isPrecompileAddress(coin) || isPrecompileAddress(currency)) {
+    return;
+  }
+
   const timestamp = event.block.timestamp;
 
   const poolAddress = poolKeyHash.toLowerCase() as `0x${string}`;
@@ -248,7 +254,7 @@ ponder.on("ZoraCreatorCoinV4:LiquidityMigrated", async ({ event, context }) => {
     chainId: chain.id,
   });
 
-  if (!fromPoolEntity) {
+  if (!fromPoolEntity || isPrecompileAddress(fromPoolEntity.baseToken) || isPrecompileAddress(fromPoolEntity.quoteToken)) {
     return;
   }
 
@@ -319,6 +325,10 @@ ponder.on("ZoraCreatorCoinV4:CoinTransfer", async ({ event, context }) => {
   const recipientAddress = recipient.toLowerCase() as `0x${string}`;
   const senderAddress = sender.toLowerCase() as `0x${string}`;
   const tokenAddress = address.toLowerCase() as `0x${string}`;
+
+  if (isPrecompileAddress(tokenAddress)) {
+    return;
+  }
 
   // Batch fetch token and asset data
   const tokenData = await db.find(token, { address: tokenAddress, chainId: chain.id });

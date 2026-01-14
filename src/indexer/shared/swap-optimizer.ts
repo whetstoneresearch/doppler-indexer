@@ -10,6 +10,7 @@ import { updateFifteenMinuteBucketUsd } from "@app/utils/time-buckets";
 import { SwapType } from "@app/types";
 import { CHAINLINK_ETH_DECIMALS, WAD } from "@app/utils/constants";
 import { insertSwapIfNotExists } from "./entities/swap";
+import { isPrecompileAddress } from "@app/utils/validation";
 
 interface SwapHandlerParams {
   poolAddress: `0x${string}`; // can be 32byte poolid or 20byte pool address
@@ -148,7 +149,11 @@ export async function handleOptimizedSwap(
   if (!poolEntity) {
     return;
   }  
-  
+
+  if (isPrecompileAddress(poolEntity.baseToken) || isPrecompileAddress(poolEntity.quoteToken)) {
+    return;
+  }
+
   const swapData = processSwapCalculations(
     poolEntity,
     params,

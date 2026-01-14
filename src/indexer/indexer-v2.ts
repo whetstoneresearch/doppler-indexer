@@ -35,12 +35,17 @@ ponder.on("MigrationPool:Swap(address indexed sender, uint256 amount0In, uint256
 
   const { reserve0, reserve1 } = reserves;
 
-  const [{ isToken0, baseToken, quoteToken }, quoteInfo] = await insertPoolIfNotExists({
-    poolAddress: parentPool,
+  const result = await insertPoolIfNotExists({
+    poolAddress: address,
     timestamp,
-    context
+    context,    
   });
 
+  if (!result) {
+    return;
+  }
+
+  const [{ isToken0, baseToken, quoteToken }, quoteInfo] = result;
 
   const v2isToken0 = v2PoolData!.isToken0;
 
@@ -191,11 +196,17 @@ ponder.on("UniswapV2PairUnichain:Swap", async ({ event, context }) => {
 
   const { reserve0, reserve1 } = await getPairData({ address, context });  
 
-  const [{ isToken0, baseToken, quoteToken }, quoteInfo] = await insertPoolIfNotExists({
-    poolAddress: parentPool,
+  const result = await insertPoolIfNotExists({
+    poolAddress: address,
     timestamp,
-    context
+    context,    
   });
+
+  if (!result) {
+    return;
+  }
+
+  const [{ isToken0, baseToken, quoteToken }, quoteInfo] = result;
 
   const amountIn = amount0In > 0 ? amount0In : amount1In;
   const amountOut = amount0Out > 0 ? amount0Out : amount1Out;

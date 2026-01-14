@@ -1,5 +1,6 @@
 import { ponder } from "ponder:registry";
 import { getPoolId, getV4PoolData } from "@app/utils/v4-utils";
+import { isPrecompileAddress } from "@app/utils/validation";
 import { insertTokenIfNotExists } from "./shared/entities/token";
 import { insertScheduledPool } from "./shared/entities/multicurve/scheduledPool";
 import {
@@ -36,6 +37,11 @@ ponder.on(
     const { block } = event;
     const timestamp = block.timestamp;
 
+    // Skip events where asset is a precompile address
+    if (isPrecompileAddress(assetId)) {
+      return;
+    }
+
     const poolState = await context.client.readContract({
       abi: UniswapV4ScheduledMulticurveInitializerABI,
       address:
@@ -45,6 +51,11 @@ ponder.on(
     });
 
     const poolKey = poolState[2];
+
+    // Skip events where either currency in the pool is a precompile address
+    if (isPrecompileAddress(poolKey.currency0) || isPrecompileAddress(poolKey.currency1)) {
+      return;
+    }
 
     const poolId = getPoolId(poolKey);
 
@@ -90,6 +101,11 @@ ponder.on(
     const { key, params } = event.args;
     const { block } = event;
     const timestamp = block.timestamp;
+
+    // Skip events where either currency in the pool is a precompile address
+    if (isPrecompileAddress(key.currency0) || isPrecompileAddress(key.currency1)) {
+      return;
+    }
 
     const creatorAddress =
       event.transaction.from.toLowerCase() as `0x${string}`;
@@ -214,6 +230,10 @@ ponder.on(
     });
 
     if (!poolEntity) {
+      return;
+    }
+
+    if (isPrecompileAddress(poolEntity.baseToken) || isPrecompileAddress(poolEntity.quoteToken)) {
       return;
     }
 
