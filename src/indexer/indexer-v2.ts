@@ -24,6 +24,10 @@ ponder.on("MigrationPool:Swap(address indexed sender, uint256 amount0In, uint256
 
   const v2PoolData = await db.find(v2Pool, { address, chainId: chain.id });
 
+  if (!v2PoolData) {
+    return;
+  }
+
   const parentPool = v2PoolData?.parentPool.toLowerCase() as `0x${string}`;
 
   if (!parentPool) {
@@ -38,7 +42,15 @@ ponder.on("MigrationPool:Swap(address indexed sender, uint256 amount0In, uint256
   const result = await insertPoolIfNotExists({
     poolAddress: address,
     timestamp,
-    context,    
+    context,
+    isV2: true,
+    v2PoolData: {
+      baseToken: v2PoolData.baseToken,
+      quoteToken: v2PoolData.quoteToken,
+      isToken0: v2PoolData.isToken0,
+      reserve0,
+      reserve1,
+    },
   });
 
   if (!result) {
@@ -194,12 +206,20 @@ ponder.on("UniswapV2PairUnichain:Swap", async ({ event, context }) => {
 
   const { parentPool } = v2PoolData;
 
-  const { reserve0, reserve1 } = await getPairData({ address, context });  
+  const { reserve0, reserve1 } = await getPairData({ address, context });
 
   const result = await insertPoolIfNotExists({
     poolAddress: address,
     timestamp,
-    context,    
+    context,
+    isV2: true,
+    v2PoolData: {
+      baseToken: v2PoolData.baseToken,
+      quoteToken: v2PoolData.quoteToken,
+      isToken0: v2PoolData.isToken0,
+      reserve0,
+      reserve1,
+    },
   });
 
   if (!result) {

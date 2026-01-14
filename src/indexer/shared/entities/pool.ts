@@ -1,6 +1,6 @@
 import { DERC20ABI } from "@app/abis";
 import { V4PoolData, DHookPoolData } from "@app/types";
-import { MarketDataService } from "@app/core";
+import { MarketDataService, PriceService } from "@app/core";
 import { getAssetData } from "@app/utils/getAssetData";
 import { getV3PoolData } from "@app/utils/v3-utils";
 import { computeGraduationPercentage } from "@app/utils/v4-utils";
@@ -37,14 +37,26 @@ export const fetchExistingPool = async ({
   return existingPool;
 };
 
+export interface V2PoolData {
+  baseToken: Address;
+  quoteToken: Address;
+  isToken0: boolean;
+  reserve0: bigint;
+  reserve1: bigint;
+}
+
 export const insertPoolIfNotExists = async ({
   poolAddress,
   timestamp,
-  context
+  context,
+  isV2 = false,
+  v2PoolData,
 }: {
   poolAddress: Address;
   timestamp: bigint;
-  context: Context;  
+  context: Context;
+  isV2?: boolean;
+  v2PoolData?: V2PoolData;
 }): Promise<[typeof pool.$inferSelect, QuoteInfo] | null> => {
   const { db, chain, client } = context;
   const address = poolAddress.toLowerCase() as `0x${string}`;
@@ -53,10 +65,86 @@ export const insertPoolIfNotExists = async ({
     address,
     chainId: chain.id,
   });
-  
+
   if (existingPool) {
     const quoteInfo = await getQuoteInfo(existingPool.quoteToken, timestamp, context);
     return [existingPool, quoteInfo];
+  }
+
+  if (isV2) {
+    if (!v2PoolData) {
+      return null;
+    }
+
+    const { baseToken, quoteToken, isToken0, reserve0, reserve1 } = v2PoolData;
+    const assetAddr = baseToken.toLowerCase() as `0x${string}`;
+    const numeraireAddr = quoteToken.toLowerCase() as `0x${string}`;
+
+    const quoteInfo = await getQuoteInfo(numeraireAddr, timestamp, context);
+
+    const assetBalance = isToken0 ? reserve0 : reserve1;
+    const quoteBalance = isToken0 ? reserve1 : reserve0;
+
+    if (assetBalance === 0n) {
+      return null;
+    }
+
+    const price = PriceService.computePriceFromReserves({
+      assetBalance,
+      quoteBalance,
+      assetDecimals: 18,
+      quoteDecimals: quoteInfo.quoteDecimals,
+    });
+
+    const [assetTotalSupply, assetData] = await Promise.all([
+      client.readContract({
+        address: assetAddr,
+        abi: DERC20ABI,
+        functionName: "totalSupply",
+      }),
+      getAssetData(assetAddr, context),
+    ]);
+
+    const marketCapUsd = MarketDataService.calculateMarketCap({
+      price,
+      quotePriceUSD: quoteInfo.quotePrice!,
+      totalSupply: assetTotalSupply,
+      decimals: quoteInfo.quotePriceDecimals,
+    });
+
+    const isQuoteEth = quoteInfo.quoteToken === QuoteToken.Eth;
+    return [
+      await db.insert(pool).values({
+        address,
+        liquidity: 0n,
+        createdAt: timestamp,
+        asset: assetAddr,
+        baseToken: assetAddr,
+        quoteToken: numeraireAddr,
+        price,
+        type: "v2",
+        chainId: chain.id,
+        fee: 3000, // V2 default fee
+        dollarLiquidity: 0n,
+        dailyVolume: address,
+        maxThreshold: 0n,
+        graduationBalance: 0n,
+        totalFee0: 0n,
+        totalFee1: 0n,
+        volumeUsd: 0n,
+        reserves0: reserve0,
+        reserves1: reserve1,
+        percentDayChange: 0,
+        isToken0,
+        marketCapUsd,
+        sqrtPrice: 0n,
+        tick: 0,
+        isQuoteEth,
+        integrator: assetData.integrator,
+        migrationType: "v2",
+      }),
+      quoteInfo,
+    ];
   }
 
   const poolData = await getV3PoolData({
@@ -76,7 +164,7 @@ export const insertPoolIfNotExists = async ({
   const numeraireAddr = poolState.numeraire.toLowerCase() as `0x${string}`;
 
   const quoteInfo = await getQuoteInfo(numeraireAddr, timestamp, context);
-  
+
   const [assetTotalSupply, assetData] = await Promise.all([
     client.readContract({
       address: assetAddr,
