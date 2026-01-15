@@ -256,6 +256,7 @@ ponder.on("UniswapV4Pool:Swap", async ({ event, context }) => {
       poolData: {
         parentPoolAddress: address,
         price,
+        quotePriceDecimals: quoteInfo.quotePriceDecimals,
         tickLower: 0,
         currentTick: currentTick,
         graduationTick: 0,
@@ -660,6 +661,7 @@ ponder.on("PoolManager:Swap", async ({ event, context }) => {
         poolData: {
           parentPoolAddress: v4Pool.migratedFromPool,
           price,
+          quotePriceDecimals: quoteInfo.quotePriceDecimals,
           tickLower: 0,
           currentTick: newTick,
           graduationTick: 0,
@@ -670,7 +672,7 @@ ponder.on("PoolManager:Swap", async ({ event, context }) => {
         context,
       },
       entityUpdaters
-    ),    
+    ),
     updateV4Pool({
       poolId: poolId as `0x${string}`,
       context,

@@ -224,6 +224,7 @@ export async function handleOptimizedSwap(
           parentPoolAddress: poolAddress,
           price: swapData.price,
           isQuoteEth,
+          quotePriceDecimals: quoteInfo.quotePriceDecimals,
           tickLower: poolEntity.tickLower,
           currentTick: params.tick,
           graduationTick: poolEntity.graduationTick,

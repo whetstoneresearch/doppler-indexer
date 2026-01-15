@@ -16,6 +16,7 @@ export interface SwapUpdateParams {
     parentPoolAddress: Address;
     price: bigint;
     isQuoteEth?: boolean;
+    quotePriceDecimals?: number;
     tickLower: number;
     currentTick: number;
     graduationTick: number;
@@ -79,6 +80,10 @@ export class SwapOrchestrator {
       }
     }
     
+    const priceDivisor = poolData.quotePriceDecimals !== undefined
+      ? BigInt(10) ** BigInt(poolData.quotePriceDecimals)
+      : (poolData.isQuoteEth ? CHAINLINK_ETH_DECIMALS : WAD);
+
     const updates = [
       // Update pool entity
       updatePool({
@@ -90,7 +95,7 @@ export class SwapOrchestrator {
         poolAddress: poolData.parentPoolAddress,
         chainId,
         timestamp: swapData.timestamp,
-        priceUsd: swapData.price * swapData.usdPrice / (poolData.isQuoteEth ? CHAINLINK_ETH_DECIMALS : WAD),
+        priceUsd: swapData.price * swapData.usdPrice / priceDivisor,
         volumeUsd: metrics.swapValueUsd,
       }),
       updateAsset({

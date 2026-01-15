@@ -172,6 +172,7 @@ ponder.on("MigrationPool:Swap(address indexed sender, uint256 amount0In, uint256
         poolData: {
           parentPoolAddress: parentPool,
           price,
+          quotePriceDecimals: quoteInfo.quotePriceDecimals,
           tickLower: 0,
           currentTick: 0,
           graduationTick: 0,
@@ -342,11 +343,12 @@ ponder.on("UniswapV2PairUnichain:Swap", async ({ event, context }) => {
       poolData: {
         parentPoolAddress: parentPool,
         price,
+        quotePriceDecimals: quoteInfo.quotePriceDecimals,
         tickLower: 0,
         currentTick: 0,
         graduationTick: 0,
         type: 'v2',
-        baseToken: v2PoolData.baseToken 
+        baseToken: v2PoolData.baseToken
       },
       chainId: chain.id,
       context,

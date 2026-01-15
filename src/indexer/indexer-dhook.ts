@@ -216,6 +216,7 @@ ponder.on("DopplerHookInitializer:Swap", async ({ event, context }) => {
       poolData: {
         parentPoolAddress: poolAddress,
         price,
+        quotePriceDecimals: quoteInfo.quotePriceDecimals,
         tickLower: 0,
         currentTick,
         graduationTick: poolEntity.graduationTick ?? 0,

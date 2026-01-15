@@ -442,6 +442,7 @@ ponder.on("LockableUniswapV3Pool:Swap", async ({ event, context }) => {
         poolData: {
           parentPoolAddress: address,
           price,
+          quotePriceDecimals: quoteInfo.quotePriceDecimals,
           tickLower: 0,
           currentTick: tick,
           graduationTick: 0,
@@ -806,6 +807,7 @@ ponder.on("UniswapV3Pool:Swap", async ({ event, context }) => {
         poolData: {
           parentPoolAddress: address,
           price,
+          quotePriceDecimals: quoteInfo.quotePriceDecimals,
           tickLower: 0,
           currentTick: tick,
           graduationTick: 0,
@@ -991,6 +993,7 @@ ponder.on("MigrationPool:Swap(address indexed sender, address indexed recipient,
         poolData: {
           parentPoolAddress: parentPool,
           price,
+          quotePriceDecimals: quoteInfo.quotePriceDecimals,
           tickLower: 0,
           currentTick: tick,
           graduationTick: 0,
