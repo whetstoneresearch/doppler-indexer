@@ -56,10 +56,15 @@ export const baseSepoliaConfig: ChainConfig = {
         "0x508812fcdd4972a59b66eb2cad3772279c052000",
         "0x9d0c38a80647e53d5a8a319b39de2b66b8586500"
       ] as Address[],
-      v4MulticurveInitializer:
-        "0x359b5952a254baaa0105381825daedb8986bb55c" as Address,
-      v4MulticurveInitializerHook:
-        "0x06f5bbb7e503c87d78b6811077d6572fd8a3ed40" as Address,
+      v4MulticurveInitializer: [
+        "0x359b5952a254baaa0105381825daedb8986bb55c",        
+        "0x1718405e58c61425cdc0083262bc9f72198f5232"
+      ] as Address[],
+      v4MulticurveInitializerHook: [
+        "0x06f5bbb7e503c87d78b6811077d6572fd8a3ed40",
+        "0x06f5BBB7E503c87d78B6811077d6572fD8a3Ed40",
+        "0x6a1061FC558dDe1E6fD0eFd641b370d435b56d40"
+      ] as Address[],
       v4ScheduledMulticurveInitializer:
         "0x5c10d3e14aae2ef95619b25e907e013260e832e4" as Address,
       v4ScheduledMulticurveInitializerHook:

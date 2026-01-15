@@ -48,22 +48,56 @@ export const insertMulticurvePoolV4Optimized = async ({
   let poolState;
   let baseToken;
   let quoteToken;
-  poolState = await client.readContract({
-    abi: UniswapV4MulticurveInitializerABI,
-    address: scheduled ? chainConfigs[chain.name].addresses.v4.v4ScheduledMulticurveInitializer : chainConfigs[chain.name].addresses.v4.v4MulticurveInitializer,
-    functionName: "getState",
-    args: [poolKey.currency0],
-  });
+
+  const initializerAddresses = scheduled ?
+    chainConfigs[chain.name].addresses.v4.v4ScheduledMulticurveInitializer :
+    chainConfigs[chain.name].addresses.v4.v4MulticurveInitializer;
+
+  if (Array.isArray(initializerAddresses)) {
+    const poolStates = await Promise.all(initializerAddresses.map(async (initializer) => {
+      return await client.readContract({
+        abi: UniswapV4MulticurveInitializerABI,
+        address: initializer,
+        functionName: "getState",
+        args: [poolKey.currency0],
+      });
+    }));
+    poolState = poolStates.find((state) => state[2].hooks !== zeroAddress);
+    if (!poolState) {
+      if (poolStates[0]) {
+        poolState = poolStates[0];
+      } else {
+        console.error("Could not retrieve pool state for asset", poolKey.currency0);
+        return null;
+      }
+    }
+  } else {
+    poolState = await client.readContract({
+      abi: UniswapV4MulticurveInitializerABI,
+      address: initializerAddresses,
+      functionName: "getState",
+      args: [poolKey.currency0],
+    });
+  }
 
   if (poolState[2].hooks === zeroAddress) {
     baseToken = poolKey.currency1;
     quoteToken = poolKey.currency0;
-    poolState = await client.readContract({
-      abi: UniswapV4MulticurveInitializerABI,
-      address: scheduled ? chainConfigs[chain.name].addresses.v4.v4ScheduledMulticurveInitializer : chainConfigs[chain.name].addresses.v4.v4MulticurveInitializer,
-      functionName: "getState",
-      args: [poolKey.currency1],
-    });
+    if (Array.isArray(initializerAddresses)) {
+      const poolStates = await Promise.all(initializerAddresses.map(async (initializer) => {
+        return await client.readContract({
+          abi: UniswapV4MulticurveInitializerABI,
+          address: initializer,
+          functionName: "getState",
+          args: [poolKey.currency1],
+        });
+      }));
+      poolState = poolStates.find((state) => state[2].hooks !== zeroAddress);
+      if (!poolState) {
+        console.error("Missing v4MulticurveInitializer for asset", poolKey.currency1);
+        return null;
+      }
+    }
   } else {
     baseToken = poolKey.currency0;
     quoteToken = poolKey.currency1;
