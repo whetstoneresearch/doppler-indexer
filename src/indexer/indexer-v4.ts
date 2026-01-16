@@ -307,25 +307,35 @@ ponder.on(
     const v4MulticurveInitializer = chainConfigs[context.chain.name].addresses.v4.v4MulticurveInitializer;
     if (Array.isArray(v4MulticurveInitializer)) {
       const poolStates = await Promise.all(v4MulticurveInitializer.map(async (initializer) => {
-        return await context.client.readContract({
-          abi: UniswapV4MulticurveInitializerABI,
-          address: initializer,
-          functionName: "getState",
-          args: [assetId],
-        });
+        try {
+          return await context.client.readContract({
+            abi: UniswapV4MulticurveInitializerABI,
+            address: initializer,
+            functionName: "getState",
+            args: [assetId],
+          });
+        } catch {
+          // Initializer may not exist at this block or doesn't have state for this asset
+          return null;
+        }
       }));
-      poolState = poolStates.find((state) => state[2].hooks !== zeroAddress);
+      poolState = poolStates.find((state) => state && state[2].hooks !== zeroAddress);
       if (!poolState) {
         console.error("Missing v4MulticurveInitializer for asset", assetId);
         return;
       }
     } else {
-      poolState = await context.client.readContract({
-        abi: UniswapV4MulticurveInitializerABI,
-        address: v4MulticurveInitializer,
-        functionName: "getState",
-        args: [assetId],
-      });
+      try {
+        poolState = await context.client.readContract({
+          abi: UniswapV4MulticurveInitializerABI,
+          address: v4MulticurveInitializer,
+          functionName: "getState",
+          args: [assetId],
+        });
+      } catch {
+        console.error("Could not retrieve pool state for asset", assetId);
+        return;
+      }
     }
 
 
