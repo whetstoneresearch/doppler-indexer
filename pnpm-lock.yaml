@@ -18,8 +18,8 @@ importers:
         specifier: ^4.3.2
         version: 4.3.2
       ponder:
-        specifier: ^0.15.17
-        version: 0.15.17(@opentelemetry/api@1.9.0)(@types/node@20.19.17)(hono@4.9.8)(typescript@5.9.2)(viem@2.30.1(typescript@5.9.2))
+        specifier: ^0.16.1
+        version: 0.16.1(@opentelemetry/api@1.9.0)(@types/node@20.19.17)(hono@4.9.8)(typescript@5.9.2)(viem@2.30.1(typescript@5.9.2))
       viem:
         specifier: 2.30.1
         version: 2.30.1(typescript@5.9.2)
@@ -391,6 +391,12 @@ packages:
     peerDependencies:
       eslint: ^6.0.0 || ^7.0.0 || >=8.0.0
 
+  '@eslint-community/eslint-utils@4.9.1':
+    resolution: {integrity: sha512-phrYmNiYppR7znFEdqgfWHXR6NCkZEK7hwWDHZUjit/2/U0r6XvkDl0SYnoM51Hq7FhCGdLDT6zxCCOY1hexsQ==}
+    engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
+    peerDependencies:
+      eslint: ^6.0.0 || ^7.0.0 || >=8.0.0
+
   '@eslint-community/regexpp@4.12.1':
     resolution: {integrity: sha512-CCZCDJuduB9OUkFkY2IgppNZMi2lBQgD2qzwXkEia16cge2pijY/aXi96CJMquDMn3nJdlPV1A5KrJEXwfLNzQ==}
     engines: {node: ^12.0.0 || ^14.0.0 || >=16.0.0}
@@ -682,8 +688,8 @@ packages:
   '@polka/url@1.0.0-next.29':
     resolution: {integrity: sha512-wwQAWhWSuHaag8c4q/KN/vCoeOJYshAIvMQwD4GpSb3OiZklFfvAgmj0VCBBImRpuF/aFgIRzllXlVX93Jevww==}
 
-  '@ponder/utils@0.2.16':
-    resolution: {integrity: sha512-Q2TpJ1BywdZhGDjtWe6mDQXn/jF2YDfMwdblDytwGjQ6zuFyuujP+o/liVbuHfqSYmeUOPHugxk5yKAhHwWfJw==}
+  '@ponder/utils@0.2.17':
+    resolution: {integrity: sha512-ins3XXzm+2jMGa0aTc1N10JG0Sau9Vvk71llOatkEOkncMne9m/mMYxJsV6WfRaZGlo4FB8OoRM6DVPHZlRGHA==}
     peerDependencies:
       typescript: '>=5.0.4'
       viem: '>=2'
@@ -2155,8 +2161,8 @@ packages:
     resolution: {integrity: sha512-ip4qdzjkAyDDZklUaZkcRFb2iA118H9SgRh8yzTkSQK8HilsOJF7rSY8HoW5+I0M46AZgX/pxbprf2vvzQCE0Q==}
     hasBin: true
 
-  ponder@0.15.17:
-    resolution: {integrity: sha512-yCZBFHqi0VGeOSfxE5fKS8pKLdhStUC1g0otwm/mPcF6uRqprKZyCKtVmP13H64MppyGCkIxWNdxpS1U8+fCEg==}
+  ponder@0.16.1:
+    resolution: {integrity: sha512-AnLE0S2EQtqBXh37kR13n1CFOzAhiBzZlu1+FwnI2Xbq4yHo81Txzwb6nSmDMQufRVPUoMBWe8ZqSuC8OpdZiA==}
     engines: {node: '>=18.14'}
     hasBin: true
     peerDependencies:
@@ -2464,8 +2470,8 @@ packages:
     resolution: {integrity: sha512-sf4i37nQ2LBx4m3wB74y+ubopq6W/dIzXg0FDGjsYnZHVa1Da8FH853wlL2gtUhg+xJXjfk3kUZS3BRoQeoQBQ==}
     engines: {node: '>=6'}
 
-  ts-api-utils@2.1.0:
-    resolution: {integrity: sha512-CUgTZL1irw8u29bzrOD/nH85jqyc74D6SshFgujOIA7osm2Rz7dYH77agkx7H4FBNxDq7Cjf+IjaX/8zwFW+ZQ==}
+  ts-api-utils@2.4.0:
+    resolution: {integrity: sha512-3TaVTaAv2gTiMB35i3FiGJaRfwb3Pyn/j3m/bfAvGe8FB7CF6u+LMYqYlDh7reQf7UNvoTvdfAqHGmPGOSsPmA==}
     engines: {node: '>=18.12'}
     peerDependencies:
       typescript: '>=4.8.4'
@@ -2984,6 +2990,11 @@ snapshots:
       eslint: 8.57.1
       eslint-visitor-keys: 3.4.3
 
+  '@eslint-community/eslint-utils@4.9.1(eslint@8.57.1)':
+    dependencies:
+      eslint: 8.57.1
+      eslint-visitor-keys: 3.4.3
+
   '@eslint-community/regexpp@4.12.1': {}
 
   '@eslint-community/regexpp@4.12.2': {}
@@ -3344,7 +3355,7 @@ snapshots:
 
   '@polka/url@1.0.0-next.29': {}
 
-  '@ponder/utils@0.2.16(typescript@5.9.2)(viem@2.30.1(typescript@5.9.2))':
+  '@ponder/utils@0.2.17(typescript@5.9.2)(viem@2.30.1(typescript@5.9.2))':
     dependencies:
       viem: 2.30.1(typescript@5.9.2)
     optionalDependencies:
@@ -3531,7 +3542,7 @@ snapshots:
       graphemer: 1.4.0
       ignore: 7.0.5
       natural-compare: 1.4.0
-      ts-api-utils: 2.1.0(typescript@5.9.2)
+      ts-api-utils: 2.4.0(typescript@5.9.2)
       typescript: 5.9.2
     transitivePeerDependencies:
       - supports-color
@@ -3573,7 +3584,7 @@ snapshots:
       '@typescript-eslint/utils': 8.38.0(eslint@8.57.1)(typescript@5.9.2)
       debug: 4.4.3(supports-color@8.1.1)
       eslint: 8.57.1
-      ts-api-utils: 2.1.0(typescript@5.9.2)
+      ts-api-utils: 2.4.0(typescript@5.9.2)
       typescript: 5.9.2
     transitivePeerDependencies:
       - supports-color
@@ -3591,14 +3602,14 @@ snapshots:
       is-glob: 4.0.3
       minimatch: 9.0.5
       semver: 7.7.3
-      ts-api-utils: 2.1.0(typescript@5.9.2)
+      ts-api-utils: 2.4.0(typescript@5.9.2)
       typescript: 5.9.2
     transitivePeerDependencies:
       - supports-color
 
   '@typescript-eslint/utils@8.38.0(eslint@8.57.1)(typescript@5.9.2)':
     dependencies:
-      '@eslint-community/eslint-utils': 4.9.0(eslint@8.57.1)
+      '@eslint-community/eslint-utils': 4.9.1(eslint@8.57.1)
       '@typescript-eslint/scope-manager': 8.38.0
       '@typescript-eslint/types': 8.38.0
       '@typescript-eslint/typescript-estree': 8.38.0(typescript@5.9.2)
@@ -4847,7 +4858,7 @@ snapshots:
       sonic-boom: 3.8.1
       thread-stream: 2.7.0
 
-  ponder@0.15.17(@opentelemetry/api@1.9.0)(@types/node@20.19.17)(hono@4.9.8)(typescript@5.9.2)(viem@2.30.1(typescript@5.9.2)):
+  ponder@0.16.1(@opentelemetry/api@1.9.0)(@types/node@20.19.17)(hono@4.9.8)(typescript@5.9.2)(viem@2.30.1(typescript@5.9.2)):
     dependencies:
       '@babel/code-frame': 7.27.1
       '@commander-js/extra-typings': 12.1.0(commander@12.1.0)
@@ -4856,7 +4867,7 @@ snapshots:
       '@escape.tech/graphql-armor-max-depth': 2.4.2
       '@escape.tech/graphql-armor-max-tokens': 2.5.1
       '@hono/node-server': 1.19.5(hono@4.9.8)
-      '@ponder/utils': 0.2.16(typescript@5.9.2)(viem@2.30.1(typescript@5.9.2))
+      '@ponder/utils': 0.2.17(typescript@5.9.2)(viem@2.30.1(typescript@5.9.2))
       abitype: 0.10.3(typescript@5.9.2)
       ansi-escapes: 7.2.0
       commander: 12.1.0
@@ -5211,7 +5222,7 @@ snapshots:
 
   totalist@3.0.1: {}
 
-  ts-api-utils@2.1.0(typescript@5.9.2):
+  ts-api-utils@2.4.0(typescript@5.9.2):
     dependencies:
       typescript: 5.9.2
 
