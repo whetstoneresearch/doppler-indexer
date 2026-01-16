@@ -60,8 +60,16 @@ export const insertV3MigrationPoolIfNotExists = async ({
 
   const { price, token0, token1, reserve0, reserve1, isToken0, fee } = poolData;
 
-  const assetAddr = token0.toLowerCase() as `0x${string}`;
-  const numeraireAddr = token1.toLowerCase() as `0x${string}`;
+  let assetAddr: Address;
+  let numeraireAddr: Address;
+
+  if (isToken0) {
+    assetAddr = token0.toLowerCase() as `0x${string}`;
+    numeraireAddr = token1.toLowerCase() as `0x${string}`;
+  } else {
+    assetAddr = token1.toLowerCase() as `0x${string}`;
+    numeraireAddr = token0.toLowerCase() as `0x${string}`;
+  }
 
   const reserveBaseToken = isToken0 ? reserve0 : reserve1;
   const reserveQuoteToken = isToken0 ? reserve1 : reserve0;

@@ -303,13 +303,42 @@ ponder.on(
       return;
     }
 
-    const poolState = await context.client.readContract({
-      abi: UniswapV4MulticurveInitializerABI,
-      address:
-        chainConfigs[context.chain.name].addresses.v4.v4MulticurveInitializer,
-      functionName: "getState",
-      args: [assetId],
-    });
+    let poolState;
+    const v4MulticurveInitializer = chainConfigs[context.chain.name].addresses.v4.v4MulticurveInitializer;
+    if (Array.isArray(v4MulticurveInitializer)) {
+      const poolStates = await Promise.all(v4MulticurveInitializer.map(async (initializer) => {
+        try {
+          return await context.client.readContract({
+            abi: UniswapV4MulticurveInitializerABI,
+            address: initializer,
+            functionName: "getState",
+            args: [assetId],
+          });
+        } catch {
+          // Initializer may not exist at this block or doesn't have state for this asset
+          return null;
+        }
+      }));
+      poolState = poolStates.find((state) => state && state[2].hooks !== zeroAddress);
+      if (!poolState) {
+        console.error("Missing v4MulticurveInitializer for asset", assetId);
+        return;
+      }
+    } else {
+      try {
+        poolState = await context.client.readContract({
+          abi: UniswapV4MulticurveInitializerABI,
+          address: v4MulticurveInitializer,
+          functionName: "getState",
+          args: [assetId],
+        });
+      } catch {
+        console.error("Could not retrieve pool state for asset", assetId);
+        return;
+      }
+    }
+
+
 
     const poolKey = poolState[2];
 
@@ -328,6 +357,7 @@ ponder.on(
     const poolEntity = await insertMulticurvePoolV4Optimized({
       poolAddress,
       timestamp,
+      blockNumber: block.number,
       poolKey,
       context,
       creatorAddress,
@@ -372,6 +402,7 @@ ponder.on(
       creatorAddress,
       poolAddress,
       timestamp,
+      blockNumber: block.number,
       poolKey: key,
       context,
       scheduled: false

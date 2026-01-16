@@ -67,13 +67,14 @@ ponder.on(
     const poolEntity = await insertMulticurvePoolV4Optimized({
       poolAddress,
       timestamp,
+      blockNumber: block.number,
       poolKey,
       context,
       creatorAddress,
       scheduled: true
     });
     if (!poolEntity) return;
-    
+
     const assetEntity = await insertAssetIfNotExists({
       assetAddress: assetAddress,
       timestamp,
@@ -116,6 +117,7 @@ ponder.on(
       creatorAddress,
       poolAddress,
       timestamp,
+      blockNumber: block.number,
       poolKey: key,
       context,
       scheduled: true

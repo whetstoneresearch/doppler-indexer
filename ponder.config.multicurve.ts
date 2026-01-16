@@ -226,7 +226,7 @@ export default createConfig({
       chain: {
         baseSepolia: {
           startBlock: 31000617,
-          address: [baseSepolia.addresses.v4.v4MulticurveInitializer],
+          address: baseSepolia.addresses.v4.v4MulticurveInitializer,
         },
         base: {
           startBlock: 36178538,
@@ -239,7 +239,7 @@ export default createConfig({
       chain: {
         baseSepolia: {
           startBlock: 31000617,
-          address: [baseSepolia.addresses.v4.v4MulticurveInitializerHook],
+          address: baseSepolia.addresses.v4.v4MulticurveInitializerHook,
         },
         base: {
           startBlock: 36178538,

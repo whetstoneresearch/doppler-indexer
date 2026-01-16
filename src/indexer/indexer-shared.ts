@@ -70,7 +70,7 @@ ponder.on("Airlock:Migrate", async ({ event, context }) => {
     await Promise.all([
       insertV3MigrationPoolIfNotExists({
       assetAddress: assetId,
-      migrationPoolAddress: migrationPoolAddress,
+      migrationPoolAddress: migrationPoolAddress.toLowerCase() as `0x${string}`,
       parentPoolAddress: parentPool.address,
       timestamp,
       context,
