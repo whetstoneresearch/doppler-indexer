@@ -861,7 +861,7 @@ ponder.on("MigrationPool:Swap(address indexed sender, address indexed recipient,
     return;
   }
 
-  const { isToken0, reserveBaseToken, reserveQuoteToken, fee } =
+  const { isToken0, reserveBaseToken, reserveQuoteToken, fee, baseToken, quoteToken } =
     v3MigrationPool!;
 
   const parentPool = v3MigrationPool!.parentPool.toLowerCase() as `0x${string}`;
@@ -869,14 +869,16 @@ ponder.on("MigrationPool:Swap(address indexed sender, address indexed recipient,
   const result = await insertPoolIfNotExists({
     poolAddress: address,
     timestamp,
-    context,    
+    context,
+    asset: baseToken,
+    numeraire: quoteToken,
   });
 
   if (!result) {
     return;
   }
 
-  const [{ baseToken, quoteToken }, quoteInfo] = result;
+  const [_, quoteInfo] = result;
   
   const price = PriceService.computePriceFromSqrtPriceX96({
     sqrtPriceX96,

@@ -133,9 +133,11 @@ export const getV3MigrationPoolData = async ({
 export const getV3PoolData = async ({
   address,
   context,
+  asset,  
 }: {
   address: Address;
   context: Context;
+  asset?: Address | null;
 }): Promise<V3PoolData | null> => {
   const poolState = await getPoolState({
     poolAddress: address,
@@ -159,7 +161,12 @@ export const getV3PoolData = async ({
     context,
   });
 
-  const isToken0 = token0.toLowerCase() === poolState.asset.toLowerCase();
+  let isToken0;
+  if (asset) {
+    isToken0 = token0.toLowerCase() === asset.toLowerCase();
+  } else {
+    isToken0 = token0.toLowerCase() === poolState.asset.toLowerCase();
+  }
   
   let quoteInfo;
   if (isToken0) {

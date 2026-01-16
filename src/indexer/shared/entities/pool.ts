@@ -2,7 +2,7 @@ import { DERC20ABI } from "@app/abis";
 import { V4PoolData, DHookPoolData } from "@app/types";
 import { MarketDataService, PriceService } from "@app/core";
 import { getAssetData } from "@app/utils/getAssetData";
-import { getV3PoolData } from "@app/utils/v3-utils";
+import { getV3PoolData, getSlot0Data, getV3PoolReserves } from "@app/utils/v3-utils";
 import { computeGraduationPercentage } from "@app/utils/v4-utils";
 import { getReservesV4 } from "@app/utils/v4-utils/getV4PoolData";
 import { Context } from "ponder:registry";
@@ -51,12 +51,16 @@ export const insertPoolIfNotExists = async ({
   context,
   isV2 = false,
   v2PoolData,
+  asset,
+  numeraire,
 }: {
   poolAddress: Address;
   timestamp: bigint;
   context: Context;
   isV2?: boolean;
   v2PoolData?: V2PoolData;
+  asset?: Address;
+  numeraire?: Address;
 }): Promise<[typeof pool.$inferSelect, QuoteInfo] | null> => {
   const { db, chain, client } = context;
   const address = poolAddress.toLowerCase() as `0x${string}`;
@@ -144,6 +148,90 @@ export const insertPoolIfNotExists = async ({
         migrationType: "v2",
       }),
       quoteInfo,
+    ];
+  }
+
+  // When asset and numeraire are provided directly (e.g., for migration pools),
+  // bypass getPoolState which may not have the pool registered
+  if (asset && numeraire) {
+    const { slot0Data, liquidity, token0, token1, fee } = await getSlot0Data({
+      address,
+      context,
+    });
+
+    // Skip events where asset or numeraire is a precompile address
+    if (isPrecompileAddress(token0) || isPrecompileAddress(token1)) {
+      return null;
+    }
+
+    const { reserve0, reserve1 } = await getV3PoolReserves({
+      token0,
+      token1,
+      address,
+      context,
+    });
+
+    const assetAddr = asset.toLowerCase() as `0x${string}`;
+    const numeraireAddr = numeraire.toLowerCase() as `0x${string}`;
+    const isToken0 = token0.toLowerCase() === assetAddr;
+
+    const quoteInfo = await getQuoteInfo(numeraireAddr, timestamp, context);
+
+    const price = PriceService.computePriceFromSqrtPriceX96({
+      sqrtPriceX96: slot0Data.sqrtPrice,
+      isToken0,
+      decimals: 18,
+      quoteDecimals: quoteInfo.quoteDecimals
+    });
+
+    const [assetTotalSupply, assetData] = await Promise.all([
+      client.readContract({
+        address: assetAddr,
+        abi: DERC20ABI,
+        functionName: "totalSupply",
+      }),
+      getAssetData(assetAddr, context),
+    ]);
+
+    const marketCapUsd = MarketDataService.calculateMarketCap({
+      price,
+      quotePriceUSD: quoteInfo.quotePrice!,
+      totalSupply: assetTotalSupply,
+      decimals: quoteInfo.quotePriceDecimals
+    });
+
+    let migrationType = getMigrationType(assetData, chain.name);
+
+    const isQuoteEth = quoteInfo.quoteToken === QuoteToken.Eth;
+    return [await db.insert(pool).values({
+      ...slot0Data,
+      address,
+      liquidity: liquidity,
+      createdAt: timestamp,
+      asset: assetAddr,
+      baseToken: assetAddr,
+      quoteToken: numeraireAddr,
+      price,
+      type: "v3",
+      chainId: chain.id,
+      fee,
+      dollarLiquidity: 0n,
+      dailyVolume: address,
+      maxThreshold: 0n,
+      graduationBalance: 0n,
+      totalFee0: 0n,
+      totalFee1: 0n,
+      volumeUsd: 0n,
+      reserves0: reserve0,
+      reserves1: reserve1,
+      percentDayChange: 0,
+      isToken0,
+      marketCapUsd,
+      isQuoteEth,
+      integrator: assetData.integrator,
+      migrationType,
+    }),
+      quoteInfo
     ];
   }
 

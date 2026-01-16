@@ -1,1 +1,1 @@
-export { getV3PoolData } from "./getV3PoolData";
+export { getV3PoolData, getSlot0Data, getV3PoolReserves } from "./getV3PoolData";
