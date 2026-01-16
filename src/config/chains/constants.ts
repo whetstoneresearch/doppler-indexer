@@ -40,6 +40,12 @@ export const SELF_CORRECTING_V4_INITIALIZER_START_BLOCKS = {
   baseSepolia: 27934624,
 } as const;
 
+export const V4_MULTICURVE_INITIALIZER_START_BLOCKS: Record<string, number> = {
+  // baseSepolia
+  "0x359b5952a254baaa0105381825daedb8986bb55c": 31004617,
+  "0x1718405e58c61425cdc0083262bc9f72198f5232": 31564169,
+} as const;
+
 // Special contract addresses used across chains
 export const COMMON_ADDRESSES = {
   WETH_BASE: "0x4200000000000000000000000000000000000006" as Address,
