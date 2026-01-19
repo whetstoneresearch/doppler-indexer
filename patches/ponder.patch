@@ -1,8 +1,25 @@
 diff --git a/src/sync-historical/index.ts b/src/sync-historical/index.ts
-index 2f4a334c0e39c87a1181f3dd5f25edafbcf5b3a8..0af3a22708a1634cd2529a49497747fe89bb79f6 100644
+index 2f4a334c0e39c87a1181f3dd5f25edafbcf5b3a8..d25cba72ec493f648372552fdeed3514c39d4d46 100644
 --- a/src/sync-historical/index.ts
 +++ b/src/sync-historical/index.ts
-@@ -584,7 +584,7 @@ export const createHistoricalSync = (
+@@ -250,7 +250,15 @@ export const createHistoricalSync = (
+           }),
+         ),
+       ),
+-    ).then((logs) => logs.flat());
++    ).then((logs) => {
++      const result: SyncLog[] = [];
++      for (const batch of logs) {
++        for (const log of batch) {
++          result.push(log);
++        }
++      }
++      return result;
++    });
+ 
+     /**
+      * Dynamically increase the range used in "eth_getLogs" if an
+@@ -584,7 +592,7 @@ export const createHistoricalSync = (
        await Promise.all(
          ethGetLogsParams.map(async (params) => {
            const _logs = await syncLogsDynamic(params, context);
