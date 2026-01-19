@@ -1,0 +1,13 @@
+diff --git a/src/sync-historical/index.ts b/src/sync-historical/index.ts
+index 2f4a334c0e39c87a1181f3dd5f25edafbcf5b3a8..0af3a22708a1634cd2529a49497747fe89bb79f6 100644
+--- a/src/sync-historical/index.ts
++++ b/src/sync-historical/index.ts
+@@ -584,7 +584,7 @@ export const createHistoricalSync = (
+       await Promise.all(
+         ethGetLogsParams.map(async (params) => {
+           const _logs = await syncLogsDynamic(params, context);
+-          logs.push(..._logs);
++          for (const log of _logs) logs.push(log);
+         }),
+       );
+ 

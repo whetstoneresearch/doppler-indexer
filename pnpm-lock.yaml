@@ -4,6 +4,11 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  ponder:
+    hash: 726bfe17ccabac0c002fbdcf111976a624885ab729c9ff0ed6d1bcfc5584ffb1
+    path: patches/ponder.patch
+
 importers:
 
   .:
@@ -19,10 +24,13 @@ importers:
         version: 4.3.2
       ponder:
         specifier: ^0.15.17
-        version: 0.15.17(@opentelemetry/api@1.9.0)(@types/node@20.19.17)(hono@4.9.8)(typescript@5.9.2)(viem@2.30.1(typescript@5.9.2))
+        version: 0.15.17(patch_hash=726bfe17ccabac0c002fbdcf111976a624885ab729c9ff0ed6d1bcfc5584ffb1)(@opentelemetry/api@1.9.0)(@types/node@20.19.17)(hono@4.9.8)(typescript@5.9.2)(viem@2.30.1(typescript@5.9.2))
       viem:
         specifier: 2.30.1
         version: 2.30.1(typescript@5.9.2)
+      vitest:
+        specifier: ^4.0.15
+        version: 4.0.15(@opentelemetry/api@1.9.0)(@types/node@20.19.17)(@vitest/ui@4.0.15)
     devDependencies:
       '@types/node':
         specifier: ^20.19.17
@@ -39,9 +47,6 @@ importers:
       typescript:
         specifier: ^5.9.2
         version: 5.9.2
-      vitest:
-        specifier: ^4.0.15
-        version: 4.0.15(@opentelemetry/api@1.9.0)(@types/node@20.19.17)(@vitest/ui@4.0.15)
 
 packages:
 
@@ -4847,7 +4852,7 @@ snapshots:
       sonic-boom: 3.8.1
       thread-stream: 2.7.0
 
-  ponder@0.15.17(@opentelemetry/api@1.9.0)(@types/node@20.19.17)(hono@4.9.8)(typescript@5.9.2)(viem@2.30.1(typescript@5.9.2)):
+  ponder@0.15.17(patch_hash=726bfe17ccabac0c002fbdcf111976a624885ab729c9ff0ed6d1bcfc5584ffb1)(@opentelemetry/api@1.9.0)(@types/node@20.19.17)(hono@4.9.8)(typescript@5.9.2)(viem@2.30.1(typescript@5.9.2)):
     dependencies:
       '@babel/code-frame': 7.27.1
       '@commander-js/extra-typings': 12.1.0(commander@12.1.0)
