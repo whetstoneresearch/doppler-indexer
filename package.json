@@ -34,7 +34,8 @@
   },
   "pnpm": {
     "patchedDependencies": {
-      "ponder@0.15.17": "patches/ponder.patch"
+      "ponder@0.15.17": "patches/ponder.patch",
+      "ponder": "patches/ponder.patch"
     }
   }
 }

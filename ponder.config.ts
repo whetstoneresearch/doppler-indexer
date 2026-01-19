@@ -47,7 +47,6 @@ export default createConfig({
     base: {
       id: CHAIN_IDS.base,
       rpc: http(process.env.PONDER_RPC_URL_8453),
-      ethGetLogsBlockRange: 200,
     },
     baseSepolia: {
       id: CHAIN_IDS.baseSepolia,
