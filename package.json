@@ -31,5 +31,10 @@
   },
   "engines": {
     "node": ">=18.14"
+  },
+  "pnpm": {
+    "patchedDependencies": {
+      "ponder@0.15.17": "patches/ponder.patch"
+    }
   }
 }
