@@ -8,8 +8,8 @@ index 78ec6f62f0d3d5893c60f0b4a46a849d3a094ac2..d587d4f56ea69973432294d2c9be54aa
              addressBatches = [];
 -            for (let i = 0; i < address.length; i += 50) {
 -                addressBatches.push(address.slice(i, i + 50));
-+            for (let i = 0; i < address.length; i += 250) {
-+                addressBatches.push(address.slice(i, i + 250));
++            for (let i = 0; i < address.length; i += 100) {
++                addressBatches.push(address.slice(i, i + 100));
              }
          }
          const logs = await Promise.all(intervals.flatMap((interval) => addressBatches.map((address) => eth_getLogs(args.rpc, [
