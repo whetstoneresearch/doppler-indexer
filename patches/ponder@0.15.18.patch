@@ -1,0 +1,22 @@
+diff --git a/dist/esm/sync-historical/index.js b/dist/esm/sync-historical/index.js
+index 78ec6f62f0d3d5893c60f0b4a46a849d3a094ac2..d587d4f56ea69973432294d2c9be54aa351c91be 100644
+--- a/dist/esm/sync-historical/index.js
++++ b/dist/esm/sync-historical/index.js
+@@ -113,7 +113,7 @@ export const createHistoricalSync = (args) => {
+                     : undefined,
+             };
+             return syncLogsDynamic({ address, topic0, topic1, topic2, topic3, interval }, context);
+-        })))).then((logs) => logs.flat());
++        })))).then((logs) => { const result = []; for (const batch of logs) { for (const log of batch) { result.push(log); } } return result; });
+         /**
+          * Dynamically increase the range used in "eth_getLogs" if an
+          * error has been received but the error didn't suggest a range.
+@@ -360,7 +360,7 @@ export const createHistoricalSync = (args) => {
+             let logs = [];
+             await Promise.all(ethGetLogsParams.map(async (params) => {
+                 const _logs = await syncLogsDynamic(params, context);
+-                logs.push(..._logs);
++                for (const log of _logs) logs.push(log);
+             }));
+             // Remove duplicate logs that may have resulted from intersecting
+             // filters.
