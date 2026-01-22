@@ -270,11 +270,11 @@ export const insertV4MigrationPoolIfNotExists = async ({
     
     const dollarLiquidity = MarketDataService.calculateLiquidity({
       assetBalance: migrationData.isToken0
-        ? existingPool.reserves0
-        : existingPool.reserves1,
+        ? migrationData.reserves0
+        : migrationData.reserves1,
       quoteBalance: migrationData.isToken0
-        ? existingPool.reserves1
-        : existingPool.reserves0,
+        ? migrationData.reserves1
+        : migrationData.reserves0,
       price: migrationData.price,
       quotePriceUSD: migrationData.quoteInfo.quotePrice ?? 0n,
       decimals: migrationData.quoteInfo.quotePriceDecimals,
@@ -296,7 +296,12 @@ export const insertV4MigrationPoolIfNotExists = async ({
       price: migrationData.price,
       dollarLiquidity,
       isToken0: migrationData.isToken0,
-      isQuoteEth,
+      isQuoteEth,      
+      reserves0: migrationData.reserves0,
+      reserves1: migrationData.reserves1,
+      liquidity: migrationData.liquidity,
+      sqrtPriceX96: migrationData.slot0Data.sqrtPrice,
+      tick: migrationData.slot0Data.tick,
     });
 
     // Add to in-memory cache for fast lookups in PoolManager:Swap handler
@@ -315,6 +320,11 @@ export const insertV4MigrationPoolIfNotExists = async ({
       dollarLiquidity,
       isToken0: migrationData.isToken0,
       isQuoteEth,
+      reserves0: migrationData.reserves0,
+      reserves1: migrationData.reserves1,
+      liquidity: migrationData.liquidity,
+      sqrtPriceX96: migrationData.slot0Data.sqrtPrice,
+      tick: migrationData.slot0Data.tick,
     };
   }
 
