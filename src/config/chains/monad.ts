@@ -31,7 +31,7 @@ export const monadConfig: ChainConfig = {
     v4: {
       poolManager: "0x188d586ddcf52439676ca21a244753fa19f9ea8e" as Address,
       dopplerDeployer: "0xaCE07c3c1D3b556D42633211f0Da71dc6F6d1c42" as Address,
-      v4Initializer: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
+      v4Initializer: "0x53b4c21a6Cb61D64F636ABBfa6E8E90E6558e8ad" as Address,
       stateView: "0x77395f3b2e73ae90843717371294fa97cc419d64" as Address,
       dopplerLens: COMMON_ADDRESSES.ZERO_ADDRESS,
       v4Migrator: COMMON_ADDRESSES.ZERO_ADDRESS,
