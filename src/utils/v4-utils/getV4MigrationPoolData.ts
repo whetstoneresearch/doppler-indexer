@@ -1,6 +1,6 @@
 import { Address } from "viem";
 import { Context } from "ponder:registry";
-import { V4MigratorABI, V4MigratorABILegacy, StateViewABI } from "@app/abis";
+import { V4MigratorABI, V4MigratorABILegacy, StateViewABI, DERC20ABI } from "@app/abis";
 import { PoolKey, Slot0Data } from "@app/types/v4-types";
 import { getPoolId } from "./getPoolId";
 import { computeV4Price } from "./computeV4Price";
@@ -8,7 +8,6 @@ import { chainConfigs } from "@app/config";
 import { getQuoteInfo, QuoteInfo } from "@app/utils/getQuoteInfo";
 import { getAssetData } from "@app/utils/getAssetData";
 import { zeroAddress } from "viem";
-import { getAmount0Delta, getAmount1Delta } from "@app/utils/v3-utils/computeGraduationThreshold";
 
 export interface BeneficiaryData {
   beneficiary: Address;
@@ -91,12 +90,14 @@ export const getV4MigrationPoolData = async ({
   migratorAddress,
   assetAddress,
   numeraireAddress,
+  migrationPoolAddress,
   timestamp,
   context,
 }: {
   migratorAddress: Address;
   assetAddress: Address;
   numeraireAddress: Address;
+  migrationPoolAddress: Address;
   timestamp: bigint;
   context: Context;
 }): Promise<V4MigrationPoolData> => {
@@ -158,28 +159,26 @@ export const getV4MigrationPoolData = async ({
     quoteTokenDecimals: quoteInfo.quoteDecimals,
   });
 
-  const MIN_TICK = -887270;
-  const MAX_TICK = 887270;
-  const currentTick = slot0Data.tick;
+  // Fetch actual reserves from the migration pool (V3 pool where liquidity resides)
+  const [r0, r1] = await client.multicall({
+    contracts: [
+      {
+        abi: DERC20ABI,
+        address: poolKey.currency0,
+        functionName: "balanceOf",
+        args: [migrationPoolAddress],
+      },
+      {
+        abi: DERC20ABI,
+        address: poolKey.currency1,
+        functionName: "balanceOf",
+        args: [migrationPoolAddress],
+      },
+    ],
+  });
 
-  let reserves0 = 0n;
-  let reserves1 = 0n;
-
-  if (liquidity > 0n) {
-    reserves0 = getAmount0Delta({
-      tickLower: currentTick,
-      tickUpper: MAX_TICK,
-      liquidity,
-      roundUp: false,
-    });
-
-    reserves1 = getAmount1Delta({
-      tickLower: MIN_TICK,
-      tickUpper: currentTick,
-      liquidity,
-      roundUp: false,
-    });
-  }
+  const reserves0 = r0?.result ?? 0n;
+  const reserves1 = r1?.result ?? 0n;
 
   return {
     poolKey,
