@@ -239,6 +239,7 @@ export const insertV4MigrationPoolIfNotExists = async ({
   migratorAddress,
   assetAddress,
   numeraireAddress,
+  migrationPoolAddress,
   parentPoolAddress,
   timestamp,
   context,
@@ -246,6 +247,7 @@ export const insertV4MigrationPoolIfNotExists = async ({
   migratorAddress: Address;
   assetAddress: Address;
   numeraireAddress: Address;
+  migrationPoolAddress: Address;
   parentPoolAddress: Address;
   timestamp: bigint;
   context: Context;
@@ -256,6 +258,7 @@ export const insertV4MigrationPoolIfNotExists = async ({
     migratorAddress,
     assetAddress,
     numeraireAddress,
+    migrationPoolAddress,
     timestamp,
     context,
   });

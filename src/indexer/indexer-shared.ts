@@ -108,6 +108,7 @@ ponder.on("Airlock:Migrate", async ({ event, context }) => {
       migratorAddress,
       assetAddress: assetId,
       numeraireAddress: assetEntity.numeraire,
+      migrationPoolAddress,
       parentPoolAddress: parentPool.address,
       timestamp,
       context,
