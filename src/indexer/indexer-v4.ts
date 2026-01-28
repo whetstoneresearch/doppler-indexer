@@ -10,6 +10,7 @@ import {
   initializeV4MigrationPoolCache,
   isV4MigrationPoolCacheInitialized,
   isKnownV4MigrationPool,
+  addToV4MigrationPoolCache,
 } from "./shared/v4MigrationPoolCache";
 
 import { insertV4ConfigIfNotExists } from "./shared/entities/v4Config";
@@ -938,4 +939,49 @@ ponder.on("PoolManager:Initialize", async ({ event, context }) => {
       lastRefreshed: timestamp,
     },
   });
+});
+
+ponder.on("UniswapV4Migrator:Migrate", async ({ event, context }) => {
+  const { poolId, sqrtPriceX96, lowerTick, upperTick, liquidity, reserves0, reserves1 } = event.args;
+  const { timestamp } = event.block;
+  const { chain } = context;
+
+  const v4Pool = await fetchV4MigrationPool({
+    poolId: poolId as `0x${string}`,
+    context,
+  });
+
+  if (!v4Pool) {
+    console.warn(`V4Migrator:Migrate - Pool ${poolId} not found, skipping`);
+    return;
+  }
+
+  const quoteInfo = await getQuoteInfo(v4Pool.quoteToken, timestamp, context);
+  const isQuoteEth = quoteInfo.quoteToken === QuoteToken.Eth;
+
+  const dollarLiquidity = MarketDataService.calculateLiquidity({
+    assetBalance: v4Pool.isToken0 ? reserves0 : reserves1,
+    quoteBalance: v4Pool.isToken0 ? reserves1 : reserves0,
+    price: v4Pool.price,
+    quotePriceUSD: quoteInfo.quotePrice ?? 0n,
+    decimals: quoteInfo.quotePriceDecimals,
+    assetDecimals: 18,
+    quoteDecimals: quoteInfo.quoteDecimals,
+  });
+
+  await updateV4Pool({
+    poolId: poolId as `0x${string}`,
+    context,
+    update: {
+      reserves0,
+      reserves1,
+      liquidity,
+      sqrtPriceX96,
+      dollarLiquidity,
+      isQuoteEth,
+      lastRefreshed: timestamp,
+    },
+  });
+
+  addToV4MigrationPoolCache(chain.id, poolId as string);
 });

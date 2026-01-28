@@ -49,13 +49,10 @@ export const baseSepoliaConfig: ChainConfig = {
         "0x53b4c21a6Cb61D64F636ABBfa6E8E90E6558e8ad"
       ] as Address[],
       v4Migrator: [
-        "0xe713efce3c639432fc3ca902f34edaf15ebcf3ac",
         "0xf326d8cdb65a4ad334cfbdd7d3a3cb27be8b770d",
-        "0xb2eC6559704467306D04322a5dC082B2af4562dD",
         "0xeee0eccb54398ce371caacbcef076d3ed597ddb3"
       ] as Address[],
       v4MigratorHook: [
-        "0x508812fcdd4972a59b66eb2cad3772279c052000",
         "0x9d0c38a80647e53d5a8a319b39de2b66b8586500",
         "0x127caaad598ffa97577940b0a5c3b6150019e500"
       ] as Address[],
@@ -144,12 +141,10 @@ export const baseConfig: ChainConfig = {
       stateView: "0xa3c0c9b65bad0b08107aa264b0f3db444b867a71" as Address,
       dopplerLens: "0x094d926a969b3024ca46d2186bf13fd5cdba9ce2" as Address,
       v4Migrator: [
-        "0xa24e35a5d71d02a59b41e7c93567626302da1958",
         "0x166109c4ee7fe69164631caa937daa5f5cebfef0",
         "0xd3b4cf7fd24381e90a4f012fc6c5976b87b9b3ce"
       ] as Address[],
       v4MigratorHook: [
-        "0x1370ad7fda3b054eca3532a066b968433e736000",
         "0x45178a8d6d368d612b7552b217802b7f97262000",
         "0xd6fecff347c6203a41874e8d77de669b54e7a500"
       ] as Address[],

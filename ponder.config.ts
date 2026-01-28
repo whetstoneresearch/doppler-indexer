@@ -14,6 +14,7 @@ import {
   ZoraCoinABI,
   ZoraCreatorCoinABI,
   V4MigratorHookABI,
+  V4MigratorABI,
   DopplerHookInitializerABI,
 } from "./src/abis";
 import { BLOCK_INTERVALS } from "./src/config/chains/constants";
@@ -388,6 +389,23 @@ export default createConfig({
         unichain: {
           startBlock: unichain.v4StartBlock,
           address: unichain.addresses.v4.v4MigratorHook,
+        },
+      },
+    },
+    UniswapV4Migrator: {
+      abi: V4MigratorABI,
+      chain: {
+        base: {
+          startBlock: base.v4StartBlock,
+          address: base.addresses.v4.v4Migrator,
+        },
+        baseSepolia: {
+          startBlock: baseSepolia.v4StartBlock,
+          address: baseSepolia.addresses.v4.v4Migrator,
+        },
+        unichain: {
+          startBlock: unichain.v4StartBlock,
+          address: unichain.addresses.v4.v4Migrator,
         },
       },
     },
