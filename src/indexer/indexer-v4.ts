@@ -10,6 +10,7 @@ import {
   initializeV4MigrationPoolCache,
   isV4MigrationPoolCacheInitialized,
   isKnownV4MigrationPool,
+  addToV4MigrationPoolCache,
 } from "./shared/v4MigrationPoolCache";
 
 import { insertV4ConfigIfNotExists } from "./shared/entities/v4Config";
@@ -938,4 +939,34 @@ ponder.on("PoolManager:Initialize", async ({ event, context }) => {
       lastRefreshed: timestamp,
     },
   });
+});
+
+ponder.on("UniswapV4Migrator:Migrate", async ({ event, context }) => {
+  const { poolId, sqrtPriceX96, liquidity, reserves0, reserves1 } = event.args;
+  const { timestamp } = event.block;
+  const { chain } = context;
+
+  const v4Pool = await fetchV4MigrationPool({
+    poolId: poolId as `0x${string}`,
+    context,
+  });
+
+  if (!v4Pool) {
+    console.warn(`V4Migrator:Migrate - Pool ${poolId} not found, skipping`);
+    return;
+  }
+
+  await updateV4Pool({
+    poolId: poolId as `0x${string}`,
+    context,
+    update: {
+      reserves0,
+      reserves1,
+      liquidity,
+      sqrtPriceX96,
+      lastRefreshed: timestamp,
+    },
+  });
+
+  addToV4MigrationPoolCache(chain.id, poolId as string);
 });

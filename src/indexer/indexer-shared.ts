@@ -4,7 +4,7 @@ import { insertV3MigrationPoolIfNotExists } from "./shared/entities/migrationPoo
 import { insertAssetIfNotExists, updateAsset } from "./shared/entities/asset";
 import { insertTokenIfNotExists, updateToken } from "./shared/entities/token";
 import { insertV2MigrationPoolIfNotExists } from "./shared/entities/v2Pool";
-import { insertV4MigrationPoolIfNotExists } from "./shared/entities/v4pools";
+import { linkAssetToV4MigrationPool } from "./shared/entities/v4pools";
 import { updateUserAsset } from "./shared/entities/userAsset";
 import { insertUserAssetIfNotExists } from "./shared/entities/userAsset";
 import { insertUserIfNotExists, updateUser } from "./shared/entities/user";
@@ -93,7 +93,7 @@ ponder.on("Airlock:Migrate", async ({ event, context }) => {
       },
     }),
   ]);
-  } else if (parentPool.migrationType === "v4") {    
+  } else if (parentPool.migrationType === "v4") {
     const migratorAddress = getV4MigratorForAsset(
       assetEntity.liquidityMigrator,
       context.chain.name
@@ -104,7 +104,7 @@ ponder.on("Airlock:Migrate", async ({ event, context }) => {
       return;
     }
 
-    const v4PoolEntity = await insertV4MigrationPoolIfNotExists({
+    const result = await linkAssetToV4MigrationPool({
       migratorAddress,
       assetAddress: assetId,
       numeraireAddress: assetEntity.numeraire,
@@ -113,6 +113,11 @@ ponder.on("Airlock:Migrate", async ({ event, context }) => {
       context,
     });
 
+    if (!result) {
+      console.warn(`Failed to link asset ${assetId} to V4 migration pool`);
+      return;
+    }
+
     await Promise.all([
       updatePool({
         poolAddress: parentPool.address,
@@ -120,7 +125,7 @@ ponder.on("Airlock:Migrate", async ({ event, context }) => {
         update: {
           migratedAt: timestamp,
           migrated: true,
-          migratedToV4PoolId: v4PoolEntity.poolId,
+          migratedToV4PoolId: result.poolId,
         },
       }),
       updateAsset({

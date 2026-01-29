@@ -59,9 +59,9 @@ async function fetchV4MigratorAssetData(
         hooks: assetData.poolKey.hooks,
       },
       lockDuration: assetData.lockDuration,
-      beneficiaries: null, // Legacy ABI doesn't have beneficiaries
+      beneficiaries: null,
     };
-  } catch (legacyError) {    
+  } catch (legacyError) {
     try {
       const assetData = await client.readContract({
         abi: V4MigratorABI,
@@ -69,21 +69,19 @@ async function fetchV4MigratorAssetData(
         functionName: "getAssetData",
         args: [token0, token1],
       });
+      const poolKeyData = assetData[0];
       return {
         poolKey: {
-          currency0: assetData.poolKey.currency0,
-          currency1: assetData.poolKey.currency1,
-          fee: assetData.poolKey.fee,
-          tickSpacing: assetData.poolKey.tickSpacing,
-          hooks: assetData.poolKey.hooks,
+          currency0: poolKeyData.currency0,
+          currency1: poolKeyData.currency1,
+          fee: poolKeyData.fee,
+          tickSpacing: poolKeyData.tickSpacing,
+          hooks: poolKeyData.hooks,
         },
-        lockDuration: assetData.lockDuration,
-        beneficiaries: assetData.beneficiaries.map((b) => ({
-          beneficiary: b.beneficiary,
-          shares: b.shares.toString(),
-        })),
+        lockDuration: assetData[1],
+        beneficiaries: null, 
       };
-    } catch (fullError) {      
+    } catch (fullError) {
       throw legacyError;
     }
   }

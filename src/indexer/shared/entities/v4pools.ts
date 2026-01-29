@@ -382,3 +382,122 @@ export const insertV4MigrationPoolIfNotExists = async ({
 
   return insertedPool;
 };
+
+export const linkAssetToV4MigrationPool = async ({
+  migratorAddress,
+  assetAddress,
+  numeraireAddress,
+  parentPoolAddress,
+  timestamp,
+  context,
+}: {
+  migratorAddress: Address;
+  assetAddress: Address;
+  numeraireAddress: Address;
+  parentPoolAddress: Address;
+  timestamp: bigint;
+  context: Context;
+}): Promise<{ poolId: `0x${string}` } | null> => {
+  const { db, chain, client } = context;
+
+  const { getPoolId } = await import("@app/utils/v4-utils/getPoolId");
+  const { V4MigratorABI, V4MigratorABILegacy } = await import("@app/abis");
+
+  const token0 = assetAddress.toLowerCase() < numeraireAddress.toLowerCase()
+    ? assetAddress
+    : numeraireAddress;
+  const token1 = assetAddress.toLowerCase() < numeraireAddress.toLowerCase()
+    ? numeraireAddress
+    : assetAddress;
+
+  let poolKey: {
+    currency0: Address;
+    currency1: Address;
+    fee: number;
+    tickSpacing: number;
+    hooks: Address;
+  };
+  let lockDuration: number;
+  let beneficiaries: { beneficiary: Address; shares: string }[] | null = null;
+
+  try {
+    const assetData = await client.readContract({
+      abi: V4MigratorABILegacy,
+      address: migratorAddress,
+      functionName: "getAssetData",
+      args: [token0, token1],
+    });
+    poolKey = {
+      currency0: assetData.poolKey.currency0,
+      currency1: assetData.poolKey.currency1,
+      fee: assetData.poolKey.fee,
+      tickSpacing: assetData.poolKey.tickSpacing,
+      hooks: assetData.poolKey.hooks,
+    };
+    lockDuration = assetData.lockDuration;
+  } catch {
+    const assetData = await client.readContract({
+      abi: V4MigratorABI,
+      address: migratorAddress,
+      functionName: "getAssetData",
+      args: [token0, token1],
+    });
+    const poolKeyData = assetData[0];
+    poolKey = {
+      currency0: poolKeyData.currency0,
+      currency1: poolKeyData.currency1,
+      fee: poolKeyData.fee,
+      tickSpacing: poolKeyData.tickSpacing,
+      hooks: poolKeyData.hooks,
+    };
+    lockDuration = assetData[1];
+  }
+
+  const poolId = getPoolId(poolKey);
+
+  const existingPool = await db.find(v4pools, {
+    poolId: poolId.toLowerCase() as `0x${string}`,
+    chainId: chain.id,
+  });
+
+  if (!existingPool) {
+    console.warn(`linkAssetToV4MigrationPool - Pool ${poolId} not found`);
+    return null;
+  }
+
+  const isToken0 = assetAddress.toLowerCase() === poolKey.currency0.toLowerCase();
+  const baseToken = isToken0 ? poolKey.currency0 : poolKey.currency1;
+  const quoteToken = isToken0 ? poolKey.currency1 : poolKey.currency0;
+
+  const quoteInfo = await getQuoteInfo(quoteToken, timestamp, context);
+  const isQuoteEth = quoteInfo.quoteToken === QuoteToken.Eth;
+
+  // Calculate dollar liquidity using correct isToken0 and reserves from V4Migrator:Migrate event
+  const dollarLiquidity = MarketDataService.calculateLiquidity({
+    assetBalance: isToken0 ? existingPool.reserves0 : existingPool.reserves1,
+    quoteBalance: isToken0 ? existingPool.reserves1 : existingPool.reserves0,
+    price: existingPool.price,
+    quotePriceUSD: quoteInfo.quotePrice ?? 0n,
+    decimals: quoteInfo.quotePriceDecimals,
+    assetDecimals: 18,
+    quoteDecimals: quoteInfo.quoteDecimals,
+  });
+
+  await db.update(v4pools, {
+    poolId: poolId.toLowerCase() as `0x${string}`,
+    chainId: chain.id,
+  }).set({
+    baseToken: baseToken.toLowerCase() as `0x${string}`,
+    quoteToken: quoteToken.toLowerCase() as `0x${string}`,
+    asset: assetAddress.toLowerCase() as `0x${string}`,
+    migratedFromPool: parentPoolAddress.toLowerCase() as `0x${string}`,
+    migratedAt: timestamp,
+    lockDuration,
+    beneficiaries,
+    isToken0,
+    isQuoteEth,
+    dollarLiquidity,
+  });
+
+  return { poolId: poolId.toLowerCase() as `0x${string}` };
+};
