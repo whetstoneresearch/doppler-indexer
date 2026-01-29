@@ -386,6 +386,10 @@ export default createConfig({
           startBlock: base.v4StartBlock,
           address: base.addresses.v4.v4MigratorHook,
         },
+        baseSepolia: {
+          startBlock: baseSepolia.v4StartBlock,
+          address: base.addresses.v4.v4MigratorHook
+        },
         unichain: {
           startBlock: unichain.v4StartBlock,
           address: unichain.addresses.v4.v4MigratorHook,
