@@ -42,13 +42,39 @@ ponder.on(
       return;
     }
 
-    const poolState = await context.client.readContract({
-      abi: UniswapV4ScheduledMulticurveInitializerABI,
-      address:
-        chainConfigs[context.chain.name].addresses.v4.v4ScheduledMulticurveInitializer,
-      functionName: "getState",
-      args: [assetId],
-    });
+    let poolState;
+    const v4ScheduledMulticurveInitializer = chainConfigs[context.chain.name].addresses.v4.v4ScheduledMulticurveInitializer;
+    if (Array.isArray(v4ScheduledMulticurveInitializer)) {
+      const poolStates = await Promise.all(v4ScheduledMulticurveInitializer.map(async (initializer) => {
+        try {
+          return await context.client.readContract({
+            abi: UniswapV4ScheduledMulticurveInitializerABI,
+            address: initializer,
+            functionName: "getState",
+            args: [assetId],
+          });
+        } catch {
+          return null;
+        }
+      }));
+      poolState = poolStates.find((state) => state && state[2].hooks !== zeroAddress);
+      if (!poolState) {
+        console.error("Missing v4MulticurveInitializer for asset", assetId);
+        return;
+      }
+    } else {
+      try {
+        poolState = await context.client.readContract({
+          abi: UniswapV4ScheduledMulticurveInitializerABI,
+          address: v4ScheduledMulticurveInitializer,
+          functionName: "getState",
+          args: [assetId],
+        });
+      } catch {
+        console.error("Could not retrieve pool state for asset", assetId);
+        return;
+      }
+    }
 
     const poolKey = poolState[2];
 
