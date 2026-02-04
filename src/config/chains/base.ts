@@ -158,8 +158,8 @@ export const baseConfig: ChainConfig = {
         "0xa36715da46ddf4a769f3290f49af58bf8132ed8e" as Address,
       v4ScheduledMulticurveInitializerHook:
         "0x3e342a06f9592459d75721d6956b570f02ef2dc0" as Address,
-      DopplerHookInitializer: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
-      RehypeHook: COMMON_ADDRESSES.ZERO_ADDRESS as Address
+      DopplerHookInitializer: "0xaa096f558f3d4c9226de77e7cc05f18e180b2544" as Address,
+      RehypeHook: "0x97cad5684fb7cc2bed9a9b5ebfba67138f4f2503bb" as Address
     },
     zora: {
       zoraFactory: "0x777777751622c0d3258f214F9DF38E35BF45baF3" as Address,
