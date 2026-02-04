@@ -21,12 +21,12 @@ export const START_BLOCKS = {
 } as const;
 
 export const V4_START_BLOCKS = {
+  mainnet: 24326115,
   unichain: 17686805,
   baseSepolia: 26638492,
   ink: 14937170,
   base: 30822164,
   monad: 34746371
-
 } as const;
 
 export const LOCKABLE_V3_INITIALIZER_START_BLOCKS = {

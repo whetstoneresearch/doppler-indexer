@@ -96,7 +96,7 @@ export default createConfig({
     },
     MainnetChainlinkEthPriceFeed: {
       chain: "mainnet",
-      startBlock: mainnet.startBlock,
+      startBlock: mainnet.v4StartBlock,
       interval: BLOCK_INTERVALS.FIFTY_BLOCKS,
     },
     // BaseChainlinkUsdcPriceFeed: {
@@ -181,7 +181,7 @@ export default createConfig({
           address: monad.addresses.shared.airlock,
         },
         mainnet: {
-          startBlock: mainnet.startBlock,
+          startBlock: mainnet.v4StartBlock,
           address: mainnet.addresses.shared.airlock,
         },
       },
@@ -217,7 +217,7 @@ export default createConfig({
           }),
         },
         mainnet: {
-          startBlock: mainnet.startBlock,
+          startBlock: mainnet.v4StartBlock,
           address: factory({
             address: mainnet.addresses.shared.airlock,
             event: getAbiItem({ abi: AirlockABI, name: "Migrate" }),
@@ -300,7 +300,7 @@ export default createConfig({
           }),
         },
         mainnet: {
-          startBlock: mainnet.startBlock,
+          startBlock: mainnet.v4StartBlock,
           address: factory({
             address: mainnet.addresses.shared.airlock,
             event: getAbiItem({ abi: AirlockABI, name: "Create" }),
@@ -641,9 +641,17 @@ export default createConfig({
           startBlock: baseSepolia.v4StartBlock,
           address: baseSepolia.addresses.v4.DopplerHookInitializer,
         },
+        base: {
+          startBlock: base.v4StartBlock,
+          address: base.addresses.v4.DopplerHookInitializer,
+        },
         mainnet: {
           startBlock: mainnet.v4StartBlock,
           address: mainnet.addresses.v4.DopplerHookInitializer,
+        },
+        monad: {
+          startBlock: monad.startBlock,
+          address: monad.addresses.v4.DopplerHookInitializer,
         },
       },
     },
