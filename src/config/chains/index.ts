@@ -3,12 +3,14 @@ import { unichainConfig } from "./unichain";
 import { baseSepoliaConfig, baseConfig } from "./base";
 import { inkConfig } from "./ink";
 import { monadConfig } from "./monad";
+import { mainnetConfig } from "./mainnet";
 
 export * from "./types";
 export * from "./constants";
 
 // Combined configuration object
 export const chainConfigs: IndexerConfigs = {
+  mainnet: mainnetConfig,
   unichain: unichainConfig,
   baseSepolia: baseSepoliaConfig,
   base: baseConfig,
