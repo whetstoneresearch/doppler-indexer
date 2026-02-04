@@ -59,8 +59,8 @@ export const mainnetConfig: ChainConfig = {
       weth: "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2" as Address,
       chainlinkEthOracle:
         "0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419" as Address,
-      chainlinkUsdcOracle: "0xd30e2101a97dcbaebcbc04f14c3f624e67a35165" as Address,
-      chainlinkUsdtOracle: "0x3ec8593f930ea45ea58c968260e6e9ff53fc934f" as Address,
+      chainlinkUsdcOracle: "0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6" as Address,
+      chainlinkUsdtOracle: "0x3E7d1eAB13ad0104d2750B8863b489D65364e32D" as Address,
       fxHash: {
         fxhAddress: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
         fxhWethPool: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
