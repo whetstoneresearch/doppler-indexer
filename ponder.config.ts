@@ -11,7 +11,6 @@ import {
   UniswapV2PairABI,
   ZoraFactoryABI,
   ZoraV4HookABI,
-  ZoraCoinABI,
   ZoraCreatorCoinABI,
   V4MigratorHookABI,
   V4MigratorABI,
@@ -27,7 +26,7 @@ import { UniswapV4MulticurveInitializerABI } from "@app/abis/multicurve-abis/Uni
 import { UniswapV4ScheduledMulticurveInitializerHookABI } from "@app/abis/multicurve-abis/UniswapV4ScheduledMulticurveInitializerHookABI";
 import { UniswapV4ScheduledMulticurveInitializerABI } from "@app/abis/multicurve-abis/UniswapV4ScheduledMulticurveInitializerABI";
 
-const { base, unichain, ink, baseSepolia, monad } = chainConfigs;
+const { base, unichain, ink, baseSepolia, monad, mainnet } = chainConfigs;
 
 export default createConfig({
   database: {
@@ -39,6 +38,10 @@ export default createConfig({
   },
   ordering: "multichain",
   chains: {
+    mainnet: {
+      id: CHAIN_IDS.mainnet,
+      rpc: http(process.env.PONDER_RPC_URL_1),
+    },
     unichain: {
       id: CHAIN_IDS.unichain,
       rpc: http(process.env.PONDER_RPC_URL_130),
@@ -90,6 +93,11 @@ export default createConfig({
       chain: "monad",
       startBlock: monad.startBlock,
       interval: BLOCK_INTERVALS.FIVE_MINUTES,
+    },
+    MainnetChainlinkEthPriceFeed: {
+      chain: "mainnet",
+      startBlock: mainnet.v4StartBlock,
+      interval: BLOCK_INTERVALS.FIFTY_BLOCKS,
     },
     // BaseChainlinkUsdcPriceFeed: {
     //   chain: "base",
@@ -172,6 +180,10 @@ export default createConfig({
           startBlock: 34746368,
           address: monad.addresses.shared.airlock,
         },
+        mainnet: {
+          startBlock: mainnet.v4StartBlock,
+          address: mainnet.addresses.shared.airlock,
+        },
       },
     },
     MigrationPool: {
@@ -200,6 +212,14 @@ export default createConfig({
           startBlock: ink.startBlock,
           address: factory({
             address: ink.addresses.shared.airlock,
+            event: getAbiItem({ abi: AirlockABI, name: "Migrate" }),
+            parameter: "pool",
+          }),
+        },
+        mainnet: {
+          startBlock: mainnet.v4StartBlock,
+          address: factory({
+            address: mainnet.addresses.shared.airlock,
             event: getAbiItem({ abi: AirlockABI, name: "Migrate" }),
             parameter: "pool",
           }),
@@ -238,6 +258,10 @@ export default createConfig({
           startBlock: ink.v4StartBlock,
           address: ink.addresses.v4.v4Initializer,
         },
+        mainnet: {
+          startBlock: mainnet.v4StartBlock,
+          address: mainnet.addresses.v4.v4Initializer,
+        },
       },
     },
     DERC20: {
@@ -271,6 +295,14 @@ export default createConfig({
           startBlock: 34746368,
           address: factory({
             address: monad.addresses.shared.airlock,
+            event: getAbiItem({ abi: AirlockABI, name: "Create" }),
+            parameter: "asset",
+          }),
+        },
+        mainnet: {
+          startBlock: mainnet.v4StartBlock,
+          address: factory({
+            address: mainnet.addresses.shared.airlock,
             event: getAbiItem({ abi: AirlockABI, name: "Create" }),
             parameter: "asset",
           }),
@@ -376,7 +408,11 @@ export default createConfig({
         monad: {
           startBlock: monad.startBlock,
           address: monad.addresses.v4.poolManager
-        }
+        },
+        mainnet: {
+          startBlock: mainnet.v4StartBlock,
+          address: mainnet.addresses.v4.poolManager,
+        },
       },
     },
     UniswapV4MigratorHook: {
@@ -394,6 +430,10 @@ export default createConfig({
           startBlock: unichain.v4StartBlock,
           address: unichain.addresses.v4.v4MigratorHook,
         },
+        mainnet: {
+          startBlock: mainnet.v4StartBlock,
+          address: mainnet.addresses.v4.v4MigratorHook,
+        },
       },
     },
     UniswapV4Migrator: {
@@ -410,6 +450,10 @@ export default createConfig({
         unichain: {
           startBlock: unichain.v4StartBlock,
           address: unichain.addresses.v4.v4Migrator,
+        },
+        mainnet: {
+          startBlock: mainnet.v4StartBlock,
+          address: mainnet.addresses.v4.v4Migrator,
         },
       },
     },
@@ -446,6 +490,14 @@ export default createConfig({
             address: monad.addresses.v4.v4ScheduledMulticurveInitializer,
             event: getAbiItem({ abi: UniswapV4ScheduledMulticurveInitializerABI, name: "Create"}),
             parameter: "poolOrHook"
+          }),
+        },
+        mainnet: {
+          startBlock: mainnet.v4StartBlock,
+          address: factory({
+            address: mainnet.addresses.v4.v4ScheduledMulticurveInitializer,
+            event: getAbiItem({ abi: UniswapV4ScheduledMulticurveInitializerABI, name: "Create" }),
+            parameter: "poolOrHook",
           }),
         },
       },
@@ -559,6 +611,10 @@ export default createConfig({
           startBlock: 34746368,
           address: monad.addresses.v4.v4ScheduledMulticurveInitializer,
         },
+        mainnet: {
+          startBlock: mainnet.v4StartBlock,
+          address: mainnet.addresses.v4.v4ScheduledMulticurveInitializer,
+        },
       },
     },
     UniswapV4ScheduledMulticurveInitializerHook: {
@@ -572,6 +628,10 @@ export default createConfig({
           startBlock: 34746368,
           address: monad.addresses.v4.v4ScheduledMulticurveInitializerHook,
         },
+        mainnet: {
+          startBlock: mainnet.v4StartBlock,
+          address: mainnet.addresses.v4.v4ScheduledMulticurveInitializerHook,
+        },
       },
     },
     DopplerHookInitializer: {
@@ -580,6 +640,18 @@ export default createConfig({
         baseSepolia: {
           startBlock: baseSepolia.v4StartBlock,
           address: baseSepolia.addresses.v4.DopplerHookInitializer,
+        },
+        base: {
+          startBlock: base.v4StartBlock,
+          address: base.addresses.v4.DopplerHookInitializer,
+        },
+        mainnet: {
+          startBlock: mainnet.v4StartBlock,
+          address: mainnet.addresses.v4.DopplerHookInitializer,
+        },
+        monad: {
+          startBlock: monad.startBlock,
+          address: monad.addresses.v4.DopplerHookInitializer,
         },
       },
     },
