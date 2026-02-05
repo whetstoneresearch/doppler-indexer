@@ -28,7 +28,7 @@ import {
   UniswapV4ScheduledMulticurveInitializerHookABI,
 } from "@app/abis/multicurve-abis";
 
-const { base, unichain, ink, baseSepolia, monad } = chainConfigs;
+const { base, unichain, ink, baseSepolia, monad, sepolia } = chainConfigs;
 
 export default createConfig({
   database: {
@@ -43,6 +43,10 @@ export default createConfig({
     baseSepolia: {
       id: CHAIN_IDS.baseSepolia,
       rpc: http(process.env.PONDER_RPC_URL_84532),
+    },
+    sepolia: {
+      id: CHAIN_IDS.sepolia,
+      rpc: http(process.env.PONDER_RPC_URL_11155111),
     },
     base: {
       id: CHAIN_IDS.base,
@@ -66,6 +70,11 @@ export default createConfig({
       chain: "baseSepolia",
       startBlock: baseSepolia.startBlock,
       interval: BLOCK_INTERVALS.FIVE_MINUTES, // every 5 minutes
+    },
+    SepoliaChainlinkEthPriceFeed: {
+      chain: "sepolia",
+      startBlock: sepolia.startBlock,
+      interval: BLOCK_INTERVALS.FIVE_MINUTES,
     },
     BaseChainlinkEthPriceFeed: {
       chain: "base",
@@ -121,6 +130,10 @@ export default createConfig({
           startBlock: baseSepolia.startBlock,
           address: baseSepolia.addresses.shared.airlock,
         },
+        sepolia: {
+          startBlock: sepolia.startBlock,
+          address: sepolia.addresses.shared.airlock,
+        },
       },
     },
     MigrationPool: {
@@ -134,6 +147,14 @@ export default createConfig({
               abi: AirlockABI,
               name: "Migrate",
             }),
+            parameter: "pool",
+          }),
+        },
+        sepolia: {
+          startBlock: sepolia.v4StartBlock,
+          address: factory({
+            address: sepolia.addresses.shared.airlock,
+            event: getAbiItem({ abi: AirlockABI, name: "Migrate" }),
             parameter: "pool",
           }),
         },
@@ -155,6 +176,10 @@ export default createConfig({
           startBlock: baseSepolia.v4StartBlock,
           address: baseSepolia.addresses.v4.v4Initializer,
         },
+        sepolia: {
+          startBlock: sepolia.v4StartBlock,
+          address: sepolia.addresses.v4.v4Initializer,
+        },
       },
     },
     DopplerHookInitializer: {
@@ -162,9 +187,13 @@ export default createConfig({
       chain: {
         baseSepolia: {
           startBlock: 35674465,
-          address: baseSepolia.addresses.v4.DopplerHookInitializer
-        }
-      }
+          address: baseSepolia.addresses.v4.DopplerHookInitializer,
+        },
+        sepolia: {
+          startBlock: sepolia.v4StartBlock,
+          address: sepolia.addresses.v4.DopplerHookInitializer,
+        },
+      },
     },
     DERC20: {
       abi: DERC20ABI,
@@ -173,6 +202,14 @@ export default createConfig({
           startBlock: baseSepolia.startBlock,
           address: factory({
             address: baseSepolia.addresses.shared.airlock,
+            event: getAbiItem({ abi: AirlockABI, name: "Create" }),
+            parameter: "asset",
+          }),
+        },
+        sepolia: {
+          startBlock: sepolia.v4StartBlock,
+          address: factory({
+            address: sepolia.addresses.shared.airlock,
             event: getAbiItem({ abi: AirlockABI, name: "Create" }),
             parameter: "asset",
           }),
@@ -228,6 +265,10 @@ export default createConfig({
           startBlock: baseSepolia.v4StartBlock,
           address: baseSepolia.addresses.v4.poolManager,
         },
+        sepolia: {
+          startBlock: sepolia.v4StartBlock,
+          address: sepolia.addresses.v4.poolManager,
+        },
       },
     },
     UniswapV4MigratorHook: {
@@ -236,7 +277,11 @@ export default createConfig({
         baseSepolia: {
           startBlock: baseSepolia.v4StartBlock,
           address: baseSepolia.addresses.v4.v4MigratorHook,
-        }
+        },
+        sepolia: {
+          startBlock: sepolia.v4StartBlock,
+          address: sepolia.addresses.v4.v4MigratorHook,
+        },
       },
     },
     UniswapV4Migrator: {
@@ -245,6 +290,10 @@ export default createConfig({
         baseSepolia: {
           startBlock: baseSepolia.v4StartBlock,
           address: baseSepolia.addresses.v4.v4Migrator,
+        },
+        sepolia: {
+          startBlock: sepolia.v4StartBlock,
+          address: sepolia.addresses.v4.v4Migrator,
         },
       },
     },
@@ -256,6 +305,14 @@ export default createConfig({
           address: factory({
             address: baseSepolia.addresses.v4.v4Initializer,
             event: getAbiItem({ abi: UniswapV4InitializerABI, name: "Create" }),
+            parameter: "poolOrHook",
+          }),
+        },
+        sepolia: {
+          startBlock: sepolia.v4StartBlock,
+          address: factory({
+            address: sepolia.addresses.v4.v4ScheduledMulticurveInitializer,
+            event: getAbiItem({ abi: UniswapV4ScheduledMulticurveInitializerABI, name: "Create" }),
             parameter: "poolOrHook",
           }),
         },
@@ -362,6 +419,10 @@ export default createConfig({
           startBlock: baseSepolia.startBlock,
           address: baseSepolia.addresses.v4.v4ScheduledMulticurveInitializer,
         },
+        sepolia: {
+          startBlock: sepolia.v4StartBlock,
+          address: sepolia.addresses.v4.v4ScheduledMulticurveInitializer,
+        },
       },
     },
     UniswapV4ScheduledMulticurveInitializerHook: {
@@ -371,6 +432,10 @@ export default createConfig({
           startBlock: baseSepolia.startBlock,
           address:
             baseSepolia.addresses.v4.v4ScheduledMulticurveInitializerHook,
+        },
+        sepolia: {
+          startBlock: sepolia.v4StartBlock,
+          address: sepolia.addresses.v4.v4ScheduledMulticurveInitializerHook,
         },
       },
     },

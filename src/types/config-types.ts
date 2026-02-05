@@ -12,7 +12,8 @@ export type Network =
   | "ink"
   | "base"
   | "monad"
-  | "mainnet";
+  | "mainnet"
+  | "sepolia";
 
 /**
  * Chain configuration

@@ -7,7 +7,8 @@ export const CHAIN_IDS = {
   baseSepolia: 84532,
   ink: 57073,
   base: 8453,
-  monad: 143
+  monad: 143,
+  sepolia: 11155111
 } as const;
 
 // Block numbers organized by purpose
@@ -17,7 +18,8 @@ export const START_BLOCKS = {
   baseSepolia: 28109000,
   ink: 9508011,
   base: 28415520,
-  monad: 34746370
+  monad: 34746370,
+  sepolia: 10134362
 } as const;
 
 export const V4_START_BLOCKS = {
