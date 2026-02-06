@@ -28,7 +28,7 @@ import {
   UniswapV4ScheduledMulticurveInitializerHookABI,
 } from "@app/abis/multicurve-abis";
 
-const { base, unichain, ink, baseSepolia, monad, sepolia } = chainConfigs;
+const { mainnet, base, unichain, ink, baseSepolia, monad, sepolia } = chainConfigs;
 
 export default createConfig({
   database: {
@@ -40,6 +40,10 @@ export default createConfig({
   },
   ordering: "multichain",
   chains: {
+    mainnet: {
+      id: CHAIN_IDS.mainnet,
+      rpc: http(process.env.PONDER_RPC_URL_1),
+    },
     baseSepolia: {
       id: CHAIN_IDS.baseSepolia,
       rpc: http(process.env.PONDER_RPC_URL_84532),
@@ -70,6 +74,11 @@ export default createConfig({
       chain: "baseSepolia",
       startBlock: baseSepolia.startBlock,
       interval: BLOCK_INTERVALS.FIVE_MINUTES, // every 5 minutes
+    },
+    MainnetChainlinkEthPriceFeed: {
+      chain: "mainnet",
+      startBlock: mainnet.startBlock,
+      interval: 99999999999,
     },
     SepoliaChainlinkEthPriceFeed: {
       chain: "sepolia",
