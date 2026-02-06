@@ -105,7 +105,7 @@ export default createConfig({
     },
     SepoliaChainlinkEthPriceFeed: {
       chain: "sepolia",
-      startBlock: sepolia.v4StartBlock,
+      startBlock: sepolia.startBlock,
       interval: BLOCK_INTERVALS.FIFTY_BLOCKS,
     },
     // BaseChainlinkUsdcPriceFeed: {
@@ -238,7 +238,7 @@ export default createConfig({
           }),
         },
         sepolia: {
-          startBlock: sepolia.v4StartBlock,
+          startBlock: sepolia.startBlock,
           address: factory({
             address: sepolia.addresses.shared.airlock,
             event: getAbiItem({ abi: AirlockABI, name: "Migrate" }),
@@ -284,7 +284,7 @@ export default createConfig({
           address: mainnet.addresses.v4.v4Initializer,
         },
         sepolia: {
-          startBlock: sepolia.v4StartBlock,
+          startBlock: sepolia.startBlock,
           address: sepolia.addresses.v4.v4Initializer,
         },
       },
@@ -333,7 +333,7 @@ export default createConfig({
           }),
         },
         sepolia: {
-          startBlock: sepolia.v4StartBlock,
+          startBlock: sepolia.startBlock,
           address: factory({
             address: sepolia.addresses.shared.airlock,
             event: getAbiItem({ abi: AirlockABI, name: "Create" }),
@@ -447,7 +447,7 @@ export default createConfig({
           address: mainnet.addresses.v4.poolManager,
         },
         sepolia: {
-          startBlock: sepolia.v4StartBlock,
+          startBlock: sepolia.startBlock,
           address: sepolia.addresses.v4.poolManager,
         },
       },
@@ -460,7 +460,7 @@ export default createConfig({
           address: base.addresses.v4.v4MigratorHook,
         },
         baseSepolia: {
-          startBlock: baseSepolia.v4StartBlock,
+          startBlock: basesepolia.startBlock,
           address: base.addresses.v4.v4MigratorHook
         },
         unichain: {
@@ -472,7 +472,7 @@ export default createConfig({
           address: mainnet.addresses.v4.v4MigratorHook,
         },
         sepolia: {
-          startBlock: sepolia.v4StartBlock,
+          startBlock: sepolia.startBlock,
           address: sepolia.addresses.v4.v4MigratorHook,
         },
       },
@@ -485,7 +485,7 @@ export default createConfig({
           address: base.addresses.v4.v4Migrator,
         },
         baseSepolia: {
-          startBlock: baseSepolia.v4StartBlock,
+          startBlock: basesepolia.startBlock,
           address: baseSepolia.addresses.v4.v4Migrator,
         },
         unichain: {
@@ -497,7 +497,7 @@ export default createConfig({
           address: mainnet.addresses.v4.v4Migrator,
         },
         sepolia: {
-          startBlock: sepolia.v4StartBlock,
+          startBlock: sepolia.startBlock,
           address: sepolia.addresses.v4.v4Migrator,
         },
       },
@@ -546,7 +546,7 @@ export default createConfig({
           }),
         },
         sepolia: {
-          startBlock: sepolia.v4StartBlock,
+          startBlock: sepolia.startBlock,
           address: factory({
             address: sepolia.addresses.v4.v4ScheduledMulticurveInitializer,
             event: getAbiItem({ abi: UniswapV4ScheduledMulticurveInitializerABI, name: "Create" }),
@@ -670,7 +670,7 @@ export default createConfig({
           address: mainnet.addresses.v4.v4ScheduledMulticurveInitializer,
         },
         sepolia: {
-          startBlock: sepolia.v4StartBlock,
+          startBlock: sepolia.startBlock,
           address: sepolia.addresses.v4.v4ScheduledMulticurveInitializer,
         },
       },
@@ -691,7 +691,7 @@ export default createConfig({
           address: mainnet.addresses.v4.v4ScheduledMulticurveInitializerHook,
         },
         sepolia: {
-          startBlock: sepolia.v4StartBlock,
+          startBlock: sepolia.startBlock,
           address: sepolia.addresses.v4.v4ScheduledMulticurveInitializerHook,
         },
       },
@@ -700,7 +700,7 @@ export default createConfig({
       abi: DopplerHookInitializerABI,
       chain: {
         baseSepolia: {
-          startBlock: baseSepolia.v4StartBlock,
+          startBlock: basesepolia.startBlock,
           address: baseSepolia.addresses.v4.DopplerHookInitializer,
         },
         base: {
@@ -712,7 +712,7 @@ export default createConfig({
           address: mainnet.addresses.v4.DopplerHookInitializer,
         },
         sepolia: {
-          startBlock: sepolia.v4StartBlock,
+          startBlock: sepolia.startBlock,
           address: sepolia.addresses.v4.DopplerHookInitializer,
         },
         monad: {

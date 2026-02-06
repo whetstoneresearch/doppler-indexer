@@ -151,7 +151,7 @@ export default createConfig({
           }),
         },
         sepolia: {
-          startBlock: sepolia.v4StartBlock,
+          startBlock: sepolia.startBlock,
           address: factory({
             address: sepolia.addresses.shared.airlock,
             event: getAbiItem({ abi: AirlockABI, name: "Migrate" }),
@@ -173,11 +173,11 @@ export default createConfig({
       abi: UniswapV4InitializerABI,
       chain: {
         baseSepolia: {
-          startBlock: baseSepolia.v4StartBlock,
+          startBlock: basesepolia.startBlock,
           address: baseSepolia.addresses.v4.v4Initializer,
         },
         sepolia: {
-          startBlock: sepolia.v4StartBlock,
+          startBlock: sepolia.startBlock,
           address: sepolia.addresses.v4.v4Initializer,
         },
       },
@@ -190,7 +190,7 @@ export default createConfig({
           address: baseSepolia.addresses.v4.DopplerHookInitializer,
         },
         sepolia: {
-          startBlock: sepolia.v4StartBlock,
+          startBlock: sepolia.startBlock,
           address: sepolia.addresses.v4.DopplerHookInitializer,
         },
       },
@@ -207,7 +207,7 @@ export default createConfig({
           }),
         },
         sepolia: {
-          startBlock: sepolia.v4StartBlock,
+          startBlock: sepolia.startBlock,
           address: factory({
             address: sepolia.addresses.shared.airlock,
             event: getAbiItem({ abi: AirlockABI, name: "Create" }),
@@ -262,11 +262,11 @@ export default createConfig({
       abi: PoolManagerABI,
       chain: {
         baseSepolia: {
-          startBlock: baseSepolia.v4StartBlock,
+          startBlock: basesepolia.startBlock,
           address: baseSepolia.addresses.v4.poolManager,
         },
         sepolia: {
-          startBlock: sepolia.v4StartBlock,
+          startBlock: sepolia.startBlock,
           address: sepolia.addresses.v4.poolManager,
         },
       },
@@ -275,11 +275,11 @@ export default createConfig({
       abi: V4MigratorHookABI,
       chain: {
         baseSepolia: {
-          startBlock: baseSepolia.v4StartBlock,
+          startBlock: basesepolia.startBlock,
           address: baseSepolia.addresses.v4.v4MigratorHook,
         },
         sepolia: {
-          startBlock: sepolia.v4StartBlock,
+          startBlock: sepolia.startBlock,
           address: sepolia.addresses.v4.v4MigratorHook,
         },
       },
@@ -288,11 +288,11 @@ export default createConfig({
       abi: V4MigratorABI,
       chain: {
         baseSepolia: {
-          startBlock: baseSepolia.v4StartBlock,
+          startBlock: basesepolia.startBlock,
           address: baseSepolia.addresses.v4.v4Migrator,
         },
         sepolia: {
-          startBlock: sepolia.v4StartBlock,
+          startBlock: sepolia.startBlock,
           address: sepolia.addresses.v4.v4Migrator,
         },
       },
@@ -301,7 +301,7 @@ export default createConfig({
       abi: DopplerABI,
       chain: {
         baseSepolia: {
-          startBlock: baseSepolia.v4StartBlock,
+          startBlock: basesepolia.startBlock,
           address: factory({
             address: baseSepolia.addresses.v4.v4Initializer,
             event: getAbiItem({ abi: UniswapV4InitializerABI, name: "Create" }),
@@ -309,7 +309,7 @@ export default createConfig({
           }),
         },
         sepolia: {
-          startBlock: sepolia.v4StartBlock,
+          startBlock: sepolia.startBlock,
           address: factory({
             address: sepolia.addresses.v4.v4ScheduledMulticurveInitializer,
             event: getAbiItem({ abi: UniswapV4ScheduledMulticurveInitializerABI, name: "Create" }),
@@ -331,7 +331,7 @@ export default createConfig({
       abi: ZoraFactoryABI,
       chain: {
         baseSepolia: {
-          startBlock: baseSepolia.v4StartBlock,
+          startBlock: basesepolia.startBlock,
           address: baseSepolia.addresses.zora.zoraFactory,
         },
       },
@@ -340,7 +340,7 @@ export default createConfig({
     //   abi: ZoraCoinABI,
     //   chain: {
     //     baseSepolia: {
-    //       startBlock: baseSepolia.v4StartBlock,
+    //       startBlock: basesepolia.startBlock,
     //       address: factory({
     //         address: baseSepolia.addresses.zora.zoraFactory,
     //         event: getAbiItem({ abi: ZoraFactoryABI, name: "CoinCreatedV4" }),
@@ -353,7 +353,7 @@ export default createConfig({
       abi: ZoraCreatorCoinABI,
       chain: {
         baseSepolia: {
-          startBlock: baseSepolia.v4StartBlock,
+          startBlock: basesepolia.startBlock,
           address: factory({
             address: baseSepolia.addresses.zora.zoraFactory,
             event: getAbiItem({
@@ -369,7 +369,7 @@ export default createConfig({
     //   abi: ZoraV4HookABI,
     //   chain: {
     //     baseSepolia: {
-    //       startBlock: baseSepolia.v4StartBlock,
+    //       startBlock: basesepolia.startBlock,
     //       address: factory({
     //         address: baseSepolia.addresses.zora.zoraFactory,
     //         event: getAbiItem({ abi: ZoraFactoryABI, name: "CoinCreatedV4" }),
@@ -382,7 +382,7 @@ export default createConfig({
       abi: ZoraV4HookABI,
       chain: {
         baseSepolia: {
-          startBlock: baseSepolia.v4StartBlock,
+          startBlock: basesepolia.startBlock,
           address: factory({
             address: baseSepolia.addresses.zora.zoraFactory,
             event: getAbiItem({
@@ -420,7 +420,7 @@ export default createConfig({
           address: baseSepolia.addresses.v4.v4ScheduledMulticurveInitializer,
         },
         sepolia: {
-          startBlock: sepolia.v4StartBlock,
+          startBlock: sepolia.startBlock,
           address: sepolia.addresses.v4.v4ScheduledMulticurveInitializer,
         },
       },
@@ -434,7 +434,7 @@ export default createConfig({
             baseSepolia.addresses.v4.v4ScheduledMulticurveInitializerHook,
         },
         sepolia: {
-          startBlock: sepolia.v4StartBlock,
+          startBlock: sepolia.startBlock,
           address: sepolia.addresses.v4.v4ScheduledMulticurveInitializerHook,
         },
       },
