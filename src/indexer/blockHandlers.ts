@@ -32,6 +32,56 @@ ponder.on("BaseChainlinkEthPriceFeed:block", async ({ event, context }) => {
     .onConflictDoNothing();
 });
 
+ponder.on("MainnetChainlinkEthPriceFeed:block", async ({ event, context }) => {
+  const { db, client, chain } = context;
+  const { timestamp } = event.block;
+
+  const latestAnswer = await client.readContract({
+    abi: ChainlinkOracleABI,
+    address: chainConfigs["mainnet"].addresses.shared.chainlinkEthOracle,
+    functionName: "latestAnswer",
+  });
+
+  const price = latestAnswer;
+
+  const roundedTimestamp = BigInt(Math.floor(Number(timestamp) / 300) * 300);
+  const adjustedTimestamp = roundedTimestamp + 300n;
+
+  await db
+    .insert(ethPrice)
+    .values({
+      timestamp: adjustedTimestamp,
+      chainId: chain.id,
+      price,
+    })
+    .onConflictDoNothing();
+});
+
+ponder.on("SepoliaChainlinkEthPriceFeed:block", async ({ event, context }) => {
+  const { db, client, chain } = context;
+  const { timestamp } = event.block;
+
+  const latestAnswer = await client.readContract({
+    abi: ChainlinkOracleABI,
+    address: chainConfigs["sepolia"].addresses.shared.chainlinkEthOracle,
+    functionName: "latestAnswer",
+  });
+
+  const price = latestAnswer;
+
+  const roundedTimestamp = BigInt(Math.floor(Number(timestamp) / 300) * 300);
+  const adjustedTimestamp = roundedTimestamp + 300n;
+
+  await db
+    .insert(ethPrice)
+    .values({
+      timestamp: adjustedTimestamp,
+      chainId: chain.id,
+      price,
+    })
+    .onConflictDoNothing();
+});
+
 ponder.on("UnichainChainlinkEthPriceFeed:block", async ({ event, context }) => {
   const { db, client, chain } = context;
   const { timestamp } = event.block;
