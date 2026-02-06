@@ -69,7 +69,8 @@ export const RPC_ENV_VARS = {
   baseSepolia: "PONDER_RPC_URL_84532",
   ink: "PONDER_RPC_URL_57073",
   base: "PONDER_RPC_URL_8453",
-  monad: "PONDER_RPC_URL_143"
+  monad: "PONDER_RPC_URL_143",
+  sepolia: "PONDER_RPC_URL_11155111"
 } as const;
 
 export const BLOCK_INTERVALS = {

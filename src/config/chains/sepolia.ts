@@ -9,12 +9,12 @@ import {
   RPC_ENV_VARS,
 } from "./constants";
 
-export const mainnetConfig: ChainConfig = {
-  id: CHAIN_IDS.mainnet,
-  name: "mainnet",
-  startBlock: START_BLOCKS.mainnet,
-  oracleStartBlock: START_BLOCKS.mainnet,
-  rpcEnvVar: RPC_ENV_VARS.mainnet,
+export const sepoliaConfig: ChainConfig = {
+  id: CHAIN_IDS.sepolia,
+  name: "sepolia",
+  startBlock: START_BLOCKS.sepolia,
+  oracleStartBlock: START_BLOCKS.sepolia,
+  rpcEnvVar: RPC_ENV_VARS.sepolia,
   addresses: {
     v2: {
       factory: "0xF62c03E08ada871A0bEb309762E260a7a6a880E6" as Address,
