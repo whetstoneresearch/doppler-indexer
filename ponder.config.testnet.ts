@@ -173,7 +173,7 @@ export default createConfig({
       abi: UniswapV4InitializerABI,
       chain: {
         baseSepolia: {
-          startBlock: basesepolia.startBlock,
+          startBlock: baseSepolia.startBlock,
           address: baseSepolia.addresses.v4.v4Initializer,
         },
         sepolia: {
@@ -262,7 +262,7 @@ export default createConfig({
       abi: PoolManagerABI,
       chain: {
         baseSepolia: {
-          startBlock: basesepolia.startBlock,
+          startBlock: baseSepolia.startBlock,
           address: baseSepolia.addresses.v4.poolManager,
         },
         sepolia: {
@@ -275,7 +275,7 @@ export default createConfig({
       abi: V4MigratorHookABI,
       chain: {
         baseSepolia: {
-          startBlock: basesepolia.startBlock,
+          startBlock: baseSepolia.startBlock,
           address: baseSepolia.addresses.v4.v4MigratorHook,
         },
         sepolia: {
@@ -288,7 +288,7 @@ export default createConfig({
       abi: V4MigratorABI,
       chain: {
         baseSepolia: {
-          startBlock: basesepolia.startBlock,
+          startBlock: baseSepolia.startBlock,
           address: baseSepolia.addresses.v4.v4Migrator,
         },
         sepolia: {
@@ -301,7 +301,7 @@ export default createConfig({
       abi: DopplerABI,
       chain: {
         baseSepolia: {
-          startBlock: basesepolia.startBlock,
+          startBlock: baseSepolia.startBlock,
           address: factory({
             address: baseSepolia.addresses.v4.v4Initializer,
             event: getAbiItem({ abi: UniswapV4InitializerABI, name: "Create" }),
@@ -331,7 +331,7 @@ export default createConfig({
       abi: ZoraFactoryABI,
       chain: {
         baseSepolia: {
-          startBlock: basesepolia.startBlock,
+          startBlock: baseSepolia.startBlock,
           address: baseSepolia.addresses.zora.zoraFactory,
         },
       },
@@ -340,7 +340,7 @@ export default createConfig({
     //   abi: ZoraCoinABI,
     //   chain: {
     //     baseSepolia: {
-    //       startBlock: basesepolia.startBlock,
+    //       startBlock: baseSepolia.startBlock,
     //       address: factory({
     //         address: baseSepolia.addresses.zora.zoraFactory,
     //         event: getAbiItem({ abi: ZoraFactoryABI, name: "CoinCreatedV4" }),
@@ -353,7 +353,7 @@ export default createConfig({
       abi: ZoraCreatorCoinABI,
       chain: {
         baseSepolia: {
-          startBlock: basesepolia.startBlock,
+          startBlock: baseSepolia.startBlock,
           address: factory({
             address: baseSepolia.addresses.zora.zoraFactory,
             event: getAbiItem({
@@ -369,7 +369,7 @@ export default createConfig({
     //   abi: ZoraV4HookABI,
     //   chain: {
     //     baseSepolia: {
-    //       startBlock: basesepolia.startBlock,
+    //       startBlock: baseSepolia.startBlock,
     //       address: factory({
     //         address: baseSepolia.addresses.zora.zoraFactory,
     //         event: getAbiItem({ abi: ZoraFactoryABI, name: "CoinCreatedV4" }),
@@ -382,7 +382,7 @@ export default createConfig({
       abi: ZoraV4HookABI,
       chain: {
         baseSepolia: {
-          startBlock: basesepolia.startBlock,
+          startBlock: baseSepolia.startBlock,
           address: factory({
             address: baseSepolia.addresses.zora.zoraFactory,
             event: getAbiItem({

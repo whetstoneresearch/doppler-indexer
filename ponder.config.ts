@@ -460,7 +460,7 @@ export default createConfig({
           address: base.addresses.v4.v4MigratorHook,
         },
         baseSepolia: {
-          startBlock: basesepolia.startBlock,
+          startBlock: baseSepolia.startBlock,
           address: base.addresses.v4.v4MigratorHook
         },
         unichain: {
@@ -485,7 +485,7 @@ export default createConfig({
           address: base.addresses.v4.v4Migrator,
         },
         baseSepolia: {
-          startBlock: basesepolia.startBlock,
+          startBlock: baseSepolia.startBlock,
           address: baseSepolia.addresses.v4.v4Migrator,
         },
         unichain: {
@@ -700,7 +700,7 @@ export default createConfig({
       abi: DopplerHookInitializerABI,
       chain: {
         baseSepolia: {
-          startBlock: basesepolia.startBlock,
+          startBlock: baseSepolia.startBlock,
           address: baseSepolia.addresses.v4.DopplerHookInitializer,
         },
         base: {
