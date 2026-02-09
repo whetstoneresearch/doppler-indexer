@@ -91,18 +91,6 @@ ponder.on("DopplerHookInitializer:Swap", async ({ event, context }) => {
   const timestamp = event.block.timestamp;
   const { chain, client, db } = context;
 
-  const poolKey: PoolKey = {
-    currency0: poolKeyTuple.currency0,
-    currency1: poolKeyTuple.currency1,
-    fee: poolKeyTuple.fee,
-    tickSpacing: poolKeyTuple.tickSpacing,
-    hooks: poolKeyTuple.hooks,
-  };
-
-  if (isPrecompileAddress(poolKey.currency0) || isPrecompileAddress(poolKey.currency1)) {
-    return;
-  }
-
   const poolAddress = (poolId as string).toLowerCase() as `0x${string}`;
 
   const poolEntity = await db.find(pool, {
@@ -112,6 +100,16 @@ ponder.on("DopplerHookInitializer:Swap", async ({ event, context }) => {
 
   if (!poolEntity) {
     console.warn(`DHook pool not found for swap: ${poolAddress}`);
+    return;
+  }
+
+  const poolKey = poolEntity.poolKey as PoolKey;
+
+  if (!poolKey.currency0 || !poolKey.currency1) {
+    return
+  }
+  
+  if (isPrecompileAddress(poolKey.currency0) || isPrecompileAddress(poolKey.currency1)) {
     return;
   }
 
