@@ -3,6 +3,7 @@
   "version": "0.0.2",
   "private": true,
   "type": "module",
+  "packageManager": "pnpm@10.17.1",
   "scripts": {
     "dev": "ponder dev",
     "start": "ponder start",
