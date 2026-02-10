@@ -72,6 +72,12 @@ export interface SharedAddresses {
   noice: NoiceAddresses;
   monad: MonadAddresses;
   eurc: EurcAddresses;
+  bankr: BankrAddresses;
+}
+
+export interface BankrAddresses {
+  bankrAddress: Address;
+  bankrWethPool: Address;
 }
 
 export interface EurcAddresses {

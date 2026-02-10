@@ -167,7 +167,12 @@ export default createConfig({
       chain: "base",
       startBlock: 38212428,
       interval: BLOCK_INTERVALS.FIVE_MINUTES
-    }
+    },
+    BankrWethPrice: {
+      chain: "base",
+      startBlock: 41900609,
+      interval: BLOCK_INTERVALS.FIVE_MINUTES, // every 5 minutes
+    },
   },
   contracts: {
     Airlock: {

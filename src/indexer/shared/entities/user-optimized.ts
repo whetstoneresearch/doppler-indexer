@@ -189,31 +189,29 @@ export const batchUpdateHolderCounts = async ({
     return;
   }
 
-  const updates: Promise<any>[] = [];
+  // Update token holder count first (must succeed independently)
+  await db.update(token, {
+    address: tokenAddress.toLowerCase() as `0x${string}`,
+    chainId: chain.id,
+  }).set({
+    holderCount: currentTokenHolderCount + holderCountDelta,
+  });
 
-  // Update token holder count
-  updates.push(
-    db.update(token, {
-      address: tokenAddress.toLowerCase() as `0x${string}`,
-      chainId: chain.id,
-    }).set({
-      holderCount: currentTokenHolderCount + holderCountDelta,
-    })
-  );
-
-  // Update pool and asset holder counts if pool exists
+  // Update pool holder count separately using the pool's own current value
   if (poolAddress) {
-    updates.push(
-      db.update(pool, {
+    const poolEntity = await db.find(pool, {
+      address: poolAddress.toLowerCase() as `0x${string}`,
+      chainId: chain.id,
+    });
+    if (poolEntity) {
+      await db.update(pool, {
         address: poolAddress.toLowerCase() as `0x${string}`,
         chainId: chain.id,
       }).set({
-        holderCount: currentTokenHolderCount + holderCountDelta,
-      })
-    );
+        holderCount: poolEntity.holderCount + holderCountDelta,
+      });
+    }
   }
-
-  await Promise.all(updates);
 };
 
 // Import necessary schema types

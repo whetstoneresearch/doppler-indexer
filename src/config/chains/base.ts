@@ -99,6 +99,10 @@ export const baseSepoliaConfig: ChainConfig = {
       eurc: {
         eurcAddress: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
         eurcUsdcPool: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
+      },
+      bankr: {
+        bankrAddress: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
+        bankrWethPool: COMMON_ADDRESSES.ZERO_ADDRESS as Address
       }
     },
     stables: {
@@ -194,6 +198,10 @@ export const baseConfig: ChainConfig = {
       eurc: {
         eurcAddress: "0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42" as Address,
         eurcUsdcPool: "0xb18fad93e3c5a5f932d901f0c22c5639a832d6f29a4392fff3393fb734dd0720" as Address
+      },
+      bankr: {
+        bankrAddress: "0xaec085e5a5ce8d96a7bdd3eb3a62445d4f6ce703" as Address,
+        bankrWethPool: "0x1220f66a1A58275403B683c670BA10B9C7f03178" as Address
       }
     },
     stables: {

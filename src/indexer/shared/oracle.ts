@@ -1,4 +1,4 @@
-import { ethPrice, zoraUsdcPrice, fxhWethPrice, noiceWethPrice, monadUsdcPrice, eurcUsdcPrice, usdcPrice, usdtPrice } from "ponder.schema";
+import { ethPrice, zoraUsdcPrice, fxhWethPrice, noiceWethPrice, monadUsdcPrice, eurcUsdcPrice, bankrWethPrice, usdcPrice, usdtPrice } from "ponder.schema";
 import { Context } from "ponder:registry";
 import { MarketDataService, PriceService } from "@app/core";
 import { chainConfigs } from "@app/config";
@@ -366,6 +366,63 @@ export const fetchEurcPrice = async (
     isToken0: true,
     decimals: 6,
     quoteDecimals: 6,
+  });
+
+  setCachedFallbackPrice(cacheKey, price);
+  return price;
+};
+
+export const fetchBankrPrice = async (
+  timestamp: bigint,
+  context: Context,
+): Promise<bigint> => {
+  const { db, chain, client } = context;
+  
+  if (chain.name != "base") {
+    return parseUnits("1", 18);
+  }
+
+  let roundedTimestamp = BigInt(Math.floor(Number(timestamp) / 300) * 300);
+
+  let bankrPriceData;
+  let attempts = 0;
+  while (!bankrPriceData && attempts < MAX_PRICE_LOOKUP_ATTEMPTS) {
+    attempts++;
+    bankrPriceData = await db.find(bankrWethPrice, {
+      timestamp: roundedTimestamp,
+      chainId: chain.id,
+    });
+
+    if (!bankrPriceData) {
+      roundedTimestamp -= 300n;
+    }
+  }
+
+  if (bankrPriceData) {
+    return bankrPriceData.price;
+  }
+
+  const cacheKey = `bankr:${chain.id}`;
+  const cachedPrice = getCachedFallbackPrice(cacheKey);
+  if (cachedPrice !== null) {
+    return cachedPrice;
+  }
+
+  console.warn(`[fetchbankrPrice] DB lookup failed for chain ${chain.name}, falling back to Uniswap V3 RPC`);
+
+  const slot0 = await client.readContract({
+    abi: UniswapV3PoolABI,
+    address: chainConfigs["base"].addresses.shared.bankr.bankrWethPool,
+    functionName: "slot0",
+  });
+
+  const sqrtPriceX96 = slot0[0] as bigint;
+
+  const price = PriceService.computePriceFromSqrtPriceX96({
+    sqrtPriceX96,
+    isToken0: false,
+    decimals: 18,
+    quoteDecimals: 18,
   });
 
   setCachedFallbackPrice(cacheKey, price);

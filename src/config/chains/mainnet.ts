@@ -76,6 +76,10 @@ export const mainnetConfig: ChainConfig = {
       eurc: {
         eurcAddress: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
         eurcUsdcPool: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
+      },
+      bankr: {
+        bankrAddress: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
+        bankrWethPool: COMMON_ADDRESSES.ZERO_ADDRESS as Address
       }
     },
     stables: {

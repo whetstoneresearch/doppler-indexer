@@ -12,7 +12,8 @@ import {
   fetchMonadPrice,
   fetchUsdcPrice,
   fetchUsdtPrice,
-  fetchEurcPrice
+  fetchEurcPrice,
+  fetchBankrPrice
 } from "@app/indexer/shared/oracle";
 
 export enum QuoteToken {
@@ -24,6 +25,7 @@ export enum QuoteToken {
   Usdc,
   Usdt,
   Eurc,
+  Bankr,
   CreatorCoin,
   Unknown
 }
@@ -47,6 +49,7 @@ export async function getQuoteInfo(quoteAddress: Address, timestamp: bigint | nu
   const usdcAddress = chainConfigs[context.chain.name].addresses.stables.usdc.toLowerCase();
   const usdtAddress = chainConfigs[context.chain.name].addresses.stables.usdt.toLowerCase();
   const eurcAddress = chainConfigs[context.chain.name].addresses.shared.eurc.eurcAddress.toLowerCase();
+  const bankrAddress = chainConfigs[context.chain.name].addresses.shared.bankr.bankrAddress.toLowerCase();
   
   const isQuoteEth = (quoteAddress === nativeEthAddress || quoteAddress === wethAddress);
   const isQuoteZora = quoteAddress != zeroAddress && quoteAddress === zoraAddress;
@@ -56,9 +59,10 @@ export async function getQuoteInfo(quoteAddress: Address, timestamp: bigint | nu
   const isQuoteUsdc = quoteAddress != zeroAddress && quoteAddress === usdcAddress;
   const isQuoteUsdt = quoteAddress != zeroAddress && quoteAddress === usdtAddress;
   const isQuoteEurc = quoteAddress != zeroAddress && quoteAddress === eurcAddress;
+  const isQuoteBankr = quoteAddress != zeroAddress && quoteAddress === bankrAddress;
   
   let creatorCoinInfo;
-  if (!(isQuoteZora || isQuoteFxh || isQuoteNoice || isQuoteMon || isQuoteUsdc || isQuoteUsdt || isQuoteEurc)) {
+  if (!(isQuoteZora || isQuoteFxh || isQuoteNoice || isQuoteMon || isQuoteUsdc || isQuoteUsdt || isQuoteEurc || isQuoteBankr)) {
     creatorCoinInfo = await getCreatorCoinInfo(quoteAddress, context);    
   } else {
     creatorCoinInfo = {
@@ -76,13 +80,14 @@ export async function getQuoteInfo(quoteAddress: Address, timestamp: bigint | nu
     : isQuoteUsdc ? QuoteToken.Usdc
     : isQuoteUsdt ? QuoteToken.Usdt
     : isQuoteEurc ? QuoteToken.Eurc
+    : isQuoteBankr ? QuoteToken.Bankr
     : creatorCoinInfo.isQuoteCreatorCoin ? QuoteToken.CreatorCoin
     : isQuoteEth ? QuoteToken.Eth
     : QuoteToken.Unknown;
     
   // Token decimals (actual token decimals)
   const quoteDecimals = 
-    (isQuoteZora || isQuoteFxh || isQuoteNoice || isQuoteMon || creatorCoinInfo.isQuoteCreatorCoin || isQuoteEth) ? 18
+    (isQuoteZora || isQuoteFxh || isQuoteNoice || isQuoteMon || creatorCoinInfo.isQuoteCreatorCoin || isQuoteEth || isQuoteBankr) ? 18
     : (isQuoteUsdc || isQuoteUsdt || isQuoteEurc) ? 6
     // assumes 18 decimals for unknown quote tokens
     : 18;
@@ -129,6 +134,8 @@ export async function getQuoteInfo(quoteAddress: Address, timestamp: bigint | nu
     quotePrice = await fetchUsdtPrice(timestamp, context);
   } else if (isQuoteEurc) {
     quotePrice = await fetchEurcPrice(timestamp, context);
+  } else if (isQuoteBankr) {
+    quotePrice = await fetchBankrPrice(timestamp, context);
   } else if (creatorCoinInfo.isQuoteCreatorCoin) {
     if (creatorCoinInfo.price === null) {
       // Creator coin pool doesn't exist yet, fall back to unknown token handling
