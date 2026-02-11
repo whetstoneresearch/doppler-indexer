@@ -158,12 +158,14 @@ export const baseConfig: ChainConfig = {
         "0x45178a8d6d368d612b7552b217802b7f97262000",
         "0xd6fecff347c6203a41874e8d77de669b54e7a500"
       ] as Address[],
-      v4MulticurveInitializer:
-        "0x65de470da664a5be139a5d812be5fda0d76cc951" as Address,
+      v4MulticurveInitializer: [
+        "0x65de470da664a5be139a5d812be5fda0d76cc951"
+      ] as Address[],
       v4MulticurveInitializerHook:
         "0x892d3c2b4abeaaf67d52a7b29783e2161b7cad40" as Address,
-      v4ScheduledMulticurveInitializer:
-        "0xa36715da46ddf4a769f3290f49af58bf8132ed8e" as Address,
+      v4ScheduledMulticurveInitializer: [
+        "0xa36715da46ddf4a769f3290f49af58bf8132ed8e" 
+      ] as Address[],
       v4ScheduledMulticurveInitializerHook:
         "0x3e342a06f9592459d75721d6956b570f02ef2dc0" as Address,
       DecayMulticurveInitializer: 
