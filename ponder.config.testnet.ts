@@ -433,7 +433,7 @@ export default createConfig({
     DecayMulticurveInitializer: {
       abi: UniswapV4MulticurveInitializerABI,
       chain: {
-        base: {
+        baseSepolia: {
           startBlock: 37530743,
           address: base.addresses.v4.DecayMulticurveInitializer,
         },
@@ -442,7 +442,7 @@ export default createConfig({
     DecayMulticurveInitializerHook: {
       abi: UniswapV4MulticurveInitializerHookABI,
       chain: {
-        base: {
+        baseSepolia: {
           startBlock: 37530742,
           address: base.addresses.v4.DecayMulticurveInitializerHook,
         },
