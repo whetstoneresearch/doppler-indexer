@@ -109,10 +109,6 @@ ponder.on(
       marketCapUsd: poolEntity.marketCapUsd,
       poolAddress,
     });
-    await insertScheduledPool({
-      poolId,
-      context
-    })
     await updatePool({
       poolAddress: poolAddress,
       context,
