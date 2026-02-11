@@ -97,7 +97,8 @@ ponder.on(
       poolKey,
       context,
       creatorAddress,
-      scheduled: true
+      scheduled: true,
+      decay: true
     });
     if (!poolEntity) return;
 
@@ -146,7 +147,8 @@ ponder.on(
       blockNumber: block.number,
       poolKey: key,
       context,
-      scheduled: true
+      scheduled: true,
+      decay: true
     });
 
     if (!poolEntity) return;

@@ -31,7 +31,8 @@ export const insertMulticurvePoolV4Optimized = async ({
   blockNumber,
   context,
   creatorAddress,
-  scheduled
+  scheduled,
+  decay
 }: {
   poolAddress: Address;
   poolKey: PoolKey;
@@ -40,6 +41,7 @@ export const insertMulticurvePoolV4Optimized = async ({
   context: Context;
   creatorAddress: Address;
   scheduled: boolean;
+  decay?: boolean;
 }): Promise<typeof pool.$inferSelect | null>=> {
   const { db, chain, client } = context;
   const address = poolAddress.toLowerCase() as `0x${string}`;
@@ -59,9 +61,12 @@ export const insertMulticurvePoolV4Optimized = async ({
   let baseToken;
   let quoteToken;
 
-  const configuredAddresses = scheduled ?
+  const configuredAddresses = 
+  decay ?
+    chainConfigs[chain.name].addresses.v4.DecayMulticurveInitializer :  
+  scheduled ?
     chainConfigs[chain.name].addresses.v4.v4ScheduledMulticurveInitializer :
-    chainConfigs[chain.name].addresses.v4.v4MulticurveInitializer;
+  chainConfigs[chain.name].addresses.v4.v4MulticurveInitializer;
 
   const activeInitializers = getActiveInitializers(configuredAddresses, blockNumber);
 
@@ -206,7 +211,7 @@ export const insertMulticurvePoolV4Optimized = async ({
     baseToken,
     quoteToken,
     price,
-    type: scheduled ? "scheduled-multicurve" : "multicurve",
+    type: decay ? "decay-multicurve" : scheduled ? "scheduled-multicurve" :  "multicurve",
     chainId,
     fee: poolKey.fee,
     dollarLiquidity: 0n,
