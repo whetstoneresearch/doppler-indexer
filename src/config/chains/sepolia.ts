@@ -47,6 +47,8 @@ export const sepoliaConfig: ChainConfig = {
       v4ScheduledMulticurveInitializer: "0xf84378c9f39e0ff267f3101c88773359c5393876" as Address,
       v4ScheduledMulticurveInitializerHook:
         "0xc6a562cb5cbfa29bcb1bdccf903b8b8f2e4a2dc0" as Address,
+      DecayMulticurveInitializer: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
+      DecayMulticurveInitializerHook: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
       DopplerHookInitializer: "0xaa096f558f3d4c9226de77e7cc05f18e180b2544" as Address,
       RehypeHook: "0x97cad5684fb7cc2bed9a9b5ebfba67138f4f2503" as Address
     },

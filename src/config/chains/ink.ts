@@ -40,6 +40,8 @@ export const inkConfig: ChainConfig = {
       v4MulticurveInitializerHook: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
       v4ScheduledMulticurveInitializer: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
       v4ScheduledMulticurveInitializerHook: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
+      DecayMulticurveInitializer: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
+      DecayMulticurveInitializerHook: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
       DopplerHookInitializer: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
       RehypeHook: COMMON_ADDRESSES.ZERO_ADDRESS as Address
     },

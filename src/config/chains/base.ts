@@ -70,6 +70,10 @@ export const baseSepoliaConfig: ChainConfig = {
       ] as Address[],
       v4ScheduledMulticurveInitializerHook:
         "0x5d663f9c993deff2d17ce4232d75f347df7dadc0" as Address,
+      DecayMulticurveInitializer: 
+        "0xd59ce43e53d69f190e15d9822fb4540dccc91178" as Address,
+      DecayMulticurveInitializerHook:
+        "0xbb7784a4d481184283ed89619a3e3ed143e1adc0" as Address,
       DopplerHookInitializer: "0x98cd6478debe443069db863abb9626d94de9a544" as Address,
       RehypeHook: "0x636A756CeE08775CC18780F52dd90B634F18ad37" as Address
     },
@@ -162,6 +166,10 @@ export const baseConfig: ChainConfig = {
         "0xa36715da46ddf4a769f3290f49af58bf8132ed8e" as Address,
       v4ScheduledMulticurveInitializerHook:
         "0x3e342a06f9592459d75721d6956b570f02ef2dc0" as Address,
+      DecayMulticurveInitializer: 
+        "0xd59ce43e53d69f190e15d9822fb4540dccc91178" as Address,
+      DecayMulticurveInitializerHook:
+        "0xbb7784a4d481184283ed89619a3e3ed143e1adc0" as Address,
       DopplerHookInitializer: "0xaa096f558f3d4c9226de77e7cc05f18e180b2544" as Address,
       RehypeHook: "0x97cad5684fb7cc2bed9a9b5ebfba67138f4f2503bb" as Address
     },

@@ -317,7 +317,11 @@ export default createConfig({
         baseSepolia: {
           startBlock: baseSepolia.startBlock,
           address: factory({
-            address: baseSepolia.addresses.v4.v4Initializer,
+            address: [
+              ...(baseSepolia.addresses.v4.v4Initializer as `0x${string}`[]),
+              ...(baseSepolia.addresses.v4.v4ScheduledMulticurveInitializer as `0x${string}`[]),
+              baseSepolia.addresses.v4.DecayMulticurveInitializer,
+            ],
             event: getAbiItem({ abi: UniswapV4InitializerABI, name: "Create" }),
             parameter: "poolOrHook",
           }),
@@ -423,6 +427,24 @@ export default createConfig({
         baseSepolia: {
           startBlock: baseSepolia.startBlock,
           address: baseSepolia.addresses.v4.v4MulticurveInitializerHook,
+        },
+      },
+    },
+    DecayMulticurveInitializer: {
+      abi: UniswapV4MulticurveInitializerABI,
+      chain: {
+        base: {
+          startBlock: 37530743,
+          address: base.addresses.v4.DecayMulticurveInitializer,
+        },
+      },
+    },
+    DecayMulticurveInitializerHook: {
+      abi: UniswapV4MulticurveInitializerHookABI,
+      chain: {
+        base: {
+          startBlock: 37530742,
+          address: base.addresses.v4.DecayMulticurveInitializerHook,
         },
       },
     },

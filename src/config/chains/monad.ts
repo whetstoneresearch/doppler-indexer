@@ -40,6 +40,8 @@ export const monadConfig: ChainConfig = {
       v4MulticurveInitializerHook: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
       v4ScheduledMulticurveInitializer: "0xce3099b2f07029b086e5e92a1573c5f5a3071783" as Address,
       v4ScheduledMulticurveInitializerHook: "0x580ca49389d83b019d07e17e99454f2f218e2dc0" as Address,
+      DecayMulticurveInitializer: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
+      DecayMulticurveInitializerHook: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
       DopplerHookInitializer: "0xaa096f558f3d4c9226de77e7cc05f18e180b2544" as Address,
       RehypeHook: "0x97cad5684fb7cc2bed9a9b5ebfba67138f4f2503" as Address
     },
