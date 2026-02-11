@@ -43,9 +43,9 @@ ponder.on(
     }
 
     let poolState;
-    const v4ScheduledMulticurveInitializer = chainConfigs[context.chain.name].addresses.v4.v4ScheduledMulticurveInitializer;
-    if (Array.isArray(v4ScheduledMulticurveInitializer)) {
-      const poolStates = await Promise.all(v4ScheduledMulticurveInitializer.map(async (initializer) => {
+    const DecayMulticurveInitializer = chainConfigs[context.chain.name].addresses.v4.DecayMulticurveInitializer;
+    if (Array.isArray(DecayMulticurveInitializer)) {
+      const poolStates = await Promise.all(DecayMulticurveInitializer.map(async (initializer) => {
         try {
           return await context.client.readContract({
             abi: UniswapV4ScheduledMulticurveInitializerABI,
@@ -66,7 +66,7 @@ ponder.on(
       try {
         poolState = await context.client.readContract({
           abi: UniswapV4ScheduledMulticurveInitializerABI,
-          address: v4ScheduledMulticurveInitializer,
+          address: DecayMulticurveInitializer,
           functionName: "getState",
           args: [assetId],
         });
