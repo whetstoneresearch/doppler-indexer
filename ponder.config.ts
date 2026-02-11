@@ -513,12 +513,7 @@ export default createConfig({
         base: {
           startBlock: base.v4StartBlock,
           address: factory({
-            address: [
-              ...(base.addresses.v4.v4Initializer as `0x${string}`[]),
-              ...(base.addresses.v4.v4MulticurveInitializer as `0x${string}`[]),
-              ...(base.addresses.v4.v4ScheduledMulticurveInitializer as `0x${string}`[]),
-              base.addresses.v4.DecayMulticurveInitializer
-            ],
+            address: base.addresses.v4.v4Initializer,
             event: getAbiItem({ abi: UniswapV4InitializerABI, name: "Create" }),
             parameter: "poolOrHook",
           }),
