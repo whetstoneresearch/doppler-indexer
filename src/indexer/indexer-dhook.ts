@@ -30,24 +30,6 @@ ponder.on("DopplerHookInitializer:Create", async ({ event, context }) => {
 
   const initializerAddress = chainConfigs[context.chain.name].addresses.v4.DopplerHookInitializer;
 
-  const [baseToken] = await Promise.all([
-    insertTokenIfNotExists({
-      tokenAddress: assetAddress,
-      creatorAddress,
-      timestamp,
-      context,
-      isDerc20: true,
-      poolAddress: poolOrHook.toLowerCase() as `0x${string}`,
-    }),
-    insertTokenIfNotExists({
-      tokenAddress: numeraireAddress,
-      creatorAddress,
-      timestamp,
-      context,
-      isDerc20: false,
-    }),
-  ]);
-
   const quoteInfo = await getQuoteInfo(numeraireAddress, timestamp, context);
 
   const poolData = await getDHookPoolData({
@@ -59,6 +41,24 @@ ponder.on("DopplerHookInitializer:Create", async ({ event, context }) => {
 
   const poolId = getPoolId(poolData.poolKey);
   const poolAddress = poolId.toLowerCase() as `0x${string}`;
+
+  const [baseToken] = await Promise.all([
+    insertTokenIfNotExists({
+      tokenAddress: assetAddress,
+      creatorAddress,
+      timestamp,
+      context,
+      isDerc20: true,
+      poolAddress: poolAddress,
+    }),
+    insertTokenIfNotExists({
+      tokenAddress: numeraireAddress,
+      creatorAddress,
+      timestamp,
+      context,
+      isDerc20: false,
+    }),
+  ]);
 
   const { totalSupply } = baseToken;
 
