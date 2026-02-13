@@ -252,10 +252,19 @@ ponder.on(
     const { poolId, sender, amount0, amount1 } = event.args;
     const timestamp = event.block.timestamp;
 
-    const poolEntity = await context.db.find(pool, {
-      address: poolId,
-      chainId: context.chain.id,
-    });
+    // Parallelize pool fetch and slot0 RPC call (they are independent)
+    const [poolEntity, slot0] = await Promise.all([
+      context.db.find(pool, {
+        address: poolId,
+        chainId: context.chain.id,
+      }),
+      context.client.readContract({
+        abi: StateViewABI,
+        address: chainConfigs[context.chain.name].addresses.v4.stateView,
+        functionName: "getSlot0",
+        args: [poolId],
+      }),
+    ]);
 
     if (!poolEntity) {
       return;
@@ -265,23 +274,17 @@ ponder.on(
       return;
     }
 
-    const slot0 = await context.client.readContract({
-      abi: StateViewABI,
-      address: chainConfigs[context.chain.name].addresses.v4.stateView,
-      functionName: "getSlot0",
-      args: [poolId],
-    });
-    
     const tick = slot0[1];
 
     const quoteInfo = await getQuoteInfo(poolEntity.quoteToken, timestamp, context);
-    
+
     const sqrtPriceX96 = slot0?.[0] ?? 0n;
 
     const isCoinBuy = poolEntity.isToken0
       ? amount0 > amount1
       : amount1 > amount0;
 
+    // Pass poolEntity to avoid redundant fetch in handleOptimizedSwap
     await handleOptimizedSwap(
       {
         poolAddress: poolId,
@@ -296,8 +299,9 @@ ponder.on(
         blockNumber: event.block.number,
         context,
         tick
-      },      
-      quoteInfo
+      },
+      quoteInfo,
+      poolEntity
     );
   },
 );

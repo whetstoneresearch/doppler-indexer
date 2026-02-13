@@ -4,7 +4,7 @@ import { Address, zeroAddress } from "viem";
 import { SwapOrchestrator } from "@app/core";
 import { SwapService, MarketDataService, PriceService } from "@app/core";
 import { QuoteToken, QuoteInfo, getQuoteInfo } from "@app/utils/getQuoteInfo";
-import { updateAsset, updatePool } from "./entities";
+import { updateAsset, updatePool, updatePoolDirect } from "./entities";
 import { chainConfigs } from "@app/config";
 import { updateFifteenMinuteBucketUsd } from "@app/utils/time-buckets";
 import { SwapType } from "@app/types";
@@ -132,23 +132,28 @@ export function processSwapCalculations(
 
 /**
  * Optimized swap handler for both V4 hooks
+ * @param params - Swap handler parameters
+ * @param quoteInfo - Quote token info
+ * @param existingPoolEntity - Optional pre-fetched pool entity to avoid redundant db.find
  */
 export async function handleOptimizedSwap(
   params: SwapHandlerParams,
-  quoteInfo: QuoteInfo
+  quoteInfo: QuoteInfo,
+  existingPoolEntity?: typeof pool.$inferSelect
 ): Promise<void> {
   const { context, timestamp } = params;
   const { db, chain } = context;
   const poolAddress = params.poolAddress;
 
-  const poolEntity = await db.find(pool, {
+  // Use pre-fetched pool entity if provided, otherwise fetch it
+  const poolEntity = existingPoolEntity ?? await db.find(pool, {
     address: poolAddress,
     chainId: chain.id,
-  })
-  
+  });
+
   if (!poolEntity) {
     return;
-  }  
+  }
 
   if (isPrecompileAddress(poolEntity.baseToken) || isPrecompileAddress(poolEntity.quoteToken)) {
     return;
@@ -213,7 +218,7 @@ export async function handleOptimizedSwap(
   };
 
   const isQuoteEth = (quoteInfo.quoteToken === QuoteToken.Eth) ? true : false
-  // Execute all updates in parallel
+  // Execute all updates in parallel (including reserve update)
   await Promise.all([
     SwapOrchestrator.performSwapUpdates(
       {
@@ -249,14 +254,14 @@ export async function handleOptimizedSwap(
       amountOut: swapData.amountOut,
       swapValueUsd: swapData.swapValueUsd,
     }),
+    // Update reserves directly (pool existence already verified)
+    updatePoolDirect({
+      poolAddress: poolAddress,
+      context,
+      update: {
+        reserves0: swapData.nextReserves0,
+        reserves1: swapData.nextReserves1,
+      },
+    }),
   ]);
-
-  await updatePool({
-    poolAddress: poolAddress,
-    context,
-    update: {
-      reserves0: swapData.nextReserves0,
-      reserves1: swapData.nextReserves1,
-    },
-  });
 }
