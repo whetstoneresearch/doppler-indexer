@@ -8,7 +8,7 @@ import { linkAssetToV4MigrationPool } from "./shared/entities/v4pools";
 import { updateUserAsset } from "./shared/entities/userAsset";
 import { insertUserAssetIfNotExists } from "./shared/entities/userAsset";
 import { insertUserIfNotExists, updateUser } from "./shared/entities/user";
-import { fetchExistingPool, updatePool } from "./shared/entities/pool";
+import { fetchExistingPool, updatePool, updatePoolDirect } from "./shared/entities/pool";
 import { zeroAddress } from "viem";
 import { getV4MigratorForAsset } from "@app/utils/v4-utils";
 import { isPrecompileAddress } from "@app/utils/validation";
@@ -186,29 +186,16 @@ ponder.on("DERC20:Transfer", async ({ event, context }) => {
       }),
     ]);
 
-  if (fromUser.lastSeenAt != timestamp) {
-    await updateUser({
-      userId: fromId,
-      context,
-      update: {
-        lastSeenAt: timestamp,
-      },
-    });
-  }
-
   let holderCountDelta = 0;
-  if (toUserAsset.balance == 0n && toUserAsset.balance + value > 0n) {
+  if (toUserAsset.balance === 0n && value > 0n) {
     holderCountDelta += 1;
   }
-  if (fromUserAsset.balance > 0n && fromUserAsset.balance - value == 0n) {
+  if (fromUserAsset.balance > 0n && fromUserAsset.balance === value) {
     holderCountDelta -= 1;
   }
 
-  const [poolEntity] = await Promise.all([
-    db.find(pool, {
-      address: tokenData.pool ?? zeroAddress,
-      chainId: chain.id,
-    }),
+  // Build update promises array, conditionally including user update and pool operations
+  const updatePromises: Promise<unknown>[] = [
     updateToken({
       tokenAddress: assetId,
       context,
@@ -234,15 +221,41 @@ ponder.on("DERC20:Transfer", async ({ event, context }) => {
         balance: fromUserAsset.balance - value,
       },
     }),
-  ]);
+  ];
 
-  if (poolEntity && tokenData.pool) {
-    await updatePool({
-      poolAddress: tokenData.pool,
-      context,
-      update: {
-        holderCount: tokenData.holderCount + holderCountDelta,
-      },
-    });
+  // Only update user lastSeenAt if it changed
+  if (fromUser.lastSeenAt !== timestamp) {
+    updatePromises.push(
+      updateUser({
+        userId: fromId,
+        context,
+        update: {
+          lastSeenAt: timestamp,
+        },
+      })
+    );
   }
+
+  // Only query and update pool if tokenData.pool exists
+  if (tokenData.pool && tokenData.pool !== zeroAddress) {
+    updatePromises.push(
+      (async () => {
+        const poolEntity = await db.find(pool, {
+          address: tokenData.pool!,
+          chainId: chain.id,
+        });
+        if (poolEntity) {
+          await updatePoolDirect({
+            poolAddress: tokenData.pool!,
+            context,
+            update: {
+              holderCount: tokenData.holderCount + holderCountDelta,
+            },
+          });
+        }
+      })()
+    );
+  }
+
+  await Promise.all(updatePromises);
 });

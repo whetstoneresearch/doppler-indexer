@@ -316,16 +316,42 @@ export const updatePool = async ({
 }) => {
   const { db, chain } = context;
   const address = poolAddress.toLowerCase() as `0x${string}`;
-  
+
   const existingPool = await db.find(pool, {
     address,
     chainId: chain.id,
   });
-  
+
   if (!existingPool) {
     return;
   }
-  
+
+  await db
+    .update(pool, {
+      address,
+      chainId: chain.id,
+    })
+    .set({
+      ...update,
+    });
+};
+
+/**
+ * Update pool without checking if it exists first.
+ * Use this when you've already verified the pool exists to avoid redundant db.find.
+ */
+export const updatePoolDirect = async ({
+  poolAddress,
+  context,
+  update,
+}: {
+  poolAddress: Address;
+  context: Context;
+  update: Partial<typeof pool.$inferInsert>;
+}) => {
+  const { db, chain } = context;
+  const address = poolAddress.toLowerCase() as `0x${string}`;
+
   await db
     .update(pool, {
       address,
