@@ -88,7 +88,7 @@ export default createConfig({
     MonadChainlinkEthPriceFeed: {
       chain: "monad",
       startBlock: monad.startBlock,
-      interval: BLOCK_INTERVALS.FIVE_MINUTES,
+      interval: BLOCK_INTERVALS.FIVE_MINUTES_MONAD,
     },
     MainnetChainlinkEthPriceFeed: {
       chain: "mainnet",
@@ -153,7 +153,7 @@ export default createConfig({
     MonadUsdcPrice: {
       chain: "monad",
       startBlock: monad.startBlock,
-      interval: BLOCK_INTERVALS.FIVE_MINUTES,
+      interval: BLOCK_INTERVALS.FIVE_MINUTES_MONAD,
     },
     EurcUsdcPrice: {
       chain: "base",
