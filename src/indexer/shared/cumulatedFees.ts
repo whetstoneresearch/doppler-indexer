@@ -4,6 +4,7 @@ import { UniswapV4MulticurveInitializerABI } from "@app/abis/multicurve-abis/Uni
 import { MarketDataService } from "@app/core";
 import { QuoteInfo } from "@app/utils/getQuoteInfo";
 import { getOrFetchBeneficiaries } from "./beneficiariesCache";
+import { getMulticallOptions } from "@app/core/utils/multicall";
 
 interface UpdateCumulatedFeesParams {
   poolId: `0x${string}`;
@@ -28,9 +29,10 @@ export async function updateCumulatedFees({
   }
 
   const { beneficiaries, initializer } = cached;
-  const { client, db } = context;
+  const { client, chain, db } = context;
 
   // Fetch cumulated fees from the initializer contract via multicall
+  const multicallOptions = getMulticallOptions(chain);
   const [fees0Result, fees1Result] = await client.multicall({
     contracts: [
       {
@@ -46,6 +48,7 @@ export async function updateCumulatedFees({
         args: [poolId],
       },
     ],
+    ...multicallOptions,
   });
 
   if (fees0Result.status !== "success" || fees1Result.status !== "success") {
