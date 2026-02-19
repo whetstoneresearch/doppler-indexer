@@ -246,7 +246,9 @@ export const insertMulticurvePoolV4Optimized = async ({
     lastRefreshed: timestamp,
     poolKey,
     tickLower: tick,
-    beneficiaries: beneficiaries ?? null,
+    beneficiaries: beneficiaries
+      ? beneficiaries.map(b => ({ beneficiary: b.beneficiary, shares: b.shares.toString() }))
+      : null,
     initializer: resolvedInitializer,
   });
 };

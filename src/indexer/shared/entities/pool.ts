@@ -575,7 +575,9 @@ export const insertPoolIfNotExistsDHook = async ({
     isQuoteEth,
     integrator: assetData.integrator,
     migrationType: migrationType,
-    beneficiaries: beneficiaries ?? null,
+    beneficiaries: beneficiaries
+      ? beneficiaries.map(b => ({ beneficiary: b.beneficiary, shares: b.shares.toString() }))
+      : null,
     initializer: initializerAddress ?? null,
   });
 };
