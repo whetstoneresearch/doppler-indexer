@@ -4,11 +4,6 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
-patchedDependencies:
-  ponder@0.15.18:
-    hash: 5036685df5d2babab7dfcc68ce406c9d6f0d3795267042bd5fe8b064cca6ddc1
-    path: patches/ponder@0.15.18.patch
-
 importers:
 
   .:
@@ -23,8 +18,8 @@ importers:
         specifier: ^4.3.2
         version: 4.3.2
       ponder:
-        specifier: ^0.15.18
-        version: 0.15.18(patch_hash=5036685df5d2babab7dfcc68ce406c9d6f0d3795267042bd5fe8b064cca6ddc1)(@opentelemetry/api@1.9.0)(@types/node@20.19.33)(hono@4.11.9)(typescript@5.9.3)(viem@2.30.1(typescript@5.9.3))
+        specifier: 0.16.3
+        version: 0.16.3(@opentelemetry/api@1.9.0)(@types/node@20.19.33)(hono@4.11.9)(typescript@5.9.3)(viem@2.30.1(typescript@5.9.3))
       viem:
         specifier: 2.30.1
         version: 2.30.1(typescript@5.9.3)
@@ -2192,8 +2187,8 @@ packages:
     resolution: {integrity: sha512-ip4qdzjkAyDDZklUaZkcRFb2iA118H9SgRh8yzTkSQK8HilsOJF7rSY8HoW5+I0M46AZgX/pxbprf2vvzQCE0Q==}
     hasBin: true
 
-  ponder@0.15.18:
-    resolution: {integrity: sha512-QFfTq1j5ouWjnLuXUpWnzVUNn26ceHARboxHWKnS/z9AAq1P6tqfuA5VC/cvb9NJkezsNHC6OVbEXjyW3wJaLg==}
+  ponder@0.16.3:
+    resolution: {integrity: sha512-QwAg5eFUujWR87ZMeTTKmF17q9IVTew26tpdaTfQrrtJVf/oU8ZN1qu7ZcP2SPtK5oScblJMWQm9zfwst6tJcg==}
     engines: {node: '>=18.14'}
     hasBin: true
     peerDependencies:
@@ -4913,7 +4908,7 @@ snapshots:
       sonic-boom: 3.8.1
       thread-stream: 2.7.0
 
-  ponder@0.15.18(patch_hash=5036685df5d2babab7dfcc68ce406c9d6f0d3795267042bd5fe8b064cca6ddc1)(@opentelemetry/api@1.9.0)(@types/node@20.19.33)(hono@4.11.9)(typescript@5.9.3)(viem@2.30.1(typescript@5.9.3)):
+  ponder@0.16.3(@opentelemetry/api@1.9.0)(@types/node@20.19.33)(hono@4.11.9)(typescript@5.9.3)(viem@2.30.1(typescript@5.9.3)):
     dependencies:
       '@babel/code-frame': 7.29.0
       '@commander-js/extra-typings': 12.1.0(commander@12.1.0)
