@@ -60,10 +60,11 @@ export const insertMulticurvePoolV4Optimized = async ({
   let poolState;
   let baseToken;
   let quoteToken;
+  let resolvedInitializer: Address;
 
-  const configuredAddresses = 
+  const configuredAddresses =
   decay ?
-    chainConfigs[chain.name].addresses.v4.DecayMulticurveInitializer :  
+    chainConfigs[chain.name].addresses.v4.DecayMulticurveInitializer :
   scheduled ?
     chainConfigs[chain.name].addresses.v4.v4ScheduledMulticurveInitializer :
   chainConfigs[chain.name].addresses.v4.v4MulticurveInitializer;
@@ -84,25 +85,28 @@ export const insertMulticurvePoolV4Optimized = async ({
         args: [poolKey.currency0],
       });
     }));
-    poolState = poolStates.find((state) => state[2].hooks !== zeroAddress);
-    if (!poolState) {
-      if (poolStates[0]) {
-        poolState = poolStates[0];
-      } else {
-        console.error("Could not retrieve pool state for asset", poolKey.currency0);
-        return null;
-      }
+    const foundIdx = poolStates.findIndex((state) => state[2].hooks !== zeroAddress);
+    if (foundIdx !== -1) {
+      poolState = poolStates[foundIdx]!;
+      resolvedInitializer = activeInitializers[foundIdx]!;
+    } else if (poolStates[0]) {
+      poolState = poolStates[0];
+      resolvedInitializer = activeInitializers[0]!;
+    } else {
+      console.error("Could not retrieve pool state for asset", poolKey.currency0);
+      return null;
     }
   } else {
+    resolvedInitializer = activeInitializers[0]!;
     poolState = await client.readContract({
       abi: UniswapV4MulticurveInitializerABI,
-      address: activeInitializers[0],
+      address: activeInitializers[0]!,
       functionName: "getState",
       args: [poolKey.currency0],
     });
   }
 
-  if (poolState[2].hooks === zeroAddress) {
+  if (poolState![2].hooks === zeroAddress) {
     baseToken = poolKey.currency1;
     quoteToken = poolKey.currency0;
     if (activeInitializers.length > 1) {
@@ -114,15 +118,17 @@ export const insertMulticurvePoolV4Optimized = async ({
           args: [poolKey.currency1],
         });
       }));
-      poolState = poolStates.find((state) => state[2].hooks !== zeroAddress);
-      if (!poolState) {
+      const foundIdx = poolStates.findIndex((state) => state[2].hooks !== zeroAddress);
+      if (foundIdx === -1) {
         console.error("Missing v4MulticurveInitializer for asset", poolKey.currency1);
         return null;
       }
+      poolState = poolStates[foundIdx]!;
+      resolvedInitializer = activeInitializers[foundIdx]!;
     } else {
       poolState = await client.readContract({
         abi: UniswapV4MulticurveInitializerABI,
-        address: activeInitializers[0],
+        address: activeInitializers[0]!,
         functionName: "getState",
         args: [poolKey.currency1],
       });
@@ -130,13 +136,14 @@ export const insertMulticurvePoolV4Optimized = async ({
         console.error("Missing v4MulticurveInitializer for asset", poolKey.currency1);
         return null;
       }
+      resolvedInitializer = activeInitializers[0]!;
     }
   } else {
     baseToken = poolKey.currency0;
     quoteToken = poolKey.currency1;
   }
 
-  const [quoteInfo, baseTokenEntity] = await Promise.all([
+  const [quoteInfo, baseTokenEntity, , beneficiaries] = await Promise.all([
     getQuoteInfo(quoteToken.toLowerCase() as Address, timestamp, context),
     upsertTokenWithPool({
       tokenAddress: baseToken,
@@ -160,12 +167,18 @@ export const insertMulticurvePoolV4Optimized = async ({
       creatorCoinPid: null,
       timestamp,
     }),
+    client.readContract({
+      abi: UniswapV4MulticurveInitializerABI,
+      address: resolvedInitializer,
+      functionName: "getBeneficiaries",
+      args: [baseToken],
+    }).catch(() => null),
   ]);
 
   const isToken0 = baseToken.toLowerCase() < quoteToken.toLowerCase();
 
   if (!poolKey) {
-    poolKey = poolState[2];
+    poolKey = poolState![2];
   }
   // Optimized contract calls - single multicall instead of multiple calls
   const stateView = chainConfigs[chain.name].addresses.v4.stateView;
@@ -232,6 +245,8 @@ export const insertMulticurvePoolV4Optimized = async ({
     lastSwapTimestamp: timestamp,
     lastRefreshed: timestamp,
     poolKey,
-    tickLower: tick    
+    tickLower: tick,
+    beneficiaries: beneficiaries ?? null,
+    initializer: resolvedInitializer,
   });
 };

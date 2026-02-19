@@ -385,7 +385,9 @@ export const pool = onchainTable(
     isCreatorCoin: t.boolean().notNull().default(false),
     poolKey: t.jsonb().notNull().default("{}"),    
     tickLower: t.integer().notNull().default(0),
-    graduationTick: t.integer().notNull().default(0)
+    graduationTick: t.integer().notNull().default(0),
+    beneficiaries: t.jsonb(),
+    initializer: t.hex(),
   }),
   (table) => ({
     pk: primaryKey({
@@ -524,6 +526,21 @@ export const scheduledPools = onchainTable(
     startingTimeIdx: index().on(table.startingTime)
   })
 )
+
+export const cumulatedFees = onchainTable(
+  "cumulated_fees",
+  (t) => ({
+    poolId: t.hex().notNull(),
+    chainId: t.integer().notNull(),
+    beneficiary: t.hex().notNull(),
+    token0Fees: t.bigint().notNull().default(0n),
+    token1Fees: t.bigint().notNull().default(0n),
+    totalFeesUsd: t.bigint().notNull().default(0n),
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.poolId, table.chainId, table.beneficiary] }),
+  })
+);
 
 export const userAsset = onchainTable(
   "user_asset",

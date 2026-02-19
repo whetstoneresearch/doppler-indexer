@@ -12,8 +12,9 @@ import { getQuoteInfo } from "@app/utils/getQuoteInfo";
 import { getAmount0Delta, getAmount1Delta } from "@app/utils/v3-utils/computeGraduationThreshold";
 import { PoolKey } from "@app/types/v4-types";
 import { getDHookPoolData } from "@app/utils/dhook-utils";
-import { StateViewABI } from "@app/abis";
+import { StateViewABI, DopplerHookInitializerABI } from "@app/abis";
 import { isPrecompileAddress } from "@app/utils/validation";
+import { updateCumulatedFees } from "./shared/cumulatedFees";
 
 ponder.on("DopplerHookInitializer:Create", async ({ event, context }) => {
   const { poolOrHook, asset: assetId, numeraire } = event.args;
@@ -32,12 +33,20 @@ ponder.on("DopplerHookInitializer:Create", async ({ event, context }) => {
 
   const quoteInfo = await getQuoteInfo(numeraireAddress, timestamp, context);
 
-  const poolData = await getDHookPoolData({
-    assetAddress,
-    initializerAddress,
-    context,
-    quoteInfo,
-  });
+  const [poolData, beneficiaries] = await Promise.all([
+    getDHookPoolData({
+      assetAddress,
+      initializerAddress,
+      context,
+      quoteInfo,
+    }),
+    context.client.readContract({
+      abi: DopplerHookInitializerABI,
+      address: initializerAddress,
+      functionName: "getBeneficiaries",
+      args: [assetAddress],
+    }).catch(() => null),
+  ]);
 
   const poolId = getPoolId(poolData.poolKey);
   const poolAddress = poolId.toLowerCase() as `0x${string}`;
@@ -68,6 +77,8 @@ ponder.on("DopplerHookInitializer:Create", async ({ event, context }) => {
     ethPrice: quoteInfo.quotePrice!,
     poolData,
     context,
+    beneficiaries,
+    initializerAddress,
   });
 
   const price = poolEntity.price;
@@ -227,21 +238,31 @@ ponder.on("DopplerHookInitializer:Swap", async ({ event, context }) => {
     entityUpdaters
   );
 
-  await updatePool({
-    poolAddress,
-    context,
-    update: {
+  await Promise.all([
+    updatePool({
+      poolAddress,
+      context,
+      update: {
+        price,
+        sqrtPrice: sqrtPriceX96,
+        tick: currentTick,
+        reserves0: newReserves0,
+        reserves1: newReserves1,
+        dollarLiquidity,
+        marketCapUsd,
+        lastSwapTimestamp: timestamp,
+        lastRefreshed: timestamp,
+      },
+    }),
+    updateCumulatedFees({
+      poolId: poolAddress,
+      chainId: chain.id,
+      isToken0: poolEntity.isToken0,
       price,
-      sqrtPrice: sqrtPriceX96,
-      tick: currentTick,
-      reserves0: newReserves0,
-      reserves1: newReserves1,
-      dollarLiquidity,
-      marketCapUsd,
-      lastSwapTimestamp: timestamp,
-      lastRefreshed: timestamp,
-    },
-  });
+      quoteInfo,
+      context,
+    }),
+  ]);
 });
 
 ponder.on("DopplerHookInitializer:ModifyLiquidity", async ({ event, context }) => {

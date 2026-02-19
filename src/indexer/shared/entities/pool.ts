@@ -478,12 +478,16 @@ export const insertPoolIfNotExistsDHook = async ({
   poolData,
   ethPrice,
   context,
+  beneficiaries,
+  initializerAddress,
 }: {
   poolAddress: Address;
   timestamp: bigint;
   ethPrice: bigint;
   context: Context;
   poolData: DHookPoolData;
+  beneficiaries?: readonly { beneficiary: `0x${string}`; shares: bigint }[] | null;
+  initializerAddress?: Address;
 }): Promise<typeof pool.$inferSelect> => {
   const { db, chain, client } = context;
   const address = poolAddress.toLowerCase() as `0x${string}`;
@@ -571,6 +575,8 @@ export const insertPoolIfNotExistsDHook = async ({
     isQuoteEth,
     integrator: assetData.integrator,
     migrationType: migrationType,
+    beneficiaries: beneficiaries ?? null,
+    initializer: initializerAddress ?? null,
   });
 };
 

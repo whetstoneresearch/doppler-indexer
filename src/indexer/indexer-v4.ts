@@ -30,6 +30,7 @@ import { handleOptimizedSwap } from "./shared/swap-optimizer";
 import { StateViewABI } from "@app/abis";
 import { Address, zeroAddress } from "viem";
 import { QuoteToken, QuoteInfo, getQuoteInfo } from "@app/utils/getQuoteInfo";
+import { updateCumulatedFees } from "./shared/cumulatedFees";
 
 ponder.on("UniswapV4Initializer:Create", async ({ event, context }) => {
   const { poolOrHook, asset: assetId, numeraire } = event.args;
@@ -533,25 +534,42 @@ ponder.on(
       ? amount0 > amount1
       : amount1 > amount0;
 
+    const price = PriceService.computePriceFromSqrtPriceX96({
+      sqrtPriceX96,
+      isToken0: poolEntity.isToken0,
+      decimals: 18,
+      quoteDecimals: quoteInfo.quoteDecimals,
+    });
+
     // Pass poolEntity to avoid redundant fetch in handleOptimizedSwap
-    await handleOptimizedSwap(
-      {
-        poolAddress: poolId,
-        swapSender: sender,
-        amount0,
-        amount1,
-        sqrtPriceX96,
-        isCoinBuy,
-        timestamp,
-        transactionHash: event.transaction.hash,
-        transactionFrom: event.transaction.from,
-        blockNumber: event.block.number,
+    await Promise.all([
+      handleOptimizedSwap(
+        {
+          poolAddress: poolId,
+          swapSender: sender,
+          amount0,
+          amount1,
+          sqrtPriceX96,
+          isCoinBuy,
+          timestamp,
+          transactionHash: event.transaction.hash,
+          transactionFrom: event.transaction.from,
+          blockNumber: event.block.number,
+          context,
+          tick
+        },
+        quoteInfo,
+        poolEntity
+      ),
+      updateCumulatedFees({
+        poolId,
+        chainId: context.chain.id,
+        isToken0: poolEntity.isToken0,
+        price,
+        quoteInfo,
         context,
-        tick
-      },
-      quoteInfo,
-      poolEntity
-    );
+      }),
+    ]);
   },
 );
 
