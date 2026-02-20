@@ -7,7 +7,9 @@ import { UniswapV3PoolABI } from "@app/abis/v3-abis/UniswapV3PoolABI";
 import { ChainlinkOracleABI } from "@app/abis/ChainlinkOracleABI";
 import { StateViewABI } from "@app/abis/v4-abis/StateViewABI";
 
-const MAX_PRICE_LOOKUP_ATTEMPTS = 1000;
+// Reduced from 1000 to 72 (covers 6 hours at 5-min intervals)
+// Price data should be recent; if not found within 6 hours, fallback to RPC
+const MAX_PRICE_LOOKUP_ATTEMPTS = 72;
 
 const FALLBACK_CACHE_TTL_MS = 30_000;
 const fallbackPriceCache = new Map<string, { price: bigint; timestamp: number }>();

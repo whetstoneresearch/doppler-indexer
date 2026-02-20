@@ -207,21 +207,30 @@ ponder.on("ZoraFactory:CreatorCoinCreated", async ({ event, context }) => {
 // });
 
 ponder.on("ZoraV4CreatorCoinHook:Swapped", async ({ event, context }) => {
+  const { db, chain } = context;
   const { poolKeyHash, swapSender, amount0, amount1, sqrtPriceX96, isCoinBuy } = event.args;
   const timestamp = event.block.timestamp;
 
-  const slot0 = await context.client.readContract({
-    abi: StateViewABI,
-    address: chainConfigs[context.chain.name].addresses.v4.stateView,
-    functionName: "getSlot0",
-    args: [poolKeyHash],
-  });
-  
-  const tick = slot0[1];
-  
   const zoraAddress = chainConfigs[context.chain.name].addresses.zora.zoraToken;
-  const quoteInfo = await getQuoteInfo(zoraAddress, timestamp, context);
-  
+
+  // Parallelize RPC call, quote info lookup, and pool fetch
+  const [slot0, quoteInfo, poolEntity] = await Promise.all([
+    context.client.readContract({
+      abi: StateViewABI,
+      address: chainConfigs[context.chain.name].addresses.v4.stateView,
+      functionName: "getSlot0",
+      args: [poolKeyHash],
+    }),
+    getQuoteInfo(zoraAddress, timestamp, context),
+    db.find(pool, { address: poolKeyHash, chainId: chain.id }),
+  ]);
+
+  if (!poolEntity) {
+    return;
+  }
+
+  const tick = slot0[1];
+
   await handleOptimizedSwap(
     {
       poolAddress: poolKeyHash,
@@ -237,7 +246,8 @@ ponder.on("ZoraV4CreatorCoinHook:Swapped", async ({ event, context }) => {
       context,
       tick
     },
-    quoteInfo
+    quoteInfo,
+    poolEntity
   );
 });
 
