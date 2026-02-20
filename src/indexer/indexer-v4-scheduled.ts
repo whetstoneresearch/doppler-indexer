@@ -29,7 +29,7 @@ import { handleOptimizedSwap } from "./shared/swap-optimizer";
 import { StateViewABI } from "@app/abis";
 import { zeroAddress } from "viem";
 import { getQuoteInfo } from "@app/utils/getQuoteInfo";
-import { updateCumulatedFees } from "./shared/cumulatedFees";
+import { updateCumulatedFees, handleCollect } from "./shared/cumulatedFees";
 
 ponder.on(
   "UniswapV4ScheduledMulticurveInitializer:Create",
@@ -116,6 +116,48 @@ ponder.on(
         integrator: assetEntity.integrator,
       },
     })
+  }
+);
+
+ponder.on(
+  "UniswapV4ScheduledMulticurveInitializer:Collect",
+  async ({ event, context }) => {
+    const { poolId, beneficiary, fees0, fees1 } = event.args;
+    const timestamp = event.block.timestamp;
+    const { db, chain } = context;
+
+    const poolAddress = (poolId as string).toLowerCase() as `0x${string}`;
+
+    const poolEntity = await db.find(pool, {
+      address: poolAddress,
+      chainId: chain.id,
+    });
+
+    if (!poolEntity) {
+      return;
+    }
+
+    const quoteInfo = await getQuoteInfo(poolEntity.quoteToken, timestamp, context);
+
+    const sqrtPriceX96 = poolEntity.sqrtPrice;
+    const price = PriceService.computePriceFromSqrtPriceX96({
+      sqrtPriceX96,
+      isToken0: poolEntity.isToken0,
+      decimals: 18,
+      quoteDecimals: quoteInfo.quoteDecimals,
+    });
+
+    await handleCollect({
+      poolId: poolAddress,
+      chainId: chain.id,
+      beneficiary: beneficiary as `0x${string}`,
+      fees0,
+      fees1,
+      isToken0: poolEntity.isToken0,
+      price,
+      quoteInfo,
+      context,
+    });
   }
 );
 

@@ -118,3 +118,81 @@ export async function updateCumulatedFees({
 
   await Promise.all(upsertPromises);
 }
+
+interface HandleCollectParams {
+  poolId: `0x${string}`;
+  chainId: number;
+  beneficiary: `0x${string}`;
+  fees0: bigint;
+  fees1: bigint;
+  isToken0: boolean;
+  price: bigint;
+  quoteInfo: QuoteInfo;
+  context: Context;
+}
+
+export async function handleCollect({
+  poolId,
+  chainId,
+  beneficiary,
+  fees0,
+  fees1,
+  isToken0,
+  price,
+  quoteInfo,
+  context,
+}: HandleCollectParams): Promise<void> {
+  const { db } = context;
+  const beneficiaryAddr = beneficiary.toLowerCase() as `0x${string}`;
+
+  // Find existing cumulated fees record
+  const existing = await db.find(cumulatedFees, {
+    poolId,
+    chainId,
+    beneficiary: beneficiaryAddr,
+  });
+
+  if (!existing) {
+    return;
+  }
+
+  // Subtract collected fees
+  const newToken0Fees = existing.token0Fees - fees0;
+  const newToken1Fees = existing.token1Fees - fees1;
+
+  // Recalculate USD value
+  let quoteFees: bigint;
+  let baseFees: bigint;
+  if (isToken0) {
+    baseFees = newToken0Fees > 0n ? newToken0Fees : 0n;
+    quoteFees = newToken1Fees > 0n ? newToken1Fees : 0n;
+  } else {
+    quoteFees = newToken0Fees > 0n ? newToken0Fees : 0n;
+    baseFees = newToken1Fees > 0n ? newToken1Fees : 0n;
+  }
+
+  const WAD = 10n ** 18n;
+  const baseFeeInQuote = (baseFees * price) / WAD;
+  const totalQuoteEquivalent = quoteFees + baseFeeInQuote;
+
+  const totalFeesUsd = MarketDataService.calculateVolume({
+    amountIn: totalQuoteEquivalent,
+    amountOut: 0n,
+    quotePriceUSD: quoteInfo.quotePrice!,
+    isQuoteUSD: false,
+    quoteDecimals: quoteInfo.quoteDecimals,
+    decimals: quoteInfo.quotePriceDecimals,
+  });
+
+  await db
+    .update(cumulatedFees, {
+      poolId,
+      chainId,
+      beneficiary: beneficiaryAddr,
+    })
+    .set({
+      token0Fees: newToken0Fees > 0n ? newToken0Fees : 0n,
+      token1Fees: newToken1Fees > 0n ? newToken1Fees : 0n,
+      totalFeesUsd,
+    });
+}

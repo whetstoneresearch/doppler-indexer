@@ -97,6 +97,42 @@ ponder.on("DopplerHookInitializer:Create", async ({ event, context }) => {
   });
 });
 
+ponder.on("DopplerHookInitializer:Collect", async ({ event, context }) => {
+  const { poolId } = event.args;
+  const timestamp = event.block.timestamp;
+  const { db, chain } = context;
+
+  const poolAddress = (poolId as string).toLowerCase() as `0x${string}`;
+
+  const poolEntity = await db.find(pool, {
+    address: poolAddress,
+    chainId: chain.id,
+  });
+
+  if (!poolEntity) {
+    return;
+  }
+
+  const quoteInfo = await getQuoteInfo(poolEntity.quoteToken, timestamp, context);
+
+  const price = PriceService.computePriceFromSqrtPriceX96({
+    sqrtPriceX96: poolEntity.sqrtPrice,
+    isToken0: poolEntity.isToken0,
+    decimals: 18,
+    quoteDecimals: quoteInfo.quoteDecimals,
+  });
+
+  // Re-fetch cumulated fees from the contract (reflects post-collection state)
+  await updateCumulatedFees({
+    poolId: poolAddress,
+    chainId: chain.id,
+    isToken0: poolEntity.isToken0,
+    price,
+    quoteInfo,
+    context,
+  });
+});
+
 ponder.on("DopplerHookInitializer:Swap", async ({ event, context }) => {
   const { sender, poolKey: poolKeyTuple, poolId, params, amount0, amount1 } = event.args;
   const timestamp = event.block.timestamp;
