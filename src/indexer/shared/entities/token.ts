@@ -157,6 +157,45 @@ export const insertTokenIfNotExists = async ({
       ...multicallOptions,
     });
 
+    // Fetch vesting data only for DERC20 tokens
+    let vestingStart: bigint | undefined;
+    let vestingDuration: bigint | undefined;
+    let vestedTotalAmount: bigint | undefined;
+
+    if (isDerc20) {
+      const [vestingStartResult, vestingDurationResult, vestedTotalAmountResult] =
+        await context.client.multicall({
+          contracts: [
+            {
+              abi: DERC20ABI,
+              address,
+              functionName: "vestingStart",
+            },
+            {
+              abi: DERC20ABI,
+              address,
+              functionName: "vestingDuration",
+            },
+            {
+              abi: DERC20ABI,
+              address,
+              functionName: "vestedTotalAmount",
+            },
+          ],
+          ...multicallOptions,
+        });
+
+      if (vestingStartResult?.status === "success") {
+        vestingStart = vestingStartResult.result;
+      }
+      if (vestingDurationResult?.status === "success") {
+        vestingDuration = vestingDurationResult.result;
+      }
+      if (vestedTotalAmountResult?.status === "success") {
+        vestedTotalAmount = vestedTotalAmountResult.result;
+      }
+    }
+
     if (process.env.NODE_ENV !== "local") {
       void fetch(
         `${process.env.METADATA_UPDATER_ENDPOINT}?tokenAddress=${address}&chainId=${chain.id}`
@@ -218,6 +257,9 @@ export const insertTokenIfNotExists = async ({
         isDerc20,
         pool: poolAddress,
         derc20Data: isDerc20 ? address : undefined,
+        vestingStart,
+        vestingDuration,
+        vestedTotalAmount,
         tokenUri: tokenURIResult?.result ?? "",
         image: image ?? "",
       })
