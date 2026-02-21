@@ -50,7 +50,9 @@ export const sepoliaConfig: ChainConfig = {
       DecayMulticurveInitializer: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
       DecayMulticurveInitializerHook: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
       DopplerHookInitializer: "0xaa096f558f3d4c9226de77e7cc05f18e180b2544" as Address,
-      RehypeHook: "0x97cad5684fb7cc2bed9a9b5ebfba67138f4f2503" as Address
+      RehypeHook: "0x97cad5684fb7cc2bed9a9b5ebfba67138f4f2503" as Address,
+      RehypeDopplerHookMigrator: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
+      DopplerHookMigrator: COMMON_ADDRESSES.ZERO_ADDRESS as Address
     },
     shared: {
       airlock: "0xde3599a2ec440b296373a983c85c365da55d9dfa" as Address,

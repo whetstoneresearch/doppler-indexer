@@ -501,3 +501,95 @@ export const linkAssetToV4MigrationPool = async ({
 
   return { poolId: poolId.toLowerCase() as `0x${string}` };
 };
+
+export const linkAssetToDHookMigrationPool = async ({
+  migratorAddress,
+  assetAddress,
+  numeraireAddress,
+  parentPoolAddress,
+  timestamp,
+  context,
+}: {
+  migratorAddress: Address;
+  assetAddress: Address;
+  numeraireAddress: Address;
+  parentPoolAddress: Address;
+  timestamp: bigint;
+  context: Context;
+}): Promise<{ poolId: `0x${string}` } | null> => {
+  const { db, chain, client } = context;
+
+  const { getPoolId } = await import("@app/utils/v4-utils/getPoolId");
+  const { DopplerHookMigratorABI } = await import("@app/abis");
+
+  const token0 = assetAddress.toLowerCase() < numeraireAddress.toLowerCase()
+    ? assetAddress
+    : numeraireAddress;
+  const token1 = assetAddress.toLowerCase() < numeraireAddress.toLowerCase()
+    ? numeraireAddress
+    : assetAddress;
+
+  const assetData = await client.readContract({
+    abi: DopplerHookMigratorABI,
+    address: migratorAddress,
+    functionName: "getAssetData",
+    args: [token0, token1],
+  });
+
+  // DopplerHookMigrator.getAssetData returns: [isToken0, poolKey, lockDuration, feeOrInitialDynamicFee, useDynamicFee, dopplerHook, onInitializationCalldata, status]
+  const poolKeyData = assetData[1];
+  const poolKey = {
+    currency0: poolKeyData.currency0,
+    currency1: poolKeyData.currency1,
+    fee: poolKeyData.fee,
+    tickSpacing: poolKeyData.tickSpacing,
+    hooks: poolKeyData.hooks,
+  };
+  const lockDuration = assetData[2];
+
+  const poolId = getPoolId(poolKey);
+
+  const existingPool = await db.find(v4pools, {
+    poolId: poolId.toLowerCase() as `0x${string}`,
+    chainId: chain.id,
+  });
+
+  if (!existingPool) {
+    console.warn(`linkAssetToDHookMigrationPool - Pool ${poolId} not found`);
+    return null;
+  }
+
+  const isToken0 = assetAddress.toLowerCase() === poolKey.currency0.toLowerCase();
+  const baseToken = isToken0 ? poolKey.currency0 : poolKey.currency1;
+  const quoteToken = isToken0 ? poolKey.currency1 : poolKey.currency0;
+
+  const quoteInfo = await getQuoteInfo(quoteToken, timestamp, context);
+  const isQuoteEth = quoteInfo.quoteToken === QuoteToken.Eth;
+
+  const dollarLiquidity = MarketDataService.calculateLiquidity({
+    assetBalance: isToken0 ? existingPool.reserves0 : existingPool.reserves1,
+    quoteBalance: isToken0 ? existingPool.reserves1 : existingPool.reserves0,
+    price: existingPool.price,
+    quotePriceUSD: quoteInfo.quotePrice ?? 0n,
+    decimals: quoteInfo.quotePriceDecimals,
+    assetDecimals: 18,
+    quoteDecimals: quoteInfo.quoteDecimals,
+  });
+
+  await db.update(v4pools, {
+    poolId: poolId.toLowerCase() as `0x${string}`,
+    chainId: chain.id,
+  }).set({
+    baseToken: baseToken.toLowerCase() as `0x${string}`,
+    quoteToken: quoteToken.toLowerCase() as `0x${string}`,
+    asset: assetAddress.toLowerCase() as `0x${string}`,
+    migratedFromPool: parentPoolAddress.toLowerCase() as `0x${string}`,
+    migratedAt: timestamp,
+    lockDuration,
+    isToken0,
+    isQuoteEth,
+    dollarLiquidity,
+  });
+
+  return { poolId: poolId.toLowerCase() as `0x${string}` };
+};

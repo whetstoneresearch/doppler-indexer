@@ -4,13 +4,13 @@ import { insertV3MigrationPoolIfNotExists } from "./shared/entities/migrationPoo
 import { insertAssetIfNotExists, updateAsset } from "./shared/entities/asset";
 import { insertTokenIfNotExists, updateToken } from "./shared/entities/token";
 import { insertV2MigrationPoolIfNotExists } from "./shared/entities/v2Pool";
-import { linkAssetToV4MigrationPool } from "./shared/entities/v4pools";
+import { linkAssetToV4MigrationPool, linkAssetToDHookMigrationPool } from "./shared/entities/v4pools";
 import { updateUserAsset } from "./shared/entities/userAsset";
 import { insertUserAssetIfNotExists } from "./shared/entities/userAsset";
 import { insertUserIfNotExists, updateUser } from "./shared/entities/user";
 import { fetchExistingPool, updatePool, updatePoolDirect } from "./shared/entities/pool";
 import { zeroAddress } from "viem";
-import { getV4MigratorForAsset } from "@app/utils/v4-utils";
+import { getV4MigratorForAsset, getDHookMigratorForAsset } from "@app/utils/v4-utils";
 import { isPrecompileAddress } from "@app/utils/validation";
 
 ponder.on("Airlock:Migrate", async ({ event, context }) => {
@@ -115,6 +115,50 @@ ponder.on("Airlock:Migrate", async ({ event, context }) => {
 
     if (!result) {
       console.warn(`Failed to link asset ${assetId} to V4 migration pool`);
+      return;
+    }
+
+    await Promise.all([
+      updatePool({
+        poolAddress: parentPool.address,
+        context,
+        update: {
+          migratedAt: timestamp,
+          migrated: true,
+          migratedToV4PoolId: result.poolId,
+        },
+      }),
+      updateAsset({
+        assetAddress: assetId,
+        context,
+        update: {
+          migratedAt: timestamp,
+          migrated: true,
+        },
+      }),
+    ]);
+  } else if (parentPool.migrationType === "dhook" || parentPool.migrationType === "rehype") {
+    const migratorAddress = getDHookMigratorForAsset(
+      assetEntity.liquidityMigrator,
+      context.chain.name
+    );
+
+    if (!migratorAddress) {
+      console.warn(`Unsupported DHook migrator for asset ${assetId} on chain ${context.chain.name}`);
+      return;
+    }
+
+    const result = await linkAssetToDHookMigrationPool({
+      migratorAddress,
+      assetAddress: assetId,
+      numeraireAddress: assetEntity.numeraire,
+      parentPoolAddress: parentPool.address,
+      timestamp,
+      context,
+    });
+
+    if (!result) {
+      console.warn(`Failed to link asset ${assetId} to DHook migration pool`);
       return;
     }
 

@@ -15,6 +15,8 @@ import {
   V4MigratorHookABI,
   V4MigratorABI,
   DopplerHookInitializerABI,
+  DopplerHookMigratorABI,
+  RehypeDopplerHookMigratorABI,
 } from "./src/abis";
 import { BLOCK_INTERVALS } from "./src/config/chains/constants";
 import { chainConfigs, CHAIN_IDS } from "./src/config/chains";
@@ -31,7 +33,7 @@ const { base, baseSepolia, monad, mainnet, sepolia } = chainConfigs;
 export default createConfig({
   database: {
     kind: "postgres",
-    connectionString: "postgresql://postgres:postgres@localhost:5432/default",
+    connectionString: process.env.DATABASE_URL,
     poolConfig: {
       max: 100,
     },
@@ -733,6 +735,24 @@ export default createConfig({
         monad: {
           startBlock: monad.startBlock,
           address: monad.addresses.v4.DopplerHookInitializer,
+        },
+      },
+    },
+    DopplerHookMigrator: {
+      abi: DopplerHookMigratorABI,
+      chain: {
+        baseSepolia: {
+          startBlock: baseSepolia.startBlock,
+          address: baseSepolia.addresses.v4.DopplerHookMigrator,
+        },
+      },
+    },
+    RehypeDopplerHookMigrator: {
+      abi: RehypeDopplerHookMigratorABI,
+      chain: {
+        baseSepolia: {
+          startBlock: baseSepolia.startBlock,
+          address: baseSepolia.addresses.v4.RehypeDopplerHookMigrator,
         },
       },
     },

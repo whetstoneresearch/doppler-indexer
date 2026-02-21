@@ -693,6 +693,21 @@ function getMigrationType(assetData: AssetData, chainName: Network): string {
     if (v4Migrators.some(m => m.toLowerCase() === assetData.liquidityMigrator.toLowerCase())) {
       return "v4";
     }
+
+    // Check DopplerHookMigrator
+    const dhookMigrator = chainConfigs[chainName].addresses.v4.DopplerHookMigrator;
+    if (dhookMigrator.toLowerCase() !== zeroAddress.toLowerCase() &&
+        dhookMigrator.toLowerCase() === assetData.liquidityMigrator.toLowerCase()) {
+      return "dhook";
+    }
+
+    // Check RehypeDopplerHookMigrator
+    const rehypeMigrator = chainConfigs[chainName].addresses.v4.RehypeDopplerHookMigrator;
+    if (rehypeMigrator.toLowerCase() !== zeroAddress.toLowerCase() &&
+        rehypeMigrator.toLowerCase() === assetData.liquidityMigrator.toLowerCase()) {
+      return "rehype";
+    }
+
     return "unknown";
   }
 }

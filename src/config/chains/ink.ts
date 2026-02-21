@@ -43,7 +43,9 @@ export const inkConfig: ChainConfig = {
       DecayMulticurveInitializer: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
       DecayMulticurveInitializerHook: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
       DopplerHookInitializer: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
-      RehypeHook: COMMON_ADDRESSES.ZERO_ADDRESS as Address
+      RehypeHook: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
+      RehypeDopplerHookMigrator: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
+      DopplerHookMigrator: COMMON_ADDRESSES.ZERO_ADDRESS as Address
     },
     shared: {
       airlock: "0x660eAaEdEBc968f8f3694354FA8EC0b4c5Ba8D12" as Address,

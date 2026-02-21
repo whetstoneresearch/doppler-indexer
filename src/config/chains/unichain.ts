@@ -43,7 +43,9 @@ export const unichainConfig: ChainConfig = {
       DecayMulticurveInitializer: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
       DecayMulticurveInitializerHook: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
       DopplerHookInitializer: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
-      RehypeHook: COMMON_ADDRESSES.ZERO_ADDRESS as Address
+      RehypeHook: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
+      RehypeDopplerHookMigrator: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
+      DopplerHookMigrator: COMMON_ADDRESSES.ZERO_ADDRESS as Address
     },
     shared: {
       airlock: "0x77EbfBAE15AD200758E9E2E61597c0B07d731254" as Address,

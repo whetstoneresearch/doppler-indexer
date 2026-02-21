@@ -212,11 +212,29 @@ export const isV4MigratorHook = (
     ? v4MigratorHooks
     : [v4MigratorHooks];
 
-  return hookAddresses.some(
+  if (hookAddresses.some(
     (h) =>
       h.toLowerCase() !== zeroAddress.toLowerCase() &&
       h.toLowerCase() === hookAddress.toLowerCase()
-  );
+  )) {
+    return true;
+  }
+
+  // Also check DopplerHookMigrator (it acts as its own hook)
+  const dhookMigrator = config.addresses.v4.DopplerHookMigrator;
+  if (dhookMigrator.toLowerCase() !== zeroAddress.toLowerCase() &&
+      dhookMigrator.toLowerCase() === hookAddress.toLowerCase()) {
+    return true;
+  }
+
+  // Also check RehypeHook (the actual hook for RehypeDopplerHookMigrator)
+  const rehypeHook = config.addresses.v4.RehypeHook;
+  if (rehypeHook.toLowerCase() !== zeroAddress.toLowerCase() &&
+      rehypeHook.toLowerCase() === hookAddress.toLowerCase()) {
+    return true;
+  }
+
+  return false;
 };
 
 export const getV4MigratorForAsset = (
@@ -240,5 +258,65 @@ export const getV4MigratorForAsset = (
   );
 
   return found ?? null;
+};
+
+export const isDHookMigrator = (
+  migratorAddress: Address,
+  chainName: string
+): boolean => {
+  const config = chainConfigs[chainName as keyof typeof chainConfigs];
+  if (!config) {
+    return false;
+  }
+
+  const dhookMigrator = config.addresses.v4.DopplerHookMigrator;
+  return (
+    dhookMigrator.toLowerCase() !== zeroAddress.toLowerCase() &&
+    dhookMigrator.toLowerCase() === migratorAddress.toLowerCase()
+  );
+};
+
+export const isRehypeMigrator = (
+  migratorAddress: Address,
+  chainName: string
+): boolean => {
+  const config = chainConfigs[chainName as keyof typeof chainConfigs];
+  if (!config) {
+    return false;
+  }
+
+  const rehypeMigrator = config.addresses.v4.RehypeDopplerHookMigrator;
+  return (
+    rehypeMigrator.toLowerCase() !== zeroAddress.toLowerCase() &&
+    rehypeMigrator.toLowerCase() === migratorAddress.toLowerCase()
+  );
+};
+
+export const getDHookMigratorForAsset = (
+  liquidityMigrator: Address,
+  chainName: string
+): Address | null => {
+  const config = chainConfigs[chainName as keyof typeof chainConfigs];
+  if (!config) {
+    return null;
+  }
+
+  const dhookMigrator = config.addresses.v4.DopplerHookMigrator;
+  if (
+    dhookMigrator.toLowerCase() !== zeroAddress.toLowerCase() &&
+    dhookMigrator.toLowerCase() === liquidityMigrator.toLowerCase()
+  ) {
+    return dhookMigrator;
+  }
+
+  const rehypeMigrator = config.addresses.v4.RehypeDopplerHookMigrator;
+  if (
+    rehypeMigrator.toLowerCase() !== zeroAddress.toLowerCase() &&
+    rehypeMigrator.toLowerCase() === liquidityMigrator.toLowerCase()
+  ) {
+    return rehypeMigrator;
+  }
+
+  return null;
 };
 
