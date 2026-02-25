@@ -1,5 +1,5 @@
 import { createConfig, factory, mergeAbis } from "ponder";
-import { getAbiItem, http } from "viem";
+import { getAbiItem } from "viem";
 import {
   UniswapV3InitializerABI,
   UniswapV4InitializerABI,
@@ -42,23 +42,23 @@ export default createConfig({
   chains: {
     mainnet: {
       id: CHAIN_IDS.mainnet,
-      rpc: http(process.env.PONDER_RPC_URL_1),
+      rpc: process.env.PONDER_RPC_URL_1,
     },
     sepolia: {
       id: CHAIN_IDS.sepolia,
-      rpc: http(process.env.PONDER_RPC_URL_11155111),
+      rpc: process.env.PONDER_RPC_URL_11155111,
     },
     base: {
       id: CHAIN_IDS.base,
-      rpc: http(process.env.PONDER_RPC_URL_8453),
+      rpc: process.env.PONDER_RPC_URL_8453,
     },
     baseSepolia: {
       id: CHAIN_IDS.baseSepolia,
-      rpc: http(process.env.PONDER_RPC_URL_84532),
+      rpc: process.env.PONDER_RPC_URL_84532,
     },
     monad: {
       id: CHAIN_IDS.monad,
-      rpc: http(process.env.PONDER_RPC_URL_143),
+      rpc: process.env.PONDER_RPC_URL_143,
     },
   },
   blocks: {
