@@ -4,6 +4,7 @@ import { SwapService, SwapData, SwapMarketMetrics } from "./SwapService";
 import { SwapType } from "@app/types/shared-types";
 import { CHAINLINK_ETH_DECIMALS, WAD } from "@app/utils/constants";
 import { insertSwapIfNotExists } from "@app/indexer/shared/entities/swap";
+import { insertAssetIfNotExists } from "@app/indexer/shared/entities/asset";
 
 /**
  * Orchestrates all entity updates required after a swap
@@ -70,15 +71,35 @@ export class SwapOrchestrator {
     if ("migrated" in poolUpdate) {
       assetUpdate = {
         marketCapUsd: metrics.marketCapUsd,
-        dollarLiquidity: metrics.liquidityUsd,
+        liquidityUsd: metrics.liquidityUsd,
         migrated: poolUpdate.migrated
       }
     } else {
       assetUpdate = {
         marketCapUsd: metrics.marketCapUsd,
-        dollarLiquidity: metrics.liquidityUsd
+        liquidityUsd: metrics.liquidityUsd
       }
     }
+
+    // Handle asset update with fallback to insert if asset doesn't exist
+    const handleAssetUpdate = async () => {
+      try {
+        await updateAsset({
+          assetAddress: poolData.baseToken,
+          context,
+          update: assetUpdate
+        });
+      } catch (error) {
+        // Asset doesn't exist - create it
+        await insertAssetIfNotExists({
+          assetAddress: poolData.baseToken,
+          timestamp: swapData.timestamp,
+          context,
+          marketCapUsd: metrics.marketCapUsd,
+          poolAddress: poolData.parentPoolAddress,
+        });
+      }
+    };
     
     const priceDivisor = poolData.quotePriceDecimals !== undefined
       ? BigInt(10) ** BigInt(poolData.quotePriceDecimals)
@@ -98,11 +119,7 @@ export class SwapOrchestrator {
         priceUsd: swapData.price * swapData.usdPrice / priceDivisor,
         volumeUsd: metrics.swapValueUsd,
       }),
-      updateAsset({
-        assetAddress: poolData.baseToken,
-        context,
-        update: assetUpdate
-      })
+      handleAssetUpdate()
     ];
 
     // Execute all updates in parallel
