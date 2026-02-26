@@ -15,6 +15,8 @@ import {
   V4MigratorHookABI,
   V4MigratorABI,
   DopplerHookInitializerABI,
+  DopplerHookMigratorABI,
+  RehypeDopplerHookMigratorABI,
 } from "./src/abis";
 import { BLOCK_INTERVALS } from "./src/config/chains/constants";
 import { chainConfigs, CHAIN_IDS } from "./src/config/chains";
@@ -308,6 +310,16 @@ export default createConfig({
     },
     DopplerHookInitializer: {
       abi: DopplerHookInitializerABI,
+      chain: {
+      },
+    },
+    DopplerHookMigrator: {
+      abi: DopplerHookMigratorABI,
+      chain: {
+      },
+    },
+    RehypeDopplerHookMigrator: {
+      abi: RehypeDopplerHookMigratorABI,
       chain: {
       },
     },
