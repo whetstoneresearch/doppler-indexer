@@ -26,7 +26,7 @@ import { UniswapV4MulticurveInitializerABI } from "@app/abis/multicurve-abis/Uni
 import { UniswapV4ScheduledMulticurveInitializerHookABI } from "@app/abis/multicurve-abis/UniswapV4ScheduledMulticurveInitializerHookABI";
 import { UniswapV4ScheduledMulticurveInitializerABI } from "@app/abis/multicurve-abis/UniswapV4ScheduledMulticurveInitializerABI";
 
-const { base, baseSepolia, monad, mainnet, sepolia } = chainConfigs;
+const { base, baseSepolia, monad, mainnet, sepolia, ink, unichain } = chainConfigs;
 
 export default createConfig({
   database: {
@@ -58,6 +58,14 @@ export default createConfig({
       id: CHAIN_IDS.monad,
       rpc: http(process.env.PONDER_RPC_URL_143),
     },
+    ink: {
+      id: CHAIN_IDS.ink,
+      rpc: http(process.env.PONDER_RPC_URL_57073),
+    },
+    unichain: {
+      id: CHAIN_IDS.unichain,
+      rpc: http(process.env.PONDER_RPC_URL_130),
+    },
   },
   blocks: {
     BaseChainlinkEthPriceFeed: {
@@ -65,16 +73,16 @@ export default createConfig({
       startBlock: 41900609,
       interval: BLOCK_INTERVALS.FIVE_MINUTES, // every 5 minutes
     },
-    // UnichainChainlinkEthPriceFeed: {
-    //   chain: "unichain",
-    //   startBlock: unichain.startBlock,
-    //   interval: BLOCK_INTERVALS.FIVE_MINUTES, // every 5 minutes
-    // },
-    // InkChainlinkEthPriceFeed: {
-    //   chain: "ink",
-    //   startBlock: ink.startBlock,
-    //   interval: BLOCK_INTERVALS.FIVE_MINUTES, // every 5 minutes
-    // },
+    UnichainChainlinkEthPriceFeed: {
+      chain: "unichain",
+      startBlock: unichain.startBlock,
+      interval: 99999999999999, // every 5 minutes
+    },
+    InkChainlinkEthPriceFeed: {
+      chain: "ink",
+      startBlock: ink.startBlock,
+      interval: 99999999999999, // every 5 minutes
+    },
     ZoraUsdcPrice: {
       chain: "base",
       startBlock: 41900609,
