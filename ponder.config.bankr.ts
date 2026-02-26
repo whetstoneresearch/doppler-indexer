@@ -31,7 +31,7 @@ const { base, baseSepolia, monad, mainnet, sepolia, ink, unichain } = chainConfi
 export default createConfig({
   database: {
     kind: "postgres",
-    connectionString: "postgresql://postgres:postgres@localhost:5432/default",
+    connectionString: process.env.DATABASE_URL,
     poolConfig: {
       max: 100,
     },
@@ -40,31 +40,31 @@ export default createConfig({
   chains: {
     mainnet: {
       id: CHAIN_IDS.mainnet,
-      rpc: http(process.env.PONDER_RPC_URL_1),
+      rpc: process.env.PONDER_RPC_URL_1,
     },
     sepolia: {
       id: CHAIN_IDS.sepolia,
-      rpc: http(process.env.PONDER_RPC_URL_11155111),
+      rpc: process.env.PONDER_RPC_URL_11155111,
     },
     base: {
       id: CHAIN_IDS.base,
-      rpc: http(process.env.PONDER_RPC_URL_8453),
+      rpc: process.env.PONDER_RPC_URL_8453,
     },
     baseSepolia: {
       id: CHAIN_IDS.baseSepolia,
-      rpc: http(process.env.PONDER_RPC_URL_84532),
+      rpc: process.env.PONDER_RPC_URL_84532,
     },
     monad: {
       id: CHAIN_IDS.monad,
-      rpc: http(process.env.PONDER_RPC_URL_143),
+      rpc: process.env.PONDER_RPC_URL_143,
     },
     ink: {
       id: CHAIN_IDS.ink,
-      rpc: http(process.env.PONDER_RPC_URL_57073),
+      rpc: process.env.PONDER_RPC_URL_57073,
     },
     unichain: {
       id: CHAIN_IDS.unichain,
-      rpc: http(process.env.PONDER_RPC_URL_130),
+      rpc: process.env.PONDER_RPC_URL_130,
     },
   },
   blocks: {
