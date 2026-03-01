@@ -703,8 +703,12 @@ function getMigrationType(assetData: AssetData, chainName: Network): string {
 
     // Check RehypeDopplerHookMigrator
     const rehypeMigrator = chainConfigs[chainName].addresses.v4.RehypeDopplerHookMigrator;
-    if (rehypeMigrator.toLowerCase() !== zeroAddress.toLowerCase() &&
-        rehypeMigrator.toLowerCase() === assetData.liquidityMigrator.toLowerCase()) {
+    const rehypeMigratorAddresses = Array.isArray(rehypeMigrator) ? rehypeMigrator : [rehypeMigrator];
+    if (rehypeMigratorAddresses.some(
+      (m) =>
+        m.toLowerCase() !== zeroAddress.toLowerCase() &&
+        m.toLowerCase() === assetData.liquidityMigrator.toLowerCase()
+    )) {
       return "rehype";
     }
 

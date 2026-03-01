@@ -75,8 +75,14 @@ export const baseSepoliaConfig: ChainConfig = {
       DecayMulticurveInitializerHook:
         "0xbb7784a4d481184283ed89619a3e3ed143e1adc0" as Address,
       DopplerHookInitializer: "0x98cd6478debe443069db863abb9626d94de9a544" as Address,
-      RehypeHook: "0x636A756CeE08775CC18780F52dd90B634F18ad37" as Address,
-      RehypeDopplerHookMigrator: "0x2497969a9d38045e7bd3d632af9685d9fd774ca1" as Address,
+      RehypeHook: [
+        "0x636A756CeE08775CC18780F52dd90B634F18ad37",
+        "0x3ec4798a9b11e8243a8db99687f7a23597b96623"
+       ] as Address[],
+      RehypeDopplerHookMigrator: [
+        "0x2497969a9d38045e7bd3d632af9685d9fd774ca1",
+        "0xc3c9f4cfd1dc0a7837cc4b202b3455b4156a8005"
+      ] as Address[],
       DopplerHookMigrator: "0xf848fea3329185529b50228bcb36f3b5a60960c4" as Address
     },
     shared: {
@@ -175,8 +181,11 @@ export const baseConfig: ChainConfig = {
       DecayMulticurveInitializerHook:
         "0xbb7784a4d481184283ed89619a3e3ed143e1adc0" as Address,
       DopplerHookInitializer: "0xaa096f558f3d4c9226de77e7cc05f18e180b2544" as Address,
-      RehypeHook: "0x97cad5684fb7cc2bed9a9b5ebfba67138f4f2503bb" as Address,
-      RehypeDopplerHookMigrator: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
+      RehypeHook: [
+        "0x97cad5684fb7cc2bed9a9b5ebfba67138f4f2503bb",
+        "0x3ec4798a9b11e8243a8db99687f7a23597b96623"
+      ] as Address[],
+      RehypeDopplerHookMigrator: "0xc3c9f4cfd1dc0a7837cc4b202b3455b4156a8005" as Address,
       DopplerHookMigrator: COMMON_ADDRESSES.ZERO_ADDRESS as Address
     },
     zora: {

@@ -229,8 +229,12 @@ export const isV4MigratorHook = (
 
   // Also check RehypeHook (the actual hook for RehypeDopplerHookMigrator)
   const rehypeHook = config.addresses.v4.RehypeHook;
-  if (rehypeHook.toLowerCase() !== zeroAddress.toLowerCase() &&
-      rehypeHook.toLowerCase() === hookAddress.toLowerCase()) {
+  const rehypeHookAddresses = Array.isArray(rehypeHook) ? rehypeHook : [rehypeHook];
+  if (rehypeHookAddresses.some(
+    (h) =>
+      h.toLowerCase() !== zeroAddress.toLowerCase() &&
+      h.toLowerCase() === hookAddress.toLowerCase()
+  )) {
     return true;
   }
 
@@ -286,9 +290,11 @@ export const isRehypeMigrator = (
   }
 
   const rehypeMigrator = config.addresses.v4.RehypeDopplerHookMigrator;
-  return (
-    rehypeMigrator.toLowerCase() !== zeroAddress.toLowerCase() &&
-    rehypeMigrator.toLowerCase() === migratorAddress.toLowerCase()
+  const rehypeMigratorAddresses = Array.isArray(rehypeMigrator) ? rehypeMigrator : [rehypeMigrator];
+  return rehypeMigratorAddresses.some(
+    (m) =>
+      m.toLowerCase() !== zeroAddress.toLowerCase() &&
+      m.toLowerCase() === migratorAddress.toLowerCase()
   );
 };
 
@@ -310,11 +316,14 @@ export const getDHookMigratorForAsset = (
   }
 
   const rehypeMigrator = config.addresses.v4.RehypeDopplerHookMigrator;
-  if (
-    rehypeMigrator.toLowerCase() !== zeroAddress.toLowerCase() &&
-    rehypeMigrator.toLowerCase() === liquidityMigrator.toLowerCase()
-  ) {
-    return rehypeMigrator;
+  const rehypeMigratorAddresses = Array.isArray(rehypeMigrator) ? rehypeMigrator : [rehypeMigrator];
+  const foundRehype = rehypeMigratorAddresses.find(
+    (m) =>
+      m.toLowerCase() !== zeroAddress.toLowerCase() &&
+      m.toLowerCase() === liquidityMigrator.toLowerCase()
+  );
+  if (foundRehype) {
+    return foundRehype;
   }
 
   return null;

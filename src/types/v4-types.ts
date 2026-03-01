@@ -18,8 +18,8 @@ export interface V4Addresses {
   DecayMulticurveInitializer: Address;
   DecayMulticurveInitializerHook: Address;
   DopplerHookInitializer: Address;
-  RehypeHook: Address;
-  RehypeDopplerHookMigrator: Address;
+  RehypeHook: Address | Address[];
+  RehypeDopplerHookMigrator: Address | Address[];
   DopplerHookMigrator: Address;
 }
 
