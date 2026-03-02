@@ -1,0 +1,62 @@
+diff --git a/dist/esm/rpc/http.js b/dist/esm/rpc/http.js
+index 3fe7dcd13bb1bf01149e157068ee1043b30d54c7..a82c4c583d3601be27ed48f9db9dd1fdbe60a625 100644
+--- a/dist/esm/rpc/http.js
++++ b/dist/esm/rpc/http.js
+@@ -3,7 +3,7 @@ import { HttpRequestError, RpcRequestError, TimeoutError } from "viem";
+ import { stringify, } from "viem/utils";
+ export function getHttpRpcClient(url, options) {
+     const { common, chain } = options;
+-    const timeoutMs = options?.timeout ?? 10000;
++    const timeoutMs = options?.timeout ?? 30000;
+     let id = 1;
+     return {
+         async request(params) {
+diff --git a/dist/esm/rpc/index.js b/dist/esm/rpc/index.js
+index 8b37dc75bc572b1a1ac33b5c0e4522dad8a480f2..462fc8b466b1dafcdf62d7bb40f026d7de2f2605 100644
+--- a/dist/esm/rpc/index.js
++++ b/dist/esm/rpc/index.js
+@@ -75,7 +75,7 @@ export const createRpc = ({ common, chain, concurrency = 25, }) => {
+             const httpRpcClient = getHttpRpcClient(chain.rpc, {
+                 common,
+                 chain,
+-                timeout: 10000,
++                timeout: 30000,
+             });
+             backends = [
+                 {
+@@ -103,7 +103,7 @@ export const createRpc = ({ common, chain, concurrency = 25, }) => {
+                     request: webSocket(chain.rpc)({
+                         chain: chain.viemChain,
+                         retryCount: 0,
+-                        timeout: 10000,
++                        timeout: 30000,
+                     }).request,
+                     hostname,
+                 },
+@@ -121,7 +121,7 @@ export const createRpc = ({ common, chain, concurrency = 25, }) => {
+                 const httpRpcClient = getHttpRpcClient(rpc, {
+                     common,
+                     chain,
+-                    timeout: 10000,
++                    timeout: 30000,
+                 });
+                 return {
+                     request: custom({
+@@ -146,7 +146,7 @@ export const createRpc = ({ common, chain, concurrency = 25, }) => {
+                     request: webSocket(rpc)({
+                         chain: chain.viemChain,
+                         retryCount: 0,
+-                        timeout: 10000,
++                        timeout: 30000,
+                     }).request,
+                     hostname,
+                 };
+@@ -162,7 +162,7 @@ export const createRpc = ({ common, chain, concurrency = 25, }) => {
+                 request: chain.rpc({
+                     chain: chain.viemChain,
+                     retryCount: 0,
+-                    timeout: 10000,
++                    timeout: 30000,
+                 }).request,
+                 hostname: "custom_transport",
+             },
