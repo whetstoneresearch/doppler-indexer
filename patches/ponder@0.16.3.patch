@@ -1,3 +1,18 @@
+diff --git a/dist/esm/rpc/actions.js b/dist/esm/rpc/actions.js
+index e90972393682a82c1e890a43fd79e5a283d5ea10..92346b38f6182014a5d2dc602d987cbbf287ad3a 100644
+--- a/dist/esm/rpc/actions.js
++++ b/dist/esm/rpc/actions.js
+@@ -985,4 +985,9 @@ function requestText(request) {
+         params: request.params,
+     }, null, 2)}`;
+ }
++// Backwards compatibility aliases for hosted service
++export { eth_getBlockByNumber as _eth_getBlockByNumber };
++export { eth_getBlockByHash as _eth_getBlockByHash };
++export { eth_getLogs as _eth_getLogs };
++export { eth_getTransactionReceipt as _eth_getTransactionReceipt };
+ //# sourceMappingURL=actions.js.map
+\ No newline at end of file
 diff --git a/dist/esm/rpc/http.js b/dist/esm/rpc/http.js
 index 3fe7dcd13bb1bf01149e157068ee1043b30d54c7..a82c4c583d3601be27ed48f9db9dd1fdbe60a625 100644
 --- a/dist/esm/rpc/http.js
