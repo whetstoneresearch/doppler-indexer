@@ -75,3 +75,34 @@ index 8b37dc75bc572b1a1ac33b5c0e4522dad8a480f2..462fc8b466b1dafcdf62d7bb40f026d7
                  }).request,
                  hostname: "custom_transport",
              },
+diff --git a/dist/esm/sync-historical/index.js b/dist/esm/sync-historical/index.js
+index 3c0810be57bb1d6cf149485a1f34dd55540fc976..aeadc0821aa472baca4aab2883fe328fcf63ac97 100644
+--- a/dist/esm/sync-historical/index.js
++++ b/dist/esm/sync-historical/index.js
+@@ -96,8 +96,25 @@ export const createHistoricalSync = (args) => {
+                 ],
+                 error: error,
+             });
+-            if (getLogsErrorResponse.shouldRetry === false)
++            if (getLogsErrorResponse.shouldRetry === false) {
++                // Handle "Response is too big" error from Alchemy by halving the range
++                const errorString = JSON.stringify(error);
++                if (errorString.includes("Response is too big")) {
++                    const range = Math.floor((interval[1] - interval[0]) / 2);
++                    if (range < 1) {
++                        throw error;
++                    }
++                    args.common.logger.debug({
++                        msg: "Response too big, reducing eth_getLogs range",
++                        chain: args.chain.name,
++                        chain_id: args.chain.id,
++                        range,
++                    });
++                    logsRequestMetadata = { estimatedRange: range, confirmedRange: undefined };
++                    return syncLogsDynamic({ address, topic0, topic1, topic2, topic3, interval }, context);
++                }
+                 throw error;
++            }
+             const range = hexToNumber(getLogsErrorResponse.ranges[0].toBlock) -
+                 hexToNumber(getLogsErrorResponse.ranges[0].fromBlock);
+             args.common.logger.debug({
