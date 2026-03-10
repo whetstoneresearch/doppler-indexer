@@ -31,7 +31,7 @@ ponder.on("DopplerHookInitializer:Create", async ({ event, context }) => {
     return;
   }
 
-  const initializerAddress = chainConfigs[context.chain.name].addresses.v4.DopplerHookInitializer;
+  const initializerAddress = event.log.address;
 
   const quoteInfo = await getQuoteInfo(numeraireAddress, timestamp, context);
 
@@ -716,9 +716,4 @@ ponder.on("DopplerHookMigrator:Swap", async ({ event, context }) => {
       },
     }),
   ]);
-});
-
-ponder.on("RehypeDopplerHookMigrator:AirlockOwnerFeesClaimed", async ({ event, context }) => {
-  const { poolId, airlockOwner, fees0, fees1 } = event.args;
-  console.log(`RehypeDopplerHookMigrator:AirlockOwnerFeesClaimed - Pool ${poolId}, Owner ${airlockOwner}, Fees0: ${fees0}, Fees1: ${fees1}`);
 });
