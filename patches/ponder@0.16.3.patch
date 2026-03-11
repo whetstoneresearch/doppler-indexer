@@ -1,3 +1,114 @@
+diff --git a/dist/esm/client/index.js b/dist/esm/client/index.js
+index cd8df0b2352161ca01104b4b3e4882fe6ff25a03..6cc76d99b4219ce890b085121db9ba3846a4cb8a 100644
+--- a/dist/esm/client/index.js
++++ b/dist/esm/client/index.js
+@@ -322,6 +322,18 @@ export const client = ({ db, schema, }) => {
+                 return c.json((await resultPromise));
+             }
+             catch (error) {
++                // Enhanced logging for API query errors
++                const isLockTimeout = error?.message?.includes("lock timeout");
++                const logLevel = isLockTimeout ? "error" : "warn";
++                globalThis.PONDER_COMMON.logger[logLevel]({
++                    msg: isLockTimeout ? "API query failed due to lock timeout" : "API query failed",
++                    path: c.req.path,
++                    sql_preview: query.sql?.slice(0, 500),
++                    tables_accessed: Array.from(referencedTables),
++                    error_type: error?.name || "Unknown",
++                    error_message: error?.message,
++                    is_lock_timeout: isLockTimeout,
++                });
+                 error.stack = undefined;
+                 return c.text(error.message, 500);
+             }
+@@ -429,7 +441,16 @@ export const client = ({ db, schema, }) => {
+                         // @ts-ignore
+                         await stream.writeSSE({ data: JSON.stringify(result) });
+                     }
+-                    catch {
++                    catch (error) {
++                        const isLockTimeout = error?.message?.includes("lock timeout");
++                        globalThis.PONDER_COMMON.logger[isLockTimeout ? "error" : "warn"]({
++                            msg: isLockTimeout ? "Live query failed due to lock timeout" : "Live query failed",
++                            sql_preview: query.sql?.slice(0, 500),
++                            tables_accessed: Array.from(referencedTables),
++                            error_type: error?.name || "Unknown",
++                            error_message: error?.message,
++                            is_lock_timeout: isLockTimeout,
++                        });
+                         stream.abort();
+                     }
+                 }
+diff --git a/dist/esm/database/queryBuilder.js b/dist/esm/database/queryBuilder.js
+index dddf085491df24a37bb1da1dcb43f76c31d0e0bb..8fefde11e9766cb645853733360bd582dba0f56c 100644
+--- a/dist/esm/database/queryBuilder.js
++++ b/dist/esm/database/queryBuilder.js
+@@ -1,6 +1,6 @@
+ import crypto from "node:crypto";
+ import { BaseError } from '../internal/errors.js';
+-import { BigIntSerializationError, CheckConstraintError, DbConnectionError, NonRetryableUserError, NotNullConstraintError, ShutdownError, UniqueConstraintError, } from '../internal/errors.js';
++import { BigIntSerializationError, CheckConstraintError, DbConnectionError, LockTimeoutError, NonRetryableUserError, NotNullConstraintError, ShutdownError, UniqueConstraintError, } from '../internal/errors.js';
+ import { startClock } from '../utils/timer.js';
+ import { wait } from '../utils/wait.js';
+ import { PGlite } from "@electric-sql/pglite";
+@@ -34,6 +34,12 @@ export const parseDbError = (error) => {
+     else if (error?.message?.includes("already exists")) {
+         error = new NonRetryableUserError(error.message);
+     }
++    else if (error?.message?.includes("canceling statement due to lock timeout")) {
++        const lockError = new LockTimeoutError(error.message);
++        // Attach original error details for debugging
++        lockError.originalError = error;
++        error = lockError;
++    }
+     else if (error?.message?.includes("terminating connection due to administrator command") ||
+         error?.message?.includes("connection to client lost") ||
+         error?.message?.includes("too many clients already") ||
+@@ -96,6 +102,21 @@ export const createQB = (db, { common, isAdmin }) => {
+                 if (common.shutdown.isKilled) {
+                     throw new ShutdownError();
+                 }
++                // Enhanced logging for lock timeout errors
++                if (error instanceof LockTimeoutError) {
++                    logger.error({
++                        msg: "Lock timeout detected - query blocked by concurrent transaction",
++                        query_label: label,
++                        query_id: id,
++                        duration_ms: Math.round(endClock() * 1000),
++                        is_transaction: isTransaction,
++                        is_transaction_statement: isTransactionStatement,
++                        retry_attempt: i,
++                        max_retries: RETRY_COUNT,
++                        error_message: error.message,
++                        hint: "Check pg_stat_activity for blocking queries. The indexer may be holding locks during batch writes.",
++                    });
++                }
+                 if (label) {
+                     common.metrics.ponder_database_method_duration.observe({ method: label }, endClock());
+                     common.metrics.ponder_database_method_error_total.inc({
+diff --git a/dist/esm/internal/errors.js b/dist/esm/internal/errors.js
+index 62aeb11d5bfe0ea14648e54f9e3ccdce760975a9..9c51a1936f14ff4bc6789420c54710add84796d6 100644
+--- a/dist/esm/internal/errors.js
++++ b/dist/esm/internal/errors.js
+@@ -153,6 +153,18 @@ export class DbConnectionError extends RetryableError {
+         Object.setPrototypeOf(this, DbConnectionError.prototype);
+     }
+ }
++export class LockTimeoutError extends RetryableError {
++    constructor(message) {
++        super(message);
++        Object.defineProperty(this, "name", {
++            enumerable: true,
++            configurable: true,
++            writable: true,
++            value: "LockTimeoutError"
++        });
++        Object.setPrototypeOf(this, LockTimeoutError.prototype);
++    }
++}
+ export class TransactionStatementError extends RetryableError {
+     constructor(message) {
+         super(message);
 diff --git a/dist/esm/rpc/actions.js b/dist/esm/rpc/actions.js
 index e90972393682a82c1e890a43fd79e5a283d5ea10..92346b38f6182014a5d2dc602d987cbbf287ad3a 100644
 --- a/dist/esm/rpc/actions.js
@@ -106,3 +217,25 @@ index 3c0810be57bb1d6cf149485a1f34dd55540fc976..aeadc0821aa472baca4aab2883fe328f
              const range = hexToNumber(getLogsErrorResponse.ranges[0].toBlock) -
                  hexToNumber(getLogsErrorResponse.ranges[0].fromBlock);
              args.common.logger.debug({
+diff --git a/dist/esm/utils/pg.js b/dist/esm/utils/pg.js
+index 3e021c47fc1298e8f16b773cd437ca5f2cf4cba3..d8a82ca27db0a9e814614d1c56589937c45a3185 100644
+--- a/dist/esm/utils/pg.js
++++ b/dist/esm/utils/pg.js
+@@ -116,7 +116,7 @@ export function createReadonlyPool(config, logger, namespace) {
+           SET search_path = "${namespace}";
+           SET SESSION CHARACTERISTICS AS TRANSACTION READ ONLY;
+           SET work_mem = '512MB';
+-          SET lock_timeout = '500ms';`, callback);
++          SET lock_timeout = '2000ms';`, callback);
+                 });
+             }
+             else {
+@@ -124,7 +124,7 @@ export function createReadonlyPool(config, logger, namespace) {
+           SET search_path = "${namespace}";
+           SET SESSION CHARACTERISTICS AS TRANSACTION READ ONLY;
+           SET work_mem = '512MB';
+-          SET lock_timeout = '500ms';`).then(() => { }));
++          SET lock_timeout = '2000ms';`).then(() => { }));
+             }
+         }
+     }
