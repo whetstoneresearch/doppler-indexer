@@ -55,6 +55,7 @@ export const mainnetConfig: ChainConfig = {
         "0x3ec4798a9b11e8243a8db99687f7a23597b96623"
       ] as Address[],
       RehypeDopplerHookMigrator: "0xc3c9f4cfd1dc0a7837cc4b202b3455b4156a8005" as Address,
+      RehypeDopplerHookInitializer: "0xC918c6Edb8e0B62B5B73B3F812249a986ba8066d" as Address,
       DopplerHookMigrator: "0x1e40b0875dda35f41e15cfb475403859b8c860c4" as Address
     },
     shared: {

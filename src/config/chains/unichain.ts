@@ -45,6 +45,7 @@ export const unichainConfig: ChainConfig = {
       DopplerHookInitializer: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
       RehypeHook: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
       RehypeDopplerHookMigrator: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
+      RehypeDopplerHookInitializer: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
       DopplerHookMigrator: COMMON_ADDRESSES.ZERO_ADDRESS as Address
     },
     shared: {

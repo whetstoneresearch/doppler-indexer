@@ -26,3 +26,4 @@ export { DopplerHookInitializerABI } from "./DopplerHookInitializerABI";
 export { RehypeHookABI } from "./RehypeHookABI";
 export { DopplerHookMigratorABI } from "./DopplerHookMigratorABI";
 export { RehypeDopplerHookMigratorABI } from "./RehypeDopplerHookMigratorABI";
+export { RehypeDopplerHookInitializerABI } from "./RehypeHookInitializerABI"

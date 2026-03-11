@@ -18,6 +18,8 @@ import {
   V4MigratorABI,
   DopplerHookMigratorABI,
   RehypeDopplerHookMigratorABI,
+  RehypeHookABI,
+  RehypeDopplerHookInitializerABI
 } from "./src/abis";
 import { BLOCK_INTERVALS } from "./src/config/chains/constants";
 import { chainConfigs, CHAIN_IDS } from "./src/config/chains";
@@ -35,7 +37,7 @@ const { mainnet, sepolia, base, unichain, ink, baseSepolia, monad } = chainConfi
 export default createConfig({
   database: {
     kind: "postgres",
-    connectionString: "postgresql://postgres:postgres@localhost:5432/default",
+    connectionString: process.env.DATABASE_URL,
     poolConfig: {
       max: 100,
     },
@@ -202,7 +204,7 @@ export default createConfig({
       abi: DopplerHookInitializerABI,
       chain: {
         baseSepolia: {
-          startBlock: 35674465,
+          startBlock: baseSepolia.startBlock,
           address: baseSepolia.addresses.v4.DopplerHookInitializer,
         },
         sepolia: {
@@ -436,8 +438,12 @@ export default createConfig({
       abi: UniswapV4MulticurveInitializerABI,
       chain: {
         baseSepolia: {
-          startBlock: 37530743,
+          startBlock: baseSepolia.startBlock,
           address: base.addresses.v4.DecayMulticurveInitializer,
+        },
+        sepolia: {
+          startBlock: sepolia.startBlock,
+          address: sepolia.addresses.v4.DecayMulticurveInitializer,
         },
       },
     },
@@ -445,8 +451,12 @@ export default createConfig({
       abi: UniswapV4MulticurveInitializerHookABI,
       chain: {
         baseSepolia: {
-          startBlock: 37530742,
+          startBlock: baseSepolia.startBlock,
           address: base.addresses.v4.DecayMulticurveInitializerHook,
+        },
+        sepolia: {
+          startBlock: sepolia.startBlock,
+          address: sepolia.addresses.v4.DecayMulticurveInitializer,
         },
       },
     },
@@ -484,7 +494,37 @@ export default createConfig({
           startBlock: baseSepolia.startBlock,
           address: baseSepolia.addresses.v4.DopplerHookMigrator,
         },
+        sepolia: {
+          startBlock: sepolia.startBlock,
+          address: sepolia.addresses.v4.DopplerHookMigrator,
+        },
       },
+    },
+    RehypeDopplerHook: {
+      abi: RehypeHookABI,
+      chain: {
+        baseSepolia: {
+          startBlock: baseSepolia.startBlock,
+          address: baseSepolia.addresses.v4.RehypeHook
+        },
+        sepolia: {
+          startBlock: sepolia.startBlock,
+          address: sepolia.addresses.v4.RehypeHook
+        }
+      }
+    },
+    RehypeDopplerHookInitailizer: {
+      abi: RehypeDopplerHookInitializerABI,
+      chain: {
+        baseSepolia: {
+          startBlock: baseSepolia.startBlock,
+          address: baseSepolia.addresses.v4.RehypeDopplerHookInitializer
+        },
+        sepolia: {
+          startBlock: sepolia.startBlock,
+          address: sepolia.addresses.v4.RehypeDopplerHookInitializer
+        }      
+      }
     },
     RehypeDopplerHookMigrator: {
       abi: RehypeDopplerHookMigratorABI,

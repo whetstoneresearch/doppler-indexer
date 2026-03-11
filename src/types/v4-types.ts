@@ -20,6 +20,7 @@ export interface V4Addresses {
   DopplerHookInitializer: Address | Address [];
   RehypeHook: Address | Address[];
   RehypeDopplerHookMigrator: Address | Address[];
+  RehypeDopplerHookInitializer: Address | Address[];
   DopplerHookMigrator: Address;
 }
 
