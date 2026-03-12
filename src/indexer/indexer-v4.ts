@@ -30,6 +30,7 @@ import { handleOptimizedSwap } from "./shared/swap-optimizer";
 import { StateViewABI } from "@app/abis";
 import { Address, zeroAddress } from "viem";
 import { QuoteToken, QuoteInfo, getQuoteInfo } from "@app/utils/getQuoteInfo";
+import { readContractWithZeroDataPadding } from "@app/utils/readContractWithZeroDataPadding";
 import { updateCumulatedFees, handleCollect } from "./shared/cumulatedFees";
 
 ponder.on("UniswapV4Initializer:Create", async ({ event, context }) => {
@@ -309,7 +310,7 @@ ponder.on(
     const v4MulticurveInitializer = chainConfigs[context.chain.name].addresses.v4.v4MulticurveInitializer;
     if (Array.isArray(v4MulticurveInitializer)) {
       const poolStates = await Promise.all(v4MulticurveInitializer.map(async (initializer) => {
-        return context.client.readContract({
+        return readContractWithZeroDataPadding(context.client, {
           abi: UniswapV4MulticurveInitializerABI,
           address: initializer,
           functionName: "getState",
@@ -322,14 +323,14 @@ ponder.on(
         return;
       }
     } else {
-      poolState = await context.client.readContract({
+      poolState = await readContractWithZeroDataPadding(context.client, {
         abi: UniswapV4MulticurveInitializerABI,
         address: v4MulticurveInitializer,
         functionName: "getState",
         args: [assetId],
       }).catch(() => null);
-      if (!poolState) {
-        console.error("getState returned no data for asset", assetId);
+      if (!poolState || poolState[2].hooks === zeroAddress) {
+        console.error("Missing v4MulticurveInitializer for asset", assetId);
         return;
       }
     }

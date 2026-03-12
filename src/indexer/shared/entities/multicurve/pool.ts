@@ -9,6 +9,7 @@ import { chainConfigs, V4_MULTICURVE_INITIALIZER_START_BLOCKS } from "@app/confi
 import { CHAINLINK_ETH_DECIMALS } from "@app/utils/constants";
 import { QuoteToken, QuoteInfo, getQuoteInfo } from "@app/utils/getQuoteInfo";
 import { UniswapV4MulticurveInitializerABI } from "@app/abis/multicurve-abis/UniswapV4MulticurveInitializerABI";
+import { readContractWithZeroDataPadding } from "@app/utils/readContractWithZeroDataPadding";
 import { upsertTokenWithPool } from "../token-optimized";
 import { MarketDataService } from "@app/core";
 
@@ -78,7 +79,7 @@ export const insertMulticurvePoolV4Optimized = async ({
 
   if (activeInitializers.length > 1) {
     const poolStates = await Promise.all(activeInitializers.map(async (initializer) => {
-      return client.readContract({
+      return readContractWithZeroDataPadding(client, {
         abi: UniswapV4MulticurveInitializerABI,
         address: initializer,
         functionName: "getState",
@@ -98,7 +99,7 @@ export const insertMulticurvePoolV4Optimized = async ({
     }
   } else {
     resolvedInitializer = activeInitializers[0]!;
-    poolState = await client.readContract({
+    poolState = await readContractWithZeroDataPadding(client, {
       abi: UniswapV4MulticurveInitializerABI,
       address: activeInitializers[0]!,
       functionName: "getState",
@@ -115,7 +116,7 @@ export const insertMulticurvePoolV4Optimized = async ({
     quoteToken = poolKey.currency0;
     if (activeInitializers.length > 1) {
       const poolStates = await Promise.all(activeInitializers.map(async (initializer) => {
-        return client.readContract({
+        return readContractWithZeroDataPadding(client, {
           abi: UniswapV4MulticurveInitializerABI,
           address: initializer,
           functionName: "getState",
@@ -130,7 +131,7 @@ export const insertMulticurvePoolV4Optimized = async ({
       poolState = poolStates[foundIdx]!;
       resolvedInitializer = activeInitializers[foundIdx]!;
     } else {
-      poolState = await client.readContract({
+      poolState = await readContractWithZeroDataPadding(client, {
         abi: UniswapV4MulticurveInitializerABI,
         address: activeInitializers[0]!,
         functionName: "getState",
