@@ -10,22 +10,37 @@ import { SHARED_ADDRESSES } from "@app/config/const";
  */
 export const isZeroDataDecodingError = (error: unknown): boolean => {
   if (!(error instanceof Error)) return false;
-  const message = error.message || "";
-  const name = error.name || "";
 
-  // Check for common ABI decoding error patterns
-  return (
-    // viem's ContractFunctionZeroDataError when contract returns "0x"
-    name.includes("ContractFunctionZeroDataError") ||
-    message.includes("returned no data") ||
-    // ABI decoding errors
-    name.includes("AbiDecoding") ||
-    message.includes("data size of") ||
-    message.includes("is too small") ||
-    message.includes("AbiDecodingDataSizeTooSmall") ||
-    // Match errors like 'returned "0x"' or data being empty/truncated
-    (message.includes("0x") && message.includes("returned"))
-  );
+  const checkError = (err: Error): boolean => {
+    const message = err.message || "";
+    const name = err.name || "";
+
+    return (
+      // viem's ContractFunctionZeroDataError when contract returns "0x"
+      name.includes("ContractFunctionZeroDataError") ||
+      name.includes("ContractFunctionExecutionError") ||
+      message.includes("returned no data") ||
+      // ABI decoding errors
+      name.includes("AbiDecoding") ||
+      message.includes("data size of") ||
+      message.includes("is too small") ||
+      message.includes("AbiDecodingDataSizeTooSmall") ||
+      // Match errors like 'returned "0x"' or data being empty/truncated
+      (message.includes('"0x"') && message.includes("returned"))
+    );
+  };
+
+  // Check the error itself
+  if (checkError(error)) return true;
+
+  // Check the cause chain (viem wraps errors)
+  let cause = (error as any).cause;
+  while (cause instanceof Error) {
+    if (checkError(cause)) return true;
+    cause = (cause as any).cause;
+  }
+
+  return false;
 };
 
 export const getPairData = async ({
