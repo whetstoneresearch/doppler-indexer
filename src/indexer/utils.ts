@@ -15,6 +15,10 @@ export const isZeroDataDecodingError = (error: unknown): boolean => {
 
   // Check for common ABI decoding error patterns
   return (
+    // viem's ContractFunctionZeroDataError when contract returns "0x"
+    name.includes("ContractFunctionZeroDataError") ||
+    message.includes("returned no data") ||
+    // ABI decoding errors
     name.includes("AbiDecoding") ||
     message.includes("data size of") ||
     message.includes("is too small") ||

@@ -12,6 +12,7 @@ import { chainConfigs } from "@app/config";
 import { PriceService } from "@app/core/pricing";
 import { getQuoteInfo } from "../getQuoteInfo";
 import { isPrecompileAddress } from "../validation";
+import { isZeroDataDecodingError } from "@app/indexer/utils";
 
 export const getSlot0Data = async ({
   address,
@@ -317,8 +318,7 @@ const getPoolState = async ({
   } catch (e) {
     // Some RPC providers truncate zero-padded responses (0x000...000) to just "0x",
     // which breaks ABI decoding. This typically means the pool has no initialized state.
-    const error = e as Error;
-    if (error.message?.includes("0x") || error.name?.includes("AbiDecoding")) {
+    if (isZeroDataDecodingError(e)) {
       throw new Error(`getState returned empty/zero data for pool ${poolAddress} - pool may not be initialized`);
     }
     throw e;
@@ -361,8 +361,7 @@ const getLockablePoolState = async ({
   } catch (e) {
     // Some RPC providers truncate zero-padded responses (0x000...000) to just "0x",
     // which breaks ABI decoding. This typically means the pool has no initialized state.
-    const error = e as Error;
-    if (error.message?.includes("0x") || error.name?.includes("AbiDecoding")) {
+    if (isZeroDataDecodingError(e)) {
       throw new Error(`getState returned empty/zero data for pool ${poolAddress} - pool may not be initialized`);
     }
     throw e;
