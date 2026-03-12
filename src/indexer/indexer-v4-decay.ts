@@ -28,7 +28,6 @@ import { pool, token } from "ponder:schema";
 import { handleOptimizedSwap } from "./shared/swap-optimizer";
 import { StateViewABI } from "@app/abis";
 import { zeroAddress } from "viem";
-import { isZeroDataDecodingError } from "./utils";
 import { getQuoteInfo } from "@app/utils/getQuoteInfo";
 import { updateCumulatedFees, handleCollect } from "./shared/cumulatedFees";
 
@@ -48,20 +47,12 @@ ponder.on(
     const DecayMulticurveInitializer = chainConfigs[context.chain.name].addresses.v4.DecayMulticurveInitializer;
     if (Array.isArray(DecayMulticurveInitializer)) {
       const poolStates = await Promise.all(DecayMulticurveInitializer.map(async (initializer) => {
-        try {
-          return await context.client.readContract({
-            abi: UniswapV4ScheduledMulticurveInitializerABI,
-            address: initializer,
-            functionName: "getState",
-            args: [assetId],
-          });
-        } catch (e) {
-          // Some RPC providers truncate zero-padded responses to "0x", breaking ABI decoding
-          if (isZeroDataDecodingError(e)) {
-            return null;
-          }
-          throw e;
-        }
+        return context.client.readContract({
+          abi: UniswapV4ScheduledMulticurveInitializerABI,
+          address: initializer,
+          functionName: "getState",
+          args: [assetId],
+        }).catch(() => null);
       }));
       poolState = poolStates.find((state) => state && state[2].hooks !== zeroAddress);
       if (!poolState) {
@@ -69,19 +60,15 @@ ponder.on(
         return;
       }
     } else {
-      try {
-        poolState = await context.client.readContract({
-          abi: UniswapV4ScheduledMulticurveInitializerABI,
-          address: DecayMulticurveInitializer,
-          functionName: "getState",
-          args: [assetId],
-        });
-      } catch (e) {
-        if (isZeroDataDecodingError(e)) {
-          console.error("getState returned truncated data for asset", assetId);
-          return;
-        }
-        throw e;
+      poolState = await context.client.readContract({
+        abi: UniswapV4ScheduledMulticurveInitializerABI,
+        address: DecayMulticurveInitializer,
+        functionName: "getState",
+        args: [assetId],
+      }).catch(() => null);
+      if (!poolState) {
+        console.error("getState returned no data for asset", assetId);
+        return;
       }
     }
 

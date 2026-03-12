@@ -12,7 +12,6 @@ import { chainConfigs } from "@app/config";
 import { PriceService } from "@app/core/pricing";
 import { getQuoteInfo } from "../getQuoteInfo";
 import { isPrecompileAddress } from "../validation";
-import { isZeroDataDecodingError } from "@app/indexer/utils";
 
 export const getSlot0Data = async ({
   address,
@@ -307,21 +306,15 @@ const getPoolState = async ({
   const { client } = context;
   const v3Initializer = chainConfigs[context.chain.name].addresses.v3.v3Initializer;
 
-  let poolData;
-  try {
-    poolData = await client.readContract({
-      abi: UniswapV3InitializerABI,
-      address: v3Initializer,
-      functionName: "getState",
-      args: [poolAddress],
-    });
-  } catch (e) {
-    // Some RPC providers truncate zero-padded responses (0x000...000) to just "0x",
-    // which breaks ABI decoding. This typically means the pool has no initialized state.
-    if (isZeroDataDecodingError(e)) {
-      throw new Error(`getState returned empty/zero data for pool ${poolAddress} - pool may not be initialized`);
-    }
-    throw e;
+  const poolData = await client.readContract({
+    abi: UniswapV3InitializerABI,
+    address: v3Initializer,
+    functionName: "getState",
+    args: [poolAddress],
+  }).catch(() => null);
+
+  if (!poolData) {
+    throw new Error(`getState returned empty/zero data for pool ${poolAddress} - pool may not be initialized`);
   }
 
   const poolState: PoolState = {
@@ -350,21 +343,15 @@ const getLockablePoolState = async ({
   const { client } = context;
   const lockableV3Initializer = chainConfigs[context.chain.name].addresses.v3.lockableV3Initializer;
 
-  let poolData;
-  try {
-    poolData = await client.readContract({
-      abi: LockableUniswapV3InitializerABI,
-      address: lockableV3Initializer,
-      functionName: "getState",
-      args: [poolAddress],
-    });
-  } catch (e) {
-    // Some RPC providers truncate zero-padded responses (0x000...000) to just "0x",
-    // which breaks ABI decoding. This typically means the pool has no initialized state.
-    if (isZeroDataDecodingError(e)) {
-      throw new Error(`getState returned empty/zero data for pool ${poolAddress} - pool may not be initialized`);
-    }
-    throw e;
+  const poolData = await client.readContract({
+    abi: LockableUniswapV3InitializerABI,
+    address: lockableV3Initializer,
+    functionName: "getState",
+    args: [poolAddress],
+  }).catch(() => null);
+
+  if (!poolData) {
+    throw new Error(`getState returned empty/zero data for pool ${poolAddress} - pool may not be initialized`);
   }
 
   const poolState: LockablePoolState = {

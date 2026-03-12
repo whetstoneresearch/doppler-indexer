@@ -11,7 +11,6 @@ import { QuoteToken, QuoteInfo, getQuoteInfo } from "@app/utils/getQuoteInfo";
 import { UniswapV4MulticurveInitializerABI } from "@app/abis/multicurve-abis/UniswapV4MulticurveInitializerABI";
 import { upsertTokenWithPool } from "../token-optimized";
 import { MarketDataService } from "@app/core";
-import { isZeroDataDecodingError } from "@app/indexer/utils";
 
 function getActiveInitializers(addresses: Address | Address[], blockNumber: bigint): Address[] {
   const addrArray = Array.isArray(addresses) ? addresses : [addresses];
@@ -79,20 +78,12 @@ export const insertMulticurvePoolV4Optimized = async ({
 
   if (activeInitializers.length > 1) {
     const poolStates = await Promise.all(activeInitializers.map(async (initializer) => {
-      try {
-        return await client.readContract({
-          abi: UniswapV4MulticurveInitializerABI,
-          address: initializer,
-          functionName: "getState",
-          args: [poolKey.currency0],
-        });
-      } catch (e) {
-        // Some RPC providers truncate zero-padded responses to "0x", breaking ABI decoding
-        if (isZeroDataDecodingError(e)) {
-          return null;
-        }
-        throw e;
-      }
+      return client.readContract({
+        abi: UniswapV4MulticurveInitializerABI,
+        address: initializer,
+        functionName: "getState",
+        args: [poolKey.currency0],
+      }).catch(() => null);
     }));
     const foundIdx = poolStates.findIndex((state) => state && state[2].hooks !== zeroAddress);
     if (foundIdx !== -1) {
@@ -107,19 +98,15 @@ export const insertMulticurvePoolV4Optimized = async ({
     }
   } else {
     resolvedInitializer = activeInitializers[0]!;
-    try {
-      poolState = await client.readContract({
-        abi: UniswapV4MulticurveInitializerABI,
-        address: activeInitializers[0]!,
-        functionName: "getState",
-        args: [poolKey.currency0],
-      });
-    } catch (e) {
-      if (isZeroDataDecodingError(e)) {
-        console.error("getState returned truncated data for asset", poolKey.currency0);
-        return null;
-      }
-      throw e;
+    poolState = await client.readContract({
+      abi: UniswapV4MulticurveInitializerABI,
+      address: activeInitializers[0]!,
+      functionName: "getState",
+      args: [poolKey.currency0],
+    }).catch(() => null);
+    if (!poolState) {
+      console.error("getState returned no data for asset", poolKey.currency0);
+      return null;
     }
   }
 
@@ -128,19 +115,12 @@ export const insertMulticurvePoolV4Optimized = async ({
     quoteToken = poolKey.currency0;
     if (activeInitializers.length > 1) {
       const poolStates = await Promise.all(activeInitializers.map(async (initializer) => {
-        try {
-          return await client.readContract({
-            abi: UniswapV4MulticurveInitializerABI,
-            address: initializer,
-            functionName: "getState",
-            args: [poolKey.currency1],
-          });
-        } catch (e) {
-          if (isZeroDataDecodingError(e)) {
-            return null;
-          }
-          throw e;
-        }
+        return client.readContract({
+          abi: UniswapV4MulticurveInitializerABI,
+          address: initializer,
+          functionName: "getState",
+          args: [poolKey.currency1],
+        }).catch(() => null);
       }));
       const foundIdx = poolStates.findIndex((state) => state && state[2].hooks !== zeroAddress);
       if (foundIdx === -1) {
@@ -150,21 +130,13 @@ export const insertMulticurvePoolV4Optimized = async ({
       poolState = poolStates[foundIdx]!;
       resolvedInitializer = activeInitializers[foundIdx]!;
     } else {
-      try {
-        poolState = await client.readContract({
-          abi: UniswapV4MulticurveInitializerABI,
-          address: activeInitializers[0]!,
-          functionName: "getState",
-          args: [poolKey.currency1],
-        });
-      } catch (e) {
-        if (isZeroDataDecodingError(e)) {
-          console.error("getState returned truncated data for asset", poolKey.currency1);
-          return null;
-        }
-        throw e;
-      }
-      if (poolState[2].hooks === zeroAddress) {
+      poolState = await client.readContract({
+        abi: UniswapV4MulticurveInitializerABI,
+        address: activeInitializers[0]!,
+        functionName: "getState",
+        args: [poolKey.currency1],
+      }).catch(() => null);
+      if (!poolState || poolState[2].hooks === zeroAddress) {
         console.error("Missing v4MulticurveInitializer for asset", poolKey.currency1);
         return null;
       }

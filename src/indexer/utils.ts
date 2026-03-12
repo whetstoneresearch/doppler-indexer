@@ -1,5 +1,5 @@
 import { Context } from "ponder:registry";
-import { Address, Hex, Abi } from "viem";
+import { Address, Hex } from "viem";
 import { AirlockABI, UniswapV2PairABI } from "@app/abis";
 import { SHARED_ADDRESSES } from "@app/config/const";
 
