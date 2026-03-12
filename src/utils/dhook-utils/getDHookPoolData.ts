@@ -21,12 +21,23 @@ export const getDHookPoolData = async ({
   const { client, chain } = context;
   const { stateView } = chainConfigs[chain.name].addresses.v4;
 
-  const state = await client.readContract({
-    abi: DopplerHookInitializerABI,
-    address: initializerAddress,
-    functionName: "getState",
-    args: [assetAddress],
-  });
+  let state;
+  try {
+    state = await client.readContract({
+      abi: DopplerHookInitializerABI,
+      address: initializerAddress,
+      functionName: "getState",
+      args: [assetAddress],
+    });
+  } catch (e) {
+    // Some RPC providers truncate zero-padded responses (0x000...000) to just "0x",
+    // which breaks ABI decoding. This typically means the asset has no initialized state.
+    const error = e as Error;
+    if (error.message?.includes("0x") || error.name?.includes("AbiDecoding")) {
+      throw new Error(`getState returned empty/zero data for asset ${assetAddress} - asset may not be initialized`);
+    }
+    throw e;
+  }
 
   const [numeraire, totalTokensOnBondingCurve, dopplerHook, , status, poolKeyTuple, farTick] = state;
 

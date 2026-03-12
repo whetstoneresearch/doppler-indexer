@@ -1,7 +1,28 @@
 import { Context } from "ponder:registry";
-import { Address, Hex } from "viem";
+import { Address, Hex, Abi } from "viem";
 import { AirlockABI, UniswapV2PairABI } from "@app/abis";
 import { SHARED_ADDRESSES } from "@app/config/const";
+
+/**
+ * Checks if an error is caused by RPC providers truncating zero-padded responses.
+ * Some RPC providers return "0x" instead of properly padded "0x0000...0000"
+ * for contract calls that return all zeros, breaking ABI decoding.
+ */
+export const isZeroDataDecodingError = (error: unknown): boolean => {
+  if (!(error instanceof Error)) return false;
+  const message = error.message || "";
+  const name = error.name || "";
+
+  // Check for common ABI decoding error patterns
+  return (
+    name.includes("AbiDecoding") ||
+    message.includes("data size of") ||
+    message.includes("is too small") ||
+    message.includes("AbiDecodingDataSizeTooSmall") ||
+    // Match errors like 'returned "0x"' or data being empty/truncated
+    (message.includes("0x") && message.includes("returned"))
+  );
+};
 
 export const getPairData = async ({
   address,

@@ -306,12 +306,23 @@ const getPoolState = async ({
   const { client } = context;
   const v3Initializer = chainConfigs[context.chain.name].addresses.v3.v3Initializer;
 
-  const poolData = await client.readContract({
-    abi: UniswapV3InitializerABI,
-    address: v3Initializer,
-    functionName: "getState",
-    args: [poolAddress],
-  });
+  let poolData;
+  try {
+    poolData = await client.readContract({
+      abi: UniswapV3InitializerABI,
+      address: v3Initializer,
+      functionName: "getState",
+      args: [poolAddress],
+    });
+  } catch (e) {
+    // Some RPC providers truncate zero-padded responses (0x000...000) to just "0x",
+    // which breaks ABI decoding. This typically means the pool has no initialized state.
+    const error = e as Error;
+    if (error.message?.includes("0x") || error.name?.includes("AbiDecoding")) {
+      throw new Error(`getState returned empty/zero data for pool ${poolAddress} - pool may not be initialized`);
+    }
+    throw e;
+  }
 
   const poolState: PoolState = {
     asset: poolData[0],
@@ -339,12 +350,23 @@ const getLockablePoolState = async ({
   const { client } = context;
   const lockableV3Initializer = chainConfigs[context.chain.name].addresses.v3.lockableV3Initializer;
 
-  const poolData = await client.readContract({
-    abi: LockableUniswapV3InitializerABI,
-    address: lockableV3Initializer,
-    functionName: "getState",
-    args: [poolAddress],
-  });
+  let poolData;
+  try {
+    poolData = await client.readContract({
+      abi: LockableUniswapV3InitializerABI,
+      address: lockableV3Initializer,
+      functionName: "getState",
+      args: [poolAddress],
+    });
+  } catch (e) {
+    // Some RPC providers truncate zero-padded responses (0x000...000) to just "0x",
+    // which breaks ABI decoding. This typically means the pool has no initialized state.
+    const error = e as Error;
+    if (error.message?.includes("0x") || error.name?.includes("AbiDecoding")) {
+      throw new Error(`getState returned empty/zero data for pool ${poolAddress} - pool may not be initialized`);
+    }
+    throw e;
+  }
 
   const poolState: LockablePoolState = {
     asset: poolData[0],

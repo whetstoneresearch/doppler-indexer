@@ -28,6 +28,7 @@ import { pool, token } from "ponder:schema";
 import { handleOptimizedSwap } from "./shared/swap-optimizer";
 import { StateViewABI } from "@app/abis";
 import { zeroAddress } from "viem";
+import { isZeroDataDecodingError } from "./utils";
 import { getQuoteInfo } from "@app/utils/getQuoteInfo";
 import { updateCumulatedFees, handleCollect } from "./shared/cumulatedFees";
 
@@ -54,8 +55,12 @@ ponder.on(
             functionName: "getState",
             args: [assetId],
           });
-        } catch {
-          return null;
+        } catch (e) {
+          // Some RPC providers truncate zero-padded responses to "0x", breaking ABI decoding
+          if (isZeroDataDecodingError(e)) {
+            return null;
+          }
+          throw e;
         }
       }));
       poolState = poolStates.find((state) => state && state[2].hooks !== zeroAddress);
@@ -71,9 +76,12 @@ ponder.on(
           functionName: "getState",
           args: [assetId],
         });
-      } catch {
-        console.error("Could not retrieve pool state for asset", assetId);
-        return;
+      } catch (e) {
+        if (isZeroDataDecodingError(e)) {
+          console.error("getState returned truncated data for asset", assetId);
+          return;
+        }
+        throw e;
       }
     }
 
