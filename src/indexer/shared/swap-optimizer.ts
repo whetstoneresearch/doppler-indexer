@@ -120,8 +120,8 @@ export function processSwapCalculations(
     dollarLiquidity,
     marketCapUsd: 0n, // Will be calculated after token fetch
     swapValueUsd,
-    nextReserves0: reserves0 - amount0,
-    nextReserves1: reserves1 - amount1,
+    nextReserves0: reserves0 + amount0,
+    nextReserves1: reserves1 + amount1,
     fee0,
     fee1,
     swapType,
