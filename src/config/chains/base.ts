@@ -76,7 +76,8 @@ export const baseSepoliaConfig: ChainConfig = {
         "0xbb7784a4d481184283ed89619a3e3ed143e1adc0" as Address,
       DopplerHookInitializer: [
         "0x98cd6478debe443069db863abb9626d94de9a544",
-        "0x8d2d06Fd273cd19e1cA6d6641e93137F1b0F25C4"
+        "0x8d2d06Fd273cd19e1cA6d6641e93137F1b0F25C4",
+        "0xBDF938149ac6a781F94FAa0ed45E6A0e984c6544"
        ] as Address[],
       RehypeHook: [
         "0x636A756CeE08775CC18780F52dd90B634F18ad37",
