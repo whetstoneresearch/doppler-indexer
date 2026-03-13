@@ -540,7 +540,7 @@ export const insertPoolIfNotExistsDHook = async ({
   const isDopplerHookInitializer = Array.isArray(dopplerHookInitializer)
     ? dopplerHookInitializer.some(addr => addr.toLowerCase() === dopplerHookLower)
     : dopplerHookInitializer.toLowerCase() === dopplerHookLower;
-  const poolType = isDopplerHookInitializer ? 'rehype' : 'dhook';
+  const poolType = isDopplerHookInitializer ? 'dhook' : 'rehype';
   
   let migrationType = getMigrationType(assetData, chain.name);
   
