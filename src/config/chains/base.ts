@@ -187,7 +187,8 @@ export const baseConfig: ChainConfig = {
         "0xbb7784a4d481184283ed89619a3e3ed143e1adc0" as Address,
       DopplerHookInitializer: [
         "0xaa096f558f3d4c9226de77e7cc05f18e180b2544",
-        "0x8d2d06Fd273cd19e1cA6d6641e93137F1b0F25C4"
+        "0x8d2d06Fd273cd19e1cA6d6641e93137F1b0F25C4",
+        "0xBDF938149ac6a781F94FAa0ed45E6A0e984c6544"
       ] as Address[],
       RehypeHook: [
         "0x97cad5684fb7cc2bed9a9b5ebfba67138f4f2503bb",
