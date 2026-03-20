@@ -55,7 +55,10 @@ export const sepoliaConfig: ChainConfig = {
         "0x3ec4798a9b11e8243a8db99687f7a23597b96623"
        ] as Address[],
       RehypeDopplerHookMigrator: "0xc3c9f4cfd1dc0a7837cc4b202b3455b4156a8005" as Address,
-      RehypeDopplerHookInitializer: "0xC918c6Edb8e0B62B5B73B3F812249a986ba8066d" as Address,
+      RehypeDopplerHookInitializer: [
+        "0xC918c6Edb8e0B62B5B73B3F812249a986ba8066d",
+        "0x6AB5aE3191c914dE8437431091776Fc90f314bE4"
+      ] as Address[],
       DopplerHookMigrator: COMMON_ADDRESSES.ZERO_ADDRESS as Address
     },
     shared: {
