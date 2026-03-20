@@ -535,11 +535,13 @@ export const insertPoolIfNotExistsDHook = async ({
     decimals: quoteInfo.quotePriceDecimals
   });
 
-  const dopplerHookInitializer = chainConfigs[context.chain.name].addresses.v4.DopplerHookInitializer;
-  const dopplerHookLower = poolData.poolConfig.dopplerHook.toLowerCase();
-  const isDopplerHookInitializer = Array.isArray(dopplerHookInitializer)
-    ? dopplerHookInitializer.some(addr => addr.toLowerCase() === dopplerHookLower)
-    : dopplerHookInitializer.toLowerCase() === dopplerHookLower;
+  const dopplerHookInitializerAddrs = chainConfigs[context.chain.name].addresses.v4.DopplerHookInitializer;
+  const initializerLower = initializerAddress?.toLowerCase();
+  const isDopplerHookInitializer = initializerLower
+    ? Array.isArray(dopplerHookInitializerAddrs)
+      ? dopplerHookInitializerAddrs.some(addr => addr.toLowerCase() === initializerLower)
+      : dopplerHookInitializerAddrs.toLowerCase() === initializerLower
+    : false;
   const poolType = isDopplerHookInitializer ? 'dhook' : 'rehype';
   
   let migrationType = getMigrationType(assetData, chain.name);
