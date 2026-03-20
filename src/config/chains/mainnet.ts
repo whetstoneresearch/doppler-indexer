@@ -49,17 +49,27 @@ export const mainnetConfig: ChainConfig = {
         "0xc6a562cb5cbfa29bcb1bdccf903b8b8f2e4a2dc0" as Address,
       DecayMulticurveInitializer: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
       DecayMulticurveInitializerHook: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
-      DopplerHookInitializer: "0xaa096f558f3d4c9226de77e7cc05f18e180b2544" as Address,
+      DopplerHookInitializer: [
+        "0xaa096f558f3d4c9226de77e7cc05f18e180b2544",
+        "0xbdf938149ac6a781f94faa0ed45e6a0e984c6544"
+      ] as Address[],
       RehypeHook: [
         "0x97cad5684fb7cc2bed9a9b5ebfba67138f4f2503",
         "0x3ec4798a9b11e8243a8db99687f7a23597b96623"
       ] as Address[],
-      RehypeDopplerHookMigrator: "0xc3c9f4cfd1dc0a7837cc4b202b3455b4156a8005" as Address,
-      RehypeDopplerHookInitializer: [
-        "0xC918c6Edb8e0B62B5B73B3F812249a986ba8066d",
-        "0x6AB5aE3191c914dE8437431091776Fc90f314bE4"
+      RehypeDopplerHookMigrator: [
+        "0xc3c9f4cfd1dc0a7837cc4b202b3455b4156a8005",
+        "0x82d5e22911fbbcb8d3e45812d74ee6203c5824e0",
+        "0xd199e7836e91654c0475a90e0c1d0e402bb84372"
       ] as Address[],
-      DopplerHookMigrator: "0x1e40b0875dda35f41e15cfb475403859b8c860c4" as Address
+      RehypeDopplerHookInitializer: [
+        "0x6ab5ae3191c914de8437431091776fc90f314be4",
+        "0xC918c6Edb8e0B62B5B73B3F812249a986ba8066d"
+      ] as Address[],
+      DopplerHookMigrator: [
+        "0x1e40b0875dda35f41e15cfb475403859b8c860c4",
+        "0x65b6737c7a897029afe54dbb61bc4a84b232e0c4"
+      ] as Address[]
     },
     shared: {
       airlock: "0xde3599a2ec440b296373a983c85c365da55d9dfa" as Address,

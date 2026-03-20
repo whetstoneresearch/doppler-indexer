@@ -322,10 +322,10 @@ export default createConfig({
           startBlock: baseSepolia.startBlock,
           address: factory({
             address: [
-              ...(baseSepolia.addresses.v4.v4Initializer as `0x${string}`[]),
-              ...(baseSepolia.addresses.v4.v4ScheduledMulticurveInitializer as `0x${string}`[]),
+              baseSepolia.addresses.v4.v4Initializer,
+              baseSepolia.addresses.v4.v4ScheduledMulticurveInitializer,
               baseSepolia.addresses.v4.DecayMulticurveInitializer,
-            ],
+            ].flat(),
             event: getAbiItem({ abi: UniswapV4InitializerABI, name: "Create" }),
             parameter: "poolOrHook",
           }),

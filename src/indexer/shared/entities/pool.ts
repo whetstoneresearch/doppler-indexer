@@ -698,8 +698,12 @@ function getMigrationType(assetData: AssetData, chainName: Network): string {
 
     // Check DopplerHookMigrator
     const dhookMigrator = chainConfigs[chainName].addresses.v4.DopplerHookMigrator;
-    if (dhookMigrator.toLowerCase() !== zeroAddress.toLowerCase() &&
-        dhookMigrator.toLowerCase() === assetData.liquidityMigrator.toLowerCase()) {
+    const dhookMigratorAddresses = Array.isArray(dhookMigrator) ? dhookMigrator : [dhookMigrator];
+    if (dhookMigratorAddresses.some(
+      (m) =>
+        m.toLowerCase() !== zeroAddress.toLowerCase() &&
+        m.toLowerCase() === assetData.liquidityMigrator.toLowerCase()
+    )) {
       return "dhook";
     }
 
