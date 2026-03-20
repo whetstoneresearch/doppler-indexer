@@ -657,8 +657,8 @@ ponder.on("PoolManager:Swap", async ({ event, context }) => {
 
   const type = SwapService.determineSwapType({
     isToken0: v4Pool.isToken0,
-    amount0: amount0 > 0n ? BigInt(amount0) : BigInt(-amount0),
-    amount1: amount1 > 0n ? BigInt(amount1) : BigInt(-amount1),
+    amount0: BigInt(amount0),
+    amount1: BigInt(amount1),
   });
 
   let existingToken = await context.db.find(token, {
