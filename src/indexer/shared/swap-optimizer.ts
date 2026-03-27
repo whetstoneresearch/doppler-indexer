@@ -51,7 +51,7 @@ export function processSwapCalculations(
   quoteDecimals: number = 18,
   quotePriceDecimals: number = 8
 ): ProcessedSwapData {
-  const { amount0, amount1, sqrtPriceX96, isCoinBuy } = params;
+  const { amount0, amount1, sqrtPriceX96 } = params;
   const { isToken0, reserves0, reserves1, fee } = poolEntity;
   
   // Calculate price
@@ -62,28 +62,21 @@ export function processSwapCalculations(
     quoteDecimals
   });
   
-  // Calculate reserves
-  const reserveAssetBefore = isToken0 ? reserves0 : reserves1;
-  const reserveQuoteBefore = isToken0 ? reserves1 : reserves0;
-  const reserveAssetDelta = isToken0 ? amount0 : amount1;
-  const reserveQuoteDelta = isToken0 ? amount1 : amount0;
-  
-  const realQuoteDelta = isCoinBuy ? reserveQuoteDelta : -reserveQuoteDelta;
-  const realAssetDelta = isCoinBuy ? -reserveAssetDelta : reserveAssetDelta;
-  
-  const nextReservesAsset = reserveAssetBefore + realAssetDelta;
-  const nextReservesQuote = reserveQuoteBefore + realQuoteDelta;
+  const nextReserves0 = reserves0 + amount0;
+  const nextReserves1 = reserves1 + amount1;
+  const nextReservesAsset = isToken0 ? nextReserves0 : nextReserves1;
+  const nextReservesQuote = isToken0 ? nextReserves1 : nextReserves0;
   
   // Calculate fees
   let amountIn, amountOut, fee0, fee1;
   if (amount0 > 0n) {
     amountIn = amount0;
-    amountOut = amount1;
+    amountOut = -amount1;
     fee0 = (amountIn * BigInt(fee)) / BigInt(1_000_000);
     fee1 = 0n;
   } else {
     amountIn = amount1;
-    amountOut = amount0;
+    amountOut = -amount0;
     fee1 = (amountIn * BigInt(fee)) / BigInt(1_000_000);
     fee0 = 0n;
   }
@@ -106,8 +99,9 @@ export function processSwapCalculations(
     quoteDecimals: quoteDecimals,
   });
   
+  const quoteDelta = isToken0 ? amount1 : amount0;
   const swapValueUsd = MarketDataService.calculateVolume({
-    amountIn: reserveQuoteDelta < 0n ? -reserveQuoteDelta : reserveQuoteDelta,
+    amountIn: quoteDelta < 0n ? -quoteDelta : quoteDelta,
     amountOut: 0n,
     quotePriceUSD: usdPrice,
     isQuoteUSD: false,
@@ -120,8 +114,8 @@ export function processSwapCalculations(
     dollarLiquidity,
     marketCapUsd: 0n, // Will be calculated after token fetch
     swapValueUsd,
-    nextReserves0: reserves0 - amount0,
-    nextReserves1: reserves1 - amount1,
+    nextReserves0,
+    nextReserves1,
     fee0,
     fee1,
     swapType,
