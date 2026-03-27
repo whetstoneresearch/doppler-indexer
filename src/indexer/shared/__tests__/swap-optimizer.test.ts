@@ -19,13 +19,13 @@ vi.mock("ponder.schema", () => ({
 
 vi.mock("ponder:registry", () => ({}));
 
-vi.mock("./entities", () => ({
+vi.mock("../entities", () => ({
   updateAsset: vi.fn(),
   updatePool: vi.fn(),
   updatePoolDirect: vi.fn(),
 }));
 
-vi.mock("./entities/swap", () => ({
+vi.mock("../entities/swap", () => ({
   insertSwapIfNotExists: vi.fn(),
 }));
 
@@ -37,7 +37,7 @@ vi.mock("@app/config", () => ({
   chainConfigs: {},
 }));
 
-const { processSwapCalculations } = await import("./swap-optimizer");
+const { processSwapCalculations } = await import("../swap-optimizer");
 
 describe("processSwapCalculations", () => {
   it("applies signed deltas to reserves for token0 asset buys", () => {
