@@ -466,9 +466,14 @@ ponder.on("DopplerHookMigrator:Migrate", async ({ event, context }) => {
     ],
   });
 
-  const sqrtPriceX96 = slot0Result.result?.[0] ?? 0n;
-  const tick = slot0Result.result?.[1] ?? 0;
-  const liquidity = liquidityResult.result ?? 0n;
+  if (slot0Result.status !== "success" || liquidityResult.status !== "success") {
+    console.warn(`DopplerHookMigrator:Migrate - StateView read failed for pool ${poolId}`);
+    return;
+  }
+
+  const sqrtPriceX96 = slot0Result.result[0];
+  const tick = slot0Result.result[1];
+  const liquidity = liquidityResult.result;
 
   const MIN_TICK = -887270;
   const MAX_TICK = 887270;
