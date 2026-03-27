@@ -222,8 +222,12 @@ export const isV4MigratorHook = (
 
   // Also check DopplerHookMigrator (it acts as its own hook)
   const dhookMigrator = config.addresses.v4.DopplerHookMigrator;
-  if (dhookMigrator.toLowerCase() !== zeroAddress.toLowerCase() &&
-      dhookMigrator.toLowerCase() === hookAddress.toLowerCase()) {
+  const dhookMigratorAddresses = Array.isArray(dhookMigrator) ? dhookMigrator : [dhookMigrator];
+  if (dhookMigratorAddresses.some(
+    (h) =>
+      h.toLowerCase() !== zeroAddress.toLowerCase() &&
+      h.toLowerCase() === hookAddress.toLowerCase()
+  )) {
     return true;
   }
 
@@ -274,9 +278,11 @@ export const isDHookMigrator = (
   }
 
   const dhookMigrator = config.addresses.v4.DopplerHookMigrator;
-  return (
-    dhookMigrator.toLowerCase() !== zeroAddress.toLowerCase() &&
-    dhookMigrator.toLowerCase() === migratorAddress.toLowerCase()
+  const dhookMigratorAddresses = Array.isArray(dhookMigrator) ? dhookMigrator : [dhookMigrator];
+  return dhookMigratorAddresses.some(
+    (m) =>
+      m.toLowerCase() !== zeroAddress.toLowerCase() &&
+      m.toLowerCase() === migratorAddress.toLowerCase()
   );
 };
 
@@ -308,11 +314,14 @@ export const getDHookMigratorForAsset = (
   }
 
   const dhookMigrator = config.addresses.v4.DopplerHookMigrator;
-  if (
-    dhookMigrator.toLowerCase() !== zeroAddress.toLowerCase() &&
-    dhookMigrator.toLowerCase() === liquidityMigrator.toLowerCase()
-  ) {
-    return dhookMigrator;
+  const dhookMigratorAddresses = Array.isArray(dhookMigrator) ? dhookMigrator : [dhookMigrator];
+  const foundDhook = dhookMigratorAddresses.find(
+    (m) =>
+      m.toLowerCase() !== zeroAddress.toLowerCase() &&
+      m.toLowerCase() === liquidityMigrator.toLowerCase()
+  );
+  if (foundDhook) {
+    return foundDhook;
   }
 
   const rehypeMigrator = config.addresses.v4.RehypeDopplerHookMigrator;

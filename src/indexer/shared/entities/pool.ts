@@ -535,15 +535,12 @@ export const insertPoolIfNotExistsDHook = async ({
     decimals: quoteInfo.quotePriceDecimals
   });
 
-  const rehypeHookAddrs = chainConfigs[context.chain.name].addresses.v4.RehypeHook;
-  const hookLower = poolData.poolKey.hooks.toLowerCase();
-  const isRehypePool = Array.isArray(rehypeHookAddrs)
-    ? rehypeHookAddrs.some(addr =>
-        addr.toLowerCase() !== zeroAddress.toLowerCase() &&
-        addr.toLowerCase() === hookLower)
-    : rehypeHookAddrs.toLowerCase() !== zeroAddress.toLowerCase() &&
-      rehypeHookAddrs.toLowerCase() === hookLower;
-  const poolType = isRehypePool ? 'rehype' : 'dhook';
+  const dopplerHookLower = poolData.poolConfig.dopplerHook.toLowerCase();
+  const rehypeInitAddrs = chainConfigs[context.chain.name].addresses.v4.RehypeDopplerHookInitializer;
+  const isRehype = Array.isArray(rehypeInitAddrs)
+    ? rehypeInitAddrs.some(addr => addr.toLowerCase() === dopplerHookLower)
+    : rehypeInitAddrs.toLowerCase() === dopplerHookLower;
+  const poolType = isRehype ? 'rehype' : 'dhook';
   
   let migrationType = getMigrationType(assetData, chain.name);
   
@@ -701,8 +698,12 @@ function getMigrationType(assetData: AssetData, chainName: Network): string {
 
     // Check DopplerHookMigrator
     const dhookMigrator = chainConfigs[chainName].addresses.v4.DopplerHookMigrator;
-    if (dhookMigrator.toLowerCase() !== zeroAddress.toLowerCase() &&
-        dhookMigrator.toLowerCase() === assetData.liquidityMigrator.toLowerCase()) {
+    const dhookMigratorAddresses = Array.isArray(dhookMigrator) ? dhookMigrator : [dhookMigrator];
+    if (dhookMigratorAddresses.some(
+      (m) =>
+        m.toLowerCase() !== zeroAddress.toLowerCase() &&
+        m.toLowerCase() === assetData.liquidityMigrator.toLowerCase()
+    )) {
       return "dhook";
     }
 

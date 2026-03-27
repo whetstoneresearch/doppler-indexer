@@ -1,6 +1,7 @@
 import { IndexerConfigs } from "./types";
 import { unichainConfig } from "./unichain";
-import { baseSepoliaConfig, baseConfig } from "./base";
+import { baseConfig } from "./base";
+import { baseSepoliaConfig } from "./baseSepolia";
 import { inkConfig } from "./ink";
 import { monadConfig } from "./monad";
 import { mainnetConfig } from "./mainnet";

@@ -44,9 +44,12 @@ export const monadConfig: ChainConfig = {
       DecayMulticurveInitializerHook: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
       DopplerHookInitializer: "0xaa096f558f3d4c9226de77e7cc05f18e180b2544" as Address,
       RehypeHook: "0x97cad5684fb7cc2bed9a9b5ebfba67138f4f2503" as Address,
-      RehypeDopplerHookMigrator: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
+      RehypeDopplerHookMigrator: "0xd199e7836e91654c0475a90e0c1d0e402bb84372" as Address,
       RehypeDopplerHookInitializer: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
-      DopplerHookMigrator: COMMON_ADDRESSES.ZERO_ADDRESS as Address
+      DopplerHookMigrator: [
+        "0x1e40b0875dda35f41e15cfb475403859b8c860c4",
+        "0x65b6737c7a897029afe54dbb61bc4a84b232e0c4"
+      ] as Address[]
     },
     shared: {
       airlock: "0x660eaaedebc968f8f3694354fa8ec0b4c5ba8d12" as Address,

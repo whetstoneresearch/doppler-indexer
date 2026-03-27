@@ -318,8 +318,8 @@ ponder.on(
     const sqrtPriceX96 = slot0?.[0] ?? 0n;
 
     const isCoinBuy = poolEntity.isToken0
-      ? amount0 > amount1
-      : amount1 > amount0;
+      ? amount0 < 0n
+      : amount1 < 0n;
 
     const price = PriceService.computePriceFromSqrtPriceX96({
       sqrtPriceX96,
