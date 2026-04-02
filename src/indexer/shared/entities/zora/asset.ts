@@ -32,7 +32,7 @@ export const insertZoraAssetIfNotExists = async ({
   const isToken0 = assetAddress.toLowerCase() < numeraireAddress.toLowerCase();
 
   return await db.insert(asset).values({
-    numeraire: numeraireAddress,
+    numeraire: numeraireAddress.toLowerCase() as `0x${string}`,
     numTokensToSell: 0n,
     poolInitializer: zeroAddress,
     liquidityMigrator: zeroAddress,
@@ -40,7 +40,7 @@ export const insertZoraAssetIfNotExists = async ({
     governance: zeroAddress,
     timelock: zeroAddress,
     migrationPool: zeroAddress,
-    poolAddress,
+    poolAddress: poolAddress.toLowerCase() as `0x${string}`,
     address,
     chainId: chain.id,
     isToken0,

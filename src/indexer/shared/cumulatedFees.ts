@@ -104,7 +104,7 @@ export async function updateCumulatedFees({
       .values({
         poolId,
         chainId,
-        beneficiary: b.beneficiary,
+        beneficiary: b.beneficiary.toLowerCase() as `0x${string}`,
         token0Fees,
         token1Fees,
         totalFeesUsd,

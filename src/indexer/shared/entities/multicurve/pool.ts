@@ -8,7 +8,7 @@ import { getPoolId } from "@app/utils/v4-utils/getPoolId";
 import { getReservesMulticurve } from "@app/utils/v4-utils/getV4PoolData";
 import { chainConfigs, V4_MULTICURVE_INITIALIZER_START_BLOCKS } from "@app/config";
 import { CHAINLINK_ETH_DECIMALS } from "@app/utils/constants";
-import { QuoteToken, QuoteInfo, getQuoteInfo } from "@app/utils/getQuoteInfo";
+import { QuoteToken, QuoteInfo, getQuoteInfo, isValidQuoteToken } from "@app/utils/getQuoteInfo";
 import { UniswapV4MulticurveInitializerABI } from "@app/abis/multicurve-abis/UniswapV4MulticurveInitializerABI";
 import { readContractWithZeroDataPadding } from "@app/utils/readContractWithZeroDataPadding";
 import { upsertTokenWithPool } from "../token-optimized";
@@ -227,6 +227,7 @@ export const insertMulticurvePoolV4Optimized = async ({
   });
 
   const isQuoteEth = quoteInfo.quoteToken === QuoteToken.Eth ? true : false;
+  const hasValidQuote = isValidQuoteToken(quoteInfo.quoteToken);
   // Insert new pool with all data at once
   return await db.insert(pool).values({
     address,
@@ -234,9 +235,9 @@ export const insertMulticurvePoolV4Optimized = async ({
     sqrtPrice: sqrtPriceX96,
     liquidity: reserves.liquidity,
     createdAt: timestamp,
-    asset: baseToken,
-    baseToken,
-    quoteToken,
+    asset: baseToken.toLowerCase() as `0x${string}`,
+    baseToken: baseToken.toLowerCase() as `0x${string}`,
+    quoteToken: quoteToken.toLowerCase() as `0x${string}`,
     price,
     type: decay ? "decay-multicurve" : scheduled ? "scheduled-multicurve" :  "multicurve",
     chainId,
@@ -254,6 +255,7 @@ export const insertMulticurvePoolV4Optimized = async ({
     isToken0,
     marketCapUsd,
     isQuoteEth,
+    hasValidQuote,
     integrator: zeroAddress,
     holderCount: 0,
     lastSwapTimestamp: timestamp,
@@ -261,8 +263,8 @@ export const insertMulticurvePoolV4Optimized = async ({
     poolKey,
     tickLower: tick,
     beneficiaries: beneficiaries
-      ? beneficiaries.map(b => ({ beneficiary: b.beneficiary, shares: b.shares.toString() }))
+      ? beneficiaries.map(b => ({ beneficiary: b.beneficiary.toLowerCase() as `0x${string}`, shares: b.shares.toString() }))
       : null,
-    initializer: resolvedInitializer,
+    initializer: resolvedInitializer.toLowerCase() as `0x${string}`,
   });
 };

@@ -53,7 +53,7 @@ export async function updateDayBucket(
   const bucketTimestamp = getDayBucketTimestamp(params.timestamp);
   
   const bucketId = {
-    poolAddress: params.poolAddress as `0x${string}`,
+    poolAddress: params.poolAddress.toLowerCase() as `0x${string}`,
     timestamp: bucketTimestamp,
     chainId: params.chainId,
   };
@@ -88,7 +88,7 @@ export async function updateDayBucket(
   } else {
     return await db.insert(volumeBucket24h).values({
       ...bucketId,
-      assetAddress: params.assetAddress as `0x${string}`,
+      assetAddress: params.assetAddress.toLowerCase() as `0x${string}`,
       volumeUsd: params.volumeUsd,
       volumeToken0: params.volumeToken0,
       volumeToken1: params.volumeToken1,
@@ -124,7 +124,7 @@ export async function get24HourVolumeAndPercentChange(
   const currentDayTimestamp = getDayBucketTimestamp(currentTimestamp);
   
   const bucket = await db.find(volumeBucket24h, {
-    poolAddress: poolAddress as `0x${string}`,
+    poolAddress: poolAddress.toLowerCase() as `0x${string}`,
     timestamp: currentDayTimestamp,
     chainId,
   });
@@ -164,7 +164,7 @@ export async function updateFifteenMinuteBucketUsd(
   const minuteId = Number(bucketTimestamp);
 
   const rowId = {
-    pool: params.poolAddress as `0x${string}`,
+    pool: params.poolAddress.toLowerCase() as `0x${string}`,
     minuteId,
     chainId: params.chainId,
   };
@@ -186,7 +186,7 @@ export async function updateFifteenMinuteBucketUsd(
   } else {
     await db.insert(fifteenMinuteBucketUsd).values({
       minuteId,
-      pool: params.poolAddress as `0x${string}`,
+      pool: params.poolAddress.toLowerCase() as `0x${string}`,
       open: params.priceUsd,
       close: params.priceUsd,
       low: params.priceUsd,
@@ -219,7 +219,7 @@ export async function getVolumeForLastNDays(
     .from(volumeBucket24h)
     .where(
       and(
-        eq(volumeBucket24h.poolAddress, poolAddress as `0x${string}`),
+        eq(volumeBucket24h.poolAddress, poolAddress.toLowerCase() as `0x${string}`),
         eq(volumeBucket24h.chainId, chainId),
         gte(volumeBucket24h.timestamp, startTimestamp),
         lt(volumeBucket24h.timestamp, currentTimestamp)
@@ -245,7 +245,7 @@ export async function getHistoricalDailyVolumes(
     .from(volumeBucket24h)
     .where(
       and(
-        eq(volumeBucket24h.poolAddress, poolAddress as `0x${string}`),
+        eq(volumeBucket24h.poolAddress, poolAddress.toLowerCase() as `0x${string}`),
         eq(volumeBucket24h.chainId, chainId)
       )
     )

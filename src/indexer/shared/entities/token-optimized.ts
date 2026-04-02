@@ -41,9 +41,9 @@ export const upsertTokenWithPool = async ({
     isDerc20,
     isCreatorCoin,
     isContentCoin,
-    pool: poolAddress,
-    creatorCoinPid,
-    creatorAddress,
+    pool: poolAddress?.toLowerCase() as `0x${string}` ?? null,
+    creatorCoinPid: creatorCoinPid ? creatorCoinPid.toLowerCase() as `0x${string}` : null,
+    creatorAddress: creatorAddress.toLowerCase() as `0x${string}`,
     firstSeenAt: timestamp,
     lastSeenAt: timestamp,
   };
@@ -103,7 +103,7 @@ export const upsertTokenWithPool = async ({
       .insert(token)
       .values(tokenData as typeof token.$inferInsert)
       .onConflictDoUpdate((existing) => ({
-        pool: existing.pool === null ? poolAddress : existing.pool,
+        pool: existing.pool === null ? poolAddress?.toLowerCase() as `0x${string}` ?? null : existing.pool,
         isDerc20,
         isCreatorCoin,
         isContentCoin,

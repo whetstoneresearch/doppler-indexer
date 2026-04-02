@@ -21,15 +21,15 @@ export const getAssetData = async (
   }
 
   return {
-    numeraire: assetData[0],
-    timelock: assetData[1],
-    governance: assetData[2],
-    liquidityMigrator: assetData[3],
-    poolInitializer: assetData[4],
-    pool: assetData[5],
-    migrationPool: assetData[6],
+    numeraire: assetData[0].toLowerCase() as `0x${string}`,
+    timelock: assetData[1].toLowerCase() as `0x${string}`,
+    governance: assetData[2].toLowerCase() as `0x${string}`,
+    liquidityMigrator: assetData[3].toLowerCase() as `0x${string}`,
+    poolInitializer: assetData[4].toLowerCase() as `0x${string}`,
+    pool: assetData[5].toLowerCase() as `0x${string}`,
+    migrationPool: assetData[6].toLowerCase() as `0x${string}`,
     numTokensToSell: BigInt(assetData[7]),
     totalSupply: BigInt(assetData[8]),
-    integrator: assetData[9],
+    integrator: assetData[9].toLowerCase() as `0x${string}`,
   };
 };
