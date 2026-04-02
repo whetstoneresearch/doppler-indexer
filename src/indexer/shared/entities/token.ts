@@ -25,9 +25,10 @@ export const appendTokenPool = async ({
   creatorAddress?: Address;
 }) => {
   const { db, chain } = context;
+  const address = tokenAddress.toLowerCase() as `0x${string}`;
 
   const existingToken = await db.find(token, {
-    address: tokenAddress,
+    address,
     chainId: chain.id,
   });
 
@@ -43,7 +44,7 @@ export const appendTokenPool = async ({
 
   return await db
     .update(token, {
-      address: tokenAddress,
+      address,
       chainId: chain.id,
     })
     .set({

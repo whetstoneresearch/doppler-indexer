@@ -23,7 +23,8 @@ export async function updateCumulatedFees({
   quoteInfo,
   context,
 }: UpdateCumulatedFeesParams): Promise<void> {
-  const cached = await getOrFetchBeneficiaries(chainId, poolId, context);
+  const poolIdLower = poolId.toLowerCase() as `0x${string}`;
+  const cached = await getOrFetchBeneficiaries(chainId, poolIdLower, context);
   if (!cached || cached.beneficiaries.length === 0) {
     return;
   }
@@ -39,13 +40,13 @@ export async function updateCumulatedFees({
         abi: UniswapV4MulticurveInitializerABI,
         address: initializer,
         functionName: "getCumulatedFees0",
-        args: [poolId],
+        args: [poolIdLower],
       },
       {
         abi: UniswapV4MulticurveInitializerABI,
         address: initializer,
         functionName: "getCumulatedFees1",
-        args: [poolId],
+        args: [poolIdLower],
       },
     ],
     ...multicallOptions,
@@ -102,7 +103,7 @@ export async function updateCumulatedFees({
     return db
       .insert(cumulatedFees)
       .values({
-        poolId,
+        poolId: poolIdLower,
         chainId,
         beneficiary: b.beneficiary.toLowerCase() as `0x${string}`,
         token0Fees,
@@ -143,11 +144,12 @@ export async function handleCollect({
   context,
 }: HandleCollectParams): Promise<void> {
   const { db } = context;
+  const poolIdLower = poolId.toLowerCase() as `0x${string}`;
   const beneficiaryAddr = beneficiary.toLowerCase() as `0x${string}`;
 
   // Find existing cumulated fees record
   const existing = await db.find(cumulatedFees, {
-    poolId,
+    poolId: poolIdLower,
     chainId,
     beneficiary: beneficiaryAddr,
   });
@@ -186,7 +188,7 @@ export async function handleCollect({
 
   await db
     .update(cumulatedFees, {
-      poolId,
+      poolId: poolIdLower,
       chainId,
       beneficiary: beneficiaryAddr,
     })

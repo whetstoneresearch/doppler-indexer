@@ -8,6 +8,17 @@ import { computeV4Price } from "@app/utils/v4-utils/computeV4Price";
 import { getAmount0Delta, getAmount1Delta } from "@app/utils/v3-utils/computeGraduationThreshold";
 import { addToV4MigrationPoolCache } from "../v4MigrationPoolCache";
 
+type MigrationBeneficiary = { beneficiary: Address; shares: string };
+
+function normalizeBeneficiaries(
+  beneficiaries: MigrationBeneficiary[] | null
+): MigrationBeneficiary[] | null {
+  return beneficiaries?.map((b) => ({
+    beneficiary: b.beneficiary.toLowerCase() as `0x${string}`,
+    shares: b.shares,
+  })) ?? null;
+}
+
 export const fetchExistingV4Pool = async ({
   poolId,
   context,
@@ -259,6 +270,7 @@ export const insertV4MigrationPoolIfNotExists = async ({
     timestamp,
     context,
   });
+  const normalizedBeneficiaries = normalizeBeneficiaries(migrationData.beneficiaries);
 
   const existingPool = await db.find(v4pools, {
     poolId: migrationData.poolId,
@@ -292,7 +304,7 @@ export const insertV4MigrationPoolIfNotExists = async ({
       migratedFromPool: parentPoolAddress.toLowerCase() as `0x${string}`,
       migratedAt: timestamp,
       lockDuration: migrationData.lockDuration,
-      beneficiaries: migrationData.beneficiaries,
+      beneficiaries: normalizedBeneficiaries,
       price: migrationData.price,
       dollarLiquidity,
       isToken0: migrationData.isToken0,
@@ -315,7 +327,7 @@ export const insertV4MigrationPoolIfNotExists = async ({
       migratedFromPool: parentPoolAddress.toLowerCase() as `0x${string}`,
       migratedAt: timestamp,
       lockDuration: migrationData.lockDuration,
-      beneficiaries: migrationData.beneficiaries,
+      beneficiaries: normalizedBeneficiaries,
       price: migrationData.price,
       dollarLiquidity,
       isToken0: migrationData.isToken0,
@@ -362,7 +374,7 @@ export const insertV4MigrationPoolIfNotExists = async ({
     migratedAt: timestamp,
     migratorVersion: "v4",
     lockDuration: migrationData.lockDuration,
-    beneficiaries: migrationData.beneficiaries,
+    beneficiaries: normalizedBeneficiaries,
     price: migrationData.price,
     volumeUsd: 0n,
     dollarLiquidity,
@@ -471,6 +483,7 @@ export const linkAssetToV4MigrationPool = async ({
 
   const quoteInfo = await getQuoteInfo(quoteToken, timestamp, context);
   const isQuoteEth = quoteInfo.quoteToken === QuoteToken.Eth;
+  const normalizedBeneficiaries = normalizeBeneficiaries(beneficiaries);
 
   // Calculate dollar liquidity using correct isToken0 and reserves from V4Migrator:Migrate event
   const dollarLiquidity = MarketDataService.calculateLiquidity({
@@ -493,7 +506,7 @@ export const linkAssetToV4MigrationPool = async ({
     migratedFromPool: parentPoolAddress.toLowerCase() as `0x${string}`,
     migratedAt: timestamp,
     lockDuration,
-    beneficiaries,
+    beneficiaries: normalizedBeneficiaries,
     isToken0,
     isQuoteEth,
     dollarLiquidity,

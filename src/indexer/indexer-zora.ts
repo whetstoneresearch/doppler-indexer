@@ -210,6 +210,7 @@ ponder.on("ZoraV4CreatorCoinHook:Swapped", async ({ event, context }) => {
   const { db, chain } = context;
   const { poolKeyHash, swapSender, amount0, amount1, sqrtPriceX96, isCoinBuy } = event.args;
   const timestamp = event.block.timestamp;
+  const poolAddress = poolKeyHash.toLowerCase() as `0x${string}`;
 
   const zoraAddress = chainConfigs[context.chain.name].addresses.zora.zoraToken;
 
@@ -219,10 +220,10 @@ ponder.on("ZoraV4CreatorCoinHook:Swapped", async ({ event, context }) => {
       abi: StateViewABI,
       address: chainConfigs[context.chain.name].addresses.v4.stateView,
       functionName: "getSlot0",
-      args: [poolKeyHash],
+      args: [poolAddress],
     }),
     getQuoteInfo(zoraAddress, timestamp, context),
-    db.find(pool, { address: poolKeyHash, chainId: chain.id }),
+    db.find(pool, { address: poolAddress, chainId: chain.id }),
   ]);
 
   if (!poolEntity) {
@@ -233,7 +234,7 @@ ponder.on("ZoraV4CreatorCoinHook:Swapped", async ({ event, context }) => {
 
   await handleOptimizedSwap(
     {
-      poolAddress: poolKeyHash,
+      poolAddress,
       swapSender,
       amount0,
       amount1,
@@ -256,8 +257,8 @@ ponder.on("ZoraCreatorCoinV4:LiquidityMigrated", async ({ event, context }) => {
   const { fromPoolKeyHash, toPoolKey, toPoolKeyHash } = event.args;
   const timestamp = event.block.timestamp;
 
-  const fromPoolAddress = fromPoolKeyHash;
-  const toPoolAddress = toPoolKeyHash;
+  const fromPoolAddress = fromPoolKeyHash.toLowerCase() as `0x${string}`;
+  const toPoolAddress = toPoolKeyHash.toLowerCase() as `0x${string}`;
 
   const fromPoolEntity = await db.find(pool, {
     address: fromPoolAddress,

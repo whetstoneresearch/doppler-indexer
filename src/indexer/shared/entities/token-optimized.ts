@@ -107,7 +107,7 @@ export const upsertTokenWithPool = async ({
         isDerc20,
         isCreatorCoin,
         isContentCoin,
-        creatorCoinPid,
+        creatorCoinPid: creatorCoinPid ? creatorCoinPid.toLowerCase() as `0x${string}` : null,
         lastSeenAt: timestamp,
         // Keep existing totalSupply if it's already set
         totalSupply: existing.totalSupply || tokenData.totalSupply,

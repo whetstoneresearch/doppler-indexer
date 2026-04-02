@@ -45,7 +45,8 @@ export async function getOrFetchBeneficiaries(
   poolAddress: `0x${string}`,
   context: Context,
 ): Promise<CachedBeneficiaries | null> {
-  const cached = getBeneficiariesFromCache(chainId, poolAddress);
+  const poolAddressLower = poolAddress.toLowerCase() as `0x${string}`;
+  const cached = getBeneficiariesFromCache(chainId, poolAddressLower);
   if (cached !== undefined) {
     return cached;
   }
@@ -53,12 +54,12 @@ export async function getOrFetchBeneficiaries(
   // DB fallback
   const { db } = context;
   const poolEntity = await db.find(pool, {
-    address: poolAddress,
+    address: poolAddressLower,
     chainId,
   });
 
   if (!poolEntity || !poolEntity.beneficiaries || !poolEntity.initializer) {
-    setBeneficiariesCache(chainId, poolAddress, null);
+    setBeneficiariesCache(chainId, poolAddressLower, null);
     return null;
   }
 
@@ -72,6 +73,6 @@ export async function getOrFetchBeneficiaries(
     initializer: poolEntity.initializer,
   };
 
-  setBeneficiariesCache(chainId, poolAddress, result);
+  setBeneficiariesCache(chainId, poolAddressLower, result);
   return result;
 }
