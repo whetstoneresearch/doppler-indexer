@@ -299,6 +299,23 @@ export const position = onchainTable(
   })
 );
 
+export const positionLedger = onchainTable(
+  "position_ledger",
+  (t) => ({
+    poolId: t.hex().notNull(),
+    tickLower: t.integer().notNull(),
+    tickUpper: t.integer().notNull(),
+    liquidity: t.bigint().notNull(),
+    chainId: t.integer().notNull(),
+  }),
+  (table) => ({
+    pk: primaryKey({
+      columns: [table.poolId, table.tickLower, table.tickUpper, table.chainId],
+    }),
+    poolIdChainIdx: index().on(table.poolId, table.chainId),
+  })
+);
+
 export const module = onchainTable(
   "module",
   (t) => ({
@@ -487,6 +504,8 @@ export const v4pools = onchainTable(
     totalFee1: t.bigint().notNull().default(0n),
     reserves0: t.bigint().notNull().default(0n),
     reserves1: t.bigint().notNull().default(0n),
+    donated0: t.bigint().notNull().default(0n),
+    donated1: t.bigint().notNull().default(0n),
 
     // Timestamps
     createdAt: t.bigint().notNull(),
