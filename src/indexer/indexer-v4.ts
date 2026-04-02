@@ -510,11 +510,12 @@ ponder.on(
   async ({ event, context }) => {
     const { poolId, sender, amount0, amount1 } = event.args;
     const timestamp = event.block.timestamp;
+    const poolAddress = (poolId as string).toLowerCase() as `0x${string}`;
 
     // Parallelize pool fetch and slot0 RPC call (they are independent)
     const [poolEntity, slot0] = await Promise.all([
       context.db.find(pool, {
-        address: poolId,
+        address: poolAddress,
         chainId: context.chain.id,
       }),
       context.client.readContract({
@@ -540,7 +541,7 @@ ponder.on(
       getReservesMulticurve({
         initializer: poolEntity.initializer!,
         baseToken: poolEntity.baseToken,
-        poolId,
+        poolId: poolAddress,
         context,
         slot0Override: { sqrtPriceX96, tick },
       }),
@@ -562,7 +563,7 @@ ponder.on(
     await Promise.all([
       handleOptimizedSwap(
         {
-          poolAddress: poolId,
+          poolAddress,
           swapSender: sender,
           amount0,
           amount1,
@@ -583,7 +584,7 @@ ponder.on(
         poolEntity
       ),
       updateCumulatedFees({
-        poolId,
+        poolId: poolAddress,
         chainId: context.chain.id,
         isToken0: poolEntity.isToken0,
         price,

@@ -12,8 +12,10 @@ export const insertV4ConfigIfNotExists = async ({
 }) => {
   const { db, chain } = context;
 
+  const lowerHookAddress = hookAddress.toLowerCase() as `0x${string}`;
+
   const existingConfig = await db.find(v4PoolConfig, {
-    hookAddress,
+    hookAddress: lowerHookAddress,
     chainId: chain.id,
   });
 
@@ -25,7 +27,7 @@ export const insertV4ConfigIfNotExists = async ({
 
   return await db.insert(v4PoolConfig).values({
     ...config,
-    hookAddress,
+    hookAddress: lowerHookAddress,
     chainId: chain.id,
   });
 };
@@ -43,7 +45,7 @@ export const updateV4Config = async ({
 
   await db
     .update(v4PoolConfig, {
-      hookAddress,
+      hookAddress: hookAddress.toLowerCase() as `0x${string}`,
       chainId: chain.id,
     })
     .set({

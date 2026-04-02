@@ -51,7 +51,7 @@ export const insertV2PoolIfNotExists = async ({
 
   const [{ baseToken }, quoteInfo] = result;
 
-  const isToken0 = baseToken === assetAddress;
+  const isToken0 = baseToken.toLowerCase() === assetAddress.toLowerCase();
 
   const assetId = assetAddress.toLowerCase() as `0x${string}`;
   const numeraireId = numeraire.toLowerCase() as `0x${string}`;
@@ -130,8 +130,11 @@ export const insertV2MigrationPoolIfNotExists = async ({
 }): Promise<typeof v2Pool.$inferSelect> => {
   const { db, chain } = context;  
 
+  const lowerMigrationPoolAddress = migrationPoolAddress.toLowerCase() as `0x${string}`;
+  const lowerParentPoolAddress = parentPoolAddress.toLowerCase() as `0x${string}`;
+
   const existingV2Pool = await db.find(v2Pool, {
-    address: migrationPoolAddress,
+    address: lowerMigrationPoolAddress,
     chainId: chain.id,
   });
 
@@ -144,16 +147,16 @@ export const insertV2MigrationPoolIfNotExists = async ({
 
   const quoteInfo = await getQuoteInfo(numeraireId, timestamp, context);
 
-  
+
   const { token0: pairToken0, token1: pairToken1 } = await getPairTokens({
-    address: migrationPoolAddress,
+    address: lowerMigrationPoolAddress,
     context,
   });
 
   const migrationPoolIsToken0 = assetId === pairToken0.toLowerCase();
 
   const { reserve0, reserve1 } = await getPairData({
-    address: migrationPoolAddress,
+    address: lowerMigrationPoolAddress,
     context,
   });
 
@@ -167,15 +170,15 @@ export const insertV2MigrationPoolIfNotExists = async ({
   const dollarPrice = (price * quoteInfo.quotePrice!) / (BigInt(10) ** BigInt(quoteInfo.quotePriceDecimals));
 
   return await db.insert(v2Pool).values({
-    address: migrationPoolAddress,
+    address: lowerMigrationPoolAddress,
     chainId: chain.id,
     baseToken: assetId,
     quoteToken: numeraireId,
     reserveBaseToken: migrationPoolIsToken0 ? reserve0 : reserve1,
     reserveQuoteToken: migrationPoolIsToken0 ? reserve1 : reserve0,
     price: dollarPrice,
-    v3Pool: parentPoolAddress,
-    parentPool: parentPoolAddress,
+    v3Pool: lowerParentPoolAddress,
+    parentPool: lowerParentPoolAddress,
     totalFeeBaseToken: 0n,
     totalFeeQuoteToken: 0n,
     migratedAt: timestamp,

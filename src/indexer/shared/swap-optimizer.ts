@@ -139,7 +139,7 @@ export async function handleOptimizedSwap(
 ): Promise<void> {
   const { context, timestamp } = params;
   const { db, chain } = context;
-  const poolAddress = params.poolAddress;
+  const poolAddress = params.poolAddress.toLowerCase() as `0x${string}`;
 
   // Use pre-fetched pool entity if provided, otherwise fetch it
   const poolEntity = existingPoolEntity ?? await db.find(pool, {

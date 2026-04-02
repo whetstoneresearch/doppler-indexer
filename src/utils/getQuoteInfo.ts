@@ -30,6 +30,23 @@ export enum QuoteToken {
   Unknown
 }
 
+const VALID_QUOTE_TOKENS = new Set([
+  QuoteToken.Eth,
+  QuoteToken.Zora,
+  QuoteToken.Fxh,
+  QuoteToken.Noice,
+  QuoteToken.Mon,
+  QuoteToken.Usdc,
+  QuoteToken.Usdt,
+  QuoteToken.Eurc,
+  QuoteToken.Bankr,
+  QuoteToken.CreatorCoin,
+]);
+
+export function isValidQuoteToken(quoteToken: QuoteToken): boolean {
+  return VALID_QUOTE_TOKENS.has(quoteToken);
+}
+
 export interface QuoteInfo {
   quoteToken: QuoteToken;
   quotePrice: bigint | null;

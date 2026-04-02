@@ -25,9 +25,10 @@ export const appendTokenPool = async ({
   creatorAddress?: Address;
 }) => {
   const { db, chain } = context;
+  const address = tokenAddress.toLowerCase() as `0x${string}`;
 
   const existingToken = await db.find(token, {
-    address: tokenAddress,
+    address,
     chainId: chain.id,
   });
 
@@ -43,15 +44,15 @@ export const appendTokenPool = async ({
 
   return await db
     .update(token, {
-      address: tokenAddress,
+      address,
       chainId: chain.id,
     })
     .set({
       isDerc20,
       isCreatorCoin,
       isContentCoin,
-      pool: poolAddress,
-      creatorCoinPid,
+      pool: poolAddress.toLowerCase() as `0x${string}`,
+      creatorCoinPid: creatorCoinPid ? creatorCoinPid.toLowerCase() as `0x${string}` : null,
     });
 };
 
@@ -84,7 +85,7 @@ export const insertTokenIfNotExists = async ({
 
   if (existingToken?.isDerc20 && !existingToken?.pool && poolAddress) {
     await db.update(token, { address, chainId: chain.id }).set({
-      pool: poolAddress,
+      pool: poolAddress.toLowerCase() as `0x${string}`,
     });
   } else if (existingToken) {
     return existingToken;
@@ -251,11 +252,11 @@ export const insertTokenIfNotExists = async ({
         symbol: symbolResult?.result ?? "???",
         decimals: decimalsResult?.result ?? 18,
         totalSupply: totalSupplyResult?.result ?? 0n,
-        creatorAddress,
+        creatorAddress: creatorAddress.toLowerCase() as `0x${string}`,
         firstSeenAt: timestamp,
         lastSeenAt: timestamp,
         isDerc20,
-        pool: poolAddress,
+        pool: poolAddress?.toLowerCase() as `0x${string}` ?? undefined,
         derc20Data: isDerc20 ? address : undefined,
         vestingStart,
         vestingDuration,

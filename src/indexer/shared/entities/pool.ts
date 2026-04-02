@@ -9,7 +9,7 @@ import { Context } from "ponder:registry";
 import { pool, token } from "ponder:schema";
 import { Address, zeroAddress } from "viem";
 import { fetchMonadPrice, fetchZoraPrice } from "../oracle";
-import { getQuoteInfo, QuoteToken, QuoteInfo } from "@app/utils/getQuoteInfo";
+import { getQuoteInfo, QuoteToken, QuoteInfo, isValidQuoteToken } from "@app/utils/getQuoteInfo";
 import { getLockableV3PoolData } from "@app/utils/v3-utils/getV3PoolData";
 import { chainConfigs } from "@app/config";
 import { AssetData } from "@app/types";
@@ -144,6 +144,7 @@ export const insertPoolIfNotExists = async ({
         sqrtPrice: 0n,
         tick: 0,
         isQuoteEth,
+        hasValidQuote: isValidQuoteToken(quoteInfo.quoteToken),
         integrator: assetData.integrator,
         migrationType: "v2",
       }),
@@ -228,6 +229,7 @@ export const insertPoolIfNotExists = async ({
       isToken0,
       marketCapUsd,
       isQuoteEth,
+      hasValidQuote: isValidQuoteToken(quoteInfo.quoteToken),
       integrator: assetData.integrator,
       migrationType,
     }),
@@ -298,6 +300,7 @@ export const insertPoolIfNotExists = async ({
     isToken0,
     marketCapUsd,
     isQuoteEth,
+    hasValidQuote: isValidQuoteToken(quoteInfo.quoteToken),
     integrator: assetData.integrator,
     migrationType,
   }),
@@ -389,10 +392,10 @@ export const insertPoolIfNotExistsV4 = async ({
   const { poolKey, slot0Data, liquidity, price, poolConfig } = poolData;
   const { fee } = poolKey;
 
-  const assetAddr = poolConfig.isToken0 ? poolKey.currency0 : poolKey.currency1;
-  const numeraireAddr = poolConfig.isToken0
+  const assetAddr = (poolConfig.isToken0 ? poolKey.currency0 : poolKey.currency1).toLowerCase() as `0x${string}`;
+  const numeraireAddr = (poolConfig.isToken0
     ? poolKey.currency1
-    : poolKey.currency0;
+    : poolKey.currency0).toLowerCase() as `0x${string}`;
 
   const [reserves, totalSupply, assetData, quoteInfo] = await Promise.all([
     getReservesV4({
@@ -465,8 +468,14 @@ export const insertPoolIfNotExistsV4 = async ({
     marketCapUsd,
     reserves0: token0Reserve,
     reserves1: token1Reserve,
-    poolKey: JSON.stringify(poolKey),
+    poolKey: JSON.stringify({
+      ...poolKey,
+      currency0: poolKey.currency0.toLowerCase(),
+      currency1: poolKey.currency1.toLowerCase(),
+      hooks: poolKey.hooks.toLowerCase(),
+    }),
     isQuoteEth,
+    hasValidQuote: isValidQuoteToken(quoteInfo.quoteToken),
     integrator: assetData.integrator,
     migrationType,
   });
@@ -503,10 +512,10 @@ export const insertPoolIfNotExistsDHook = async ({
   const { poolKey, slot0Data, liquidity, price, poolConfig } = poolData;
   const { fee } = poolKey;
 
-  const assetAddr = poolConfig.isToken0 ? poolKey.currency0 : poolKey.currency1;
-  const numeraireAddr = poolConfig.isToken0
+  const assetAddr = (poolConfig.isToken0 ? poolKey.currency0 : poolKey.currency1).toLowerCase() as `0x${string}`;
+  const numeraireAddr = (poolConfig.isToken0
     ? poolKey.currency1
-    : poolKey.currency0;
+    : poolKey.currency0).toLowerCase() as `0x${string}`;
 
   const [totalSupply, assetData, quoteInfo] = await Promise.all([
     client.readContract({
@@ -573,14 +582,20 @@ export const insertPoolIfNotExistsDHook = async ({
     marketCapUsd,
     reserves0: 0n,
     reserves1: 0n,
-    poolKey: JSON.stringify(poolKey),
+    poolKey: JSON.stringify({
+      ...poolKey,
+      currency0: poolKey.currency0.toLowerCase(),
+      currency1: poolKey.currency1.toLowerCase(),
+      hooks: poolKey.hooks.toLowerCase(),
+    }),
     isQuoteEth,
+    hasValidQuote: isValidQuoteToken(quoteInfo.quoteToken),
     integrator: assetData.integrator,
     migrationType: migrationType,
     beneficiaries: beneficiaries
-      ? beneficiaries.map(b => ({ beneficiary: b.beneficiary, shares: b.shares.toString() }))
+      ? beneficiaries.map(b => ({ beneficiary: b.beneficiary.toLowerCase() as `0x${string}`, shares: b.shares.toString() }))
       : null,
-    initializer: initializerAddress ?? null,
+    initializer: initializerAddress ? initializerAddress.toLowerCase() as `0x${string}` : null,
   });
 };
 
@@ -672,8 +687,9 @@ export const insertLockableV3PoolIfNotExists = async ({
     marketCapUsd,
     isStreaming: true,
     isQuoteEth,
+    hasValidQuote: isValidQuoteToken(quoteInfo.quoteToken),
     integrator: assetData.integrator,
-  }), 
+  }),
     quoteInfo
   ];
 };

@@ -13,7 +13,7 @@ import {
 } from "@app/utils/v3-utils/computeGraduationThreshold";
 
 import { insertAssetIfNotExists } from "../asset";
-import { getQuoteInfo, QuoteToken } from "@app/utils/getQuoteInfo";
+import { getQuoteInfo, QuoteToken, isValidQuoteToken } from "@app/utils/getQuoteInfo";
 
 /**
  * Optimized version with caching and reduced contract calls
@@ -168,9 +168,9 @@ export const insertZoraPoolV4Optimized = async ({
     sqrtPrice: sqrtPriceX96,
     liquidity,
     createdAt: timestamp,
-    asset: baseToken,
-    baseToken,
-    quoteToken,
+    asset: baseToken.toLowerCase() as `0x${string}`,
+    baseToken: baseToken.toLowerCase() as `0x${string}`,
+    quoteToken: quoteToken.toLowerCase() as `0x${string}`,
     price,
     type: "zora",
     chainId,
@@ -189,12 +189,18 @@ export const insertZoraPoolV4Optimized = async ({
     marketCapUsd,
     isQuoteEth,
     isQuoteZora,
+    hasValidQuote: isContentCoin || isValidQuoteToken(quoteInfo.quoteToken),
     integrator: zeroAddress,
     isContentCoin,
     isCreatorCoin,
     holderCount: 0,
     lastSwapTimestamp: timestamp,
     lastRefreshed: timestamp,
-    poolKey,
+    poolKey: {
+      ...poolKey,
+      currency0: poolKey.currency0.toLowerCase(),
+      currency1: poolKey.currency1.toLowerCase(),
+      hooks: poolKey.hooks.toLowerCase(),
+    },
   });
 };
