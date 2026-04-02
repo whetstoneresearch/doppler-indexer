@@ -51,7 +51,7 @@ export const insertV2PoolIfNotExists = async ({
 
   const [{ baseToken }, quoteInfo] = result;
 
-  const isToken0 = baseToken === assetAddress;
+  const isToken0 = baseToken.toLowerCase() === assetAddress.toLowerCase();
 
   const assetId = assetAddress.toLowerCase() as `0x${string}`;
   const numeraireId = numeraire.toLowerCase() as `0x${string}`;
