@@ -14,7 +14,7 @@ import {
 } from "./shared/v4MigrationPoolCache";
 
 import { insertV4ConfigIfNotExists } from "./shared/entities/v4Config";
-import { getReservesV4 } from "@app/utils/v4-utils/getV4PoolData";
+import { getReservesV4, getReservesMulticurve } from "@app/utils/v4-utils/getV4PoolData";
 import { CHAINLINK_ETH_DECIMALS } from "@app/utils/constants";
 import { SwapService, SwapOrchestrator, PriceService, MarketDataService } from "@app/core";
 import { TickMath } from "@uniswap/v3-sdk";
@@ -23,8 +23,6 @@ import { updateFifteenMinuteBucketUsd } from "@app/utils/time-buckets";
 import { UniswapV4MulticurveInitializerABI } from "@app/abis/multicurve-abis/UniswapV4MulticurveInitializerABI";
 import { chainConfigs } from "@app/config/chains";
 import { insertMulticurvePoolV4Optimized } from "./shared/entities/multicurve/pool";
-import { getAmount1Delta } from "@app/utils/v3-utils/computeGraduationThreshold";
-import { getAmount0Delta } from "@app/utils/v3-utils/computeGraduationThreshold";
 import { pool, token } from "ponder:schema";
 import { handleOptimizedSwap } from "./shared/swap-optimizer";
 import { StateViewABI } from "@app/abis";
@@ -32,6 +30,8 @@ import { Address, zeroAddress } from "viem";
 import { QuoteToken, QuoteInfo, getQuoteInfo } from "@app/utils/getQuoteInfo";
 import { readContractWithZeroDataPadding } from "@app/utils/readContractWithZeroDataPadding";
 import { updateCumulatedFees, handleCollect } from "./shared/cumulatedFees";
+import { computeReservesFromPositions } from "@app/utils/v4-utils/computeReservesFromPositions";
+import { upsertPositionLedger, getPositionsForPool } from "./shared/entities/positionLedger";
 
 ponder.on("UniswapV4Initializer:Create", async ({ event, context }) => {
   const { poolOrHook, asset: assetId, numeraire } = event.args;
@@ -449,58 +449,29 @@ ponder.on(
 
     if (!poolEntity) return;
 
-    const baseTokenEntity = await context.db.find(token, {
-      address: poolEntity.baseToken,
-      chainId: context.chain.id,
-    });    
+    const [reserves, quoteInfo, baseTokenEntity] = await Promise.all([
+      getReservesMulticurve({
+        initializer: poolEntity.initializer!,
+        baseToken: poolEntity.baseToken,
+        poolId: poolAddress,
+        context,
+      }),
+      getQuoteInfo(poolEntity.quoteToken, timestamp, context),
+      context.db.find(token, {
+        address: poolEntity.baseToken,
+        chainId: context.chain.id,
+      }),
+    ]);
 
-    // Calculate reserves only if needed
-    let token0Reserve = poolEntity.reserves0;
-    let token1Reserve = poolEntity.reserves1;
-    let liquidity = poolEntity.liquidity;
-    const tick = poolEntity.tick;
-    const sqrtPrice = poolEntity.sqrtPrice;
-
-    const { tickLower, tickUpper, liquidityDelta } = params;
-    liquidity += liquidityDelta;
-    if (tick < tickLower) {
-      token0Reserve += getAmount0Delta({
-        tickLower,
-        tickUpper,
-        liquidity: liquidityDelta,
-        roundUp: false,
-      });
-    } else if (tick < tickUpper) {
-      token0Reserve += getAmount0Delta({
-        tickLower: tick,
-        tickUpper,
-        liquidity: liquidityDelta,
-        roundUp: false,
-      });
-      token1Reserve += getAmount1Delta({
-        tickLower,
-        tickUpper: tick,
-        liquidity: liquidityDelta,
-        roundUp: false,
-      });
-    } else {
-      token1Reserve += getAmount1Delta({
-        tickLower,
-        tickUpper,
-        liquidity: liquidityDelta,
-        roundUp: false,
-      });
-    }
-    
-    const quoteInfo = await getQuoteInfo(poolEntity.quoteToken, timestamp, context);
+    const { token0Reserve, token1Reserve, liquidity, tick, sqrtPriceX96 } = reserves;
 
     const price = PriceService.computePriceFromSqrtPriceX96({
-      sqrtPriceX96: sqrtPrice,
+      sqrtPriceX96,
       isToken0: poolEntity.isToken0,
       decimals: 18,
       quoteDecimals: quoteInfo.quoteDecimals
     });
-    
+
     const marketCapUsd = MarketDataService.calculateMarketCap({
       price,
       quotePriceUSD: quoteInfo.quotePrice!,
@@ -518,7 +489,6 @@ ponder.on(
       quoteDecimals: quoteInfo.quoteDecimals,
     });
 
-
     await updatePool({
       poolAddress: poolAddress,
       context,
@@ -528,6 +498,8 @@ ponder.on(
         reserves1: token1Reserve,
         dollarLiquidity,
         marketCapUsd,
+        tick,
+        sqrtPrice: sqrtPriceX96,
       },
     });
   }
@@ -562,10 +534,18 @@ ponder.on(
     }
 
     const tick = slot0[1];
-
-    const quoteInfo = await getQuoteInfo(poolEntity.quoteToken, timestamp, context);
-
     const sqrtPriceX96 = slot0?.[0] ?? 0n;
+
+    const [reserves, quoteInfo] = await Promise.all([
+      getReservesMulticurve({
+        initializer: poolEntity.initializer!,
+        baseToken: poolEntity.baseToken,
+        poolId,
+        context,
+        slot0Override: { sqrtPriceX96, tick },
+      }),
+      getQuoteInfo(poolEntity.quoteToken, timestamp, context),
+    ]);
 
     const isCoinBuy = poolEntity.isToken0
       ? amount0 < 0n
@@ -593,7 +573,11 @@ ponder.on(
           transactionFrom: event.transaction.from,
           blockNumber: event.block.number,
           context,
-          tick
+          tick,
+          computedReserves: {
+            reserves0: reserves.token0Reserve,
+            reserves1: reserves.token1Reserve,
+          },
         },
         quoteInfo,
         poolEntity
@@ -724,8 +708,22 @@ ponder.on("PoolManager:Swap", async ({ event, context }) => {
     updateAsset,
   };
 
-  const newReserves0 = v4Pool.reserves0 + BigInt(amount0);
-  const newReserves1 = v4Pool.reserves1 + BigInt(amount1);
+  // Recompute reserves from position ledger + event tick
+  const positions = await getPositionsForPool({ poolId: poolId as `0x${string}`, context });
+  let newReserves0: bigint;
+  let newReserves1: bigint;
+  if (positions.length > 0) {
+    const reserves = computeReservesFromPositions(positions, newTick);
+    newReserves0 = reserves.token0Reserve + (v4Pool.donated0 ?? 0n);
+    newReserves1 = reserves.token1Reserve + (v4Pool.donated1 ?? 0n);
+  } else {
+    // Fallback: no positions in ledger yet (edge case during migration)
+    console.warn(
+      `PoolManager:Swap: empty position ledger for migrated pool=${poolId} chain=${chain.id}. Using incremental reserves.`
+    );
+    newReserves0 = v4Pool.reserves0 + BigInt(amount0);
+    newReserves1 = v4Pool.reserves1 + BigInt(amount1);
+  }
 
   const dollarLiquidity = MarketDataService.calculateLiquidity({
     assetBalance: v4Pool.isToken0 ? newReserves0 : newReserves1,
@@ -815,7 +813,16 @@ ponder.on("UniswapV4MigratorHook:ModifyLiquidity", async ({ event, context }) =>
     hooks: key.hooks,
   });
 
-  let v4Pool = await fetchV4MigrationPool({
+  // Always upsert ledger before pool lookup
+  await upsertPositionLedger({
+    poolId: poolId as `0x${string}`,
+    tickLower: Number(tickLower),
+    tickUpper: Number(tickUpper),
+    liquidityDelta,
+    context,
+  });
+
+  const v4Pool = await fetchV4MigrationPool({
     poolId: poolId as `0x${string}`,
     context,
   });
@@ -824,54 +831,47 @@ ponder.on("UniswapV4MigratorHook:ModifyLiquidity", async ({ event, context }) =>
     return;
   }
 
+  const { stateView } = chainConfigs[context.chain.name].addresses.v4;
+  const [slot0, liquidityResult] = await context.client.multicall({
+    contracts: [
+      {
+        abi: StateViewABI,
+        address: stateView,
+        functionName: "getSlot0",
+        args: [poolId],
+      },
+      {
+        abi: StateViewABI,
+        address: stateView,
+        functionName: "getLiquidity",
+        args: [poolId],
+      },
+    ],
+  });
 
+  const tick = slot0.result?.[1] ?? 0;
+  const sqrtPriceX96 = slot0.result?.[0] ?? 0n;
+  const liquidity = liquidityResult.result ?? 0n;
+
+  const positions = await getPositionsForPool({ poolId: poolId as `0x${string}`, context });
+  const reserves = computeReservesFromPositions(positions, tick);
+
+  const newReserves0 = reserves.token0Reserve + (v4Pool.donated0 ?? 0n);
+  const newReserves1 = reserves.token1Reserve + (v4Pool.donated1 ?? 0n);
 
   const quoteInfo = await getQuoteInfo(v4Pool.quoteToken, timestamp, context);
 
-  const newLiquidity = liquidityDelta > 0n
-    ? v4Pool.liquidity + BigInt(liquidityDelta)
-    : v4Pool.liquidity - BigInt(-liquidityDelta);
-
-  const tick = v4Pool.tick;
-  let reserves0Delta = 0n;
-  let reserves1Delta = 0n;
-
-  if (tick < tickLower) {
-    reserves0Delta = getAmount0Delta({
-      tickLower: Number(tickLower),
-      tickUpper: Number(tickUpper),
-      liquidity: liquidityDelta,
-      roundUp: false,
-    });
-  } else if (tick < tickUpper) {
-    reserves0Delta = getAmount0Delta({
-      tickLower: tick,
-      tickUpper: Number(tickUpper),
-      liquidity: liquidityDelta,
-      roundUp: false,
-    });
-    reserves1Delta = getAmount1Delta({
-      tickLower: Number(tickLower),
-      tickUpper: tick,
-      liquidity: liquidityDelta,
-      roundUp: false,
-    });
-  } else {
-    reserves1Delta = getAmount1Delta({
-      tickLower: Number(tickLower),
-      tickUpper: Number(tickUpper),
-      liquidity: liquidityDelta,
-      roundUp: false,
-    });
-  }
-
-  const newReserves0 = v4Pool.reserves0 + reserves0Delta;
-  const newReserves1 = v4Pool.reserves1 + reserves1Delta;
+  const price = PriceService.computePriceFromSqrtPriceX96({
+    sqrtPriceX96,
+    isToken0: v4Pool.isToken0,
+    decimals: 18,
+    quoteDecimals: quoteInfo.quoteDecimals,
+  });
 
   const dollarLiquidity = MarketDataService.calculateLiquidity({
     assetBalance: v4Pool.isToken0 ? newReserves0 : newReserves1,
     quoteBalance: v4Pool.isToken0 ? newReserves1 : newReserves0,
-    price: v4Pool.price,
+    price,
     quotePriceUSD: quoteInfo.quotePrice ?? 0n,
     decimals: quoteInfo.quotePriceDecimals,
     assetDecimals: 18,
@@ -882,10 +882,13 @@ ponder.on("UniswapV4MigratorHook:ModifyLiquidity", async ({ event, context }) =>
     poolId: poolId as `0x${string}`,
     context,
     update: {
-      liquidity: newLiquidity,
+      liquidity,
       reserves0: newReserves0,
       reserves1: newReserves1,
       dollarLiquidity,
+      price,
+      tick: Number(tick),
+      sqrtPriceX96,
       lastRefreshed: timestamp,
     },
   });
@@ -932,6 +935,8 @@ ponder.on("PoolManager:Donate", async ({ event, context }) => {
     poolId: poolId as `0x${string}`,
     context,
     update: {
+      donated0: (v4Pool.donated0 ?? 0n) + amount0,
+      donated1: (v4Pool.donated1 ?? 0n) + amount1,
       reserves0: newReserves0,
       reserves1: newReserves1,
       dollarLiquidity,

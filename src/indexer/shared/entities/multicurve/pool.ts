@@ -5,6 +5,7 @@ import { pool } from "ponder:schema";
 import { Address, parseUnits, zeroAddress } from "viem";
 import { StateViewABI } from "@app/abis";
 import { getPoolId } from "@app/utils/v4-utils/getPoolId";
+import { getReservesMulticurve } from "@app/utils/v4-utils/getV4PoolData";
 import { chainConfigs, V4_MULTICURVE_INITIALIZER_START_BLOCKS } from "@app/config";
 import { CHAINLINK_ETH_DECIMALS } from "@app/utils/constants";
 import { QuoteToken, QuoteInfo, getQuoteInfo } from "@app/utils/getQuoteInfo";
@@ -200,8 +201,16 @@ export const insertMulticurvePoolV4Optimized = async ({
   if (sqrtPriceX96 === 0n) {
     return null;
   }
-  
+
   const tick = slot0Result?.[1] ?? 0;
+
+  const reserves = await getReservesMulticurve({
+    initializer: resolvedInitializer,
+    baseToken,
+    poolId,
+    context,
+    slot0Override: { sqrtPriceX96, tick },
+  });
 
   const price = PriceService.computePriceFromSqrtPriceX96({
     sqrtPriceX96,
@@ -223,7 +232,7 @@ export const insertMulticurvePoolV4Optimized = async ({
     address,
     tick,
     sqrtPrice: sqrtPriceX96,
-    liquidity: 0n,
+    liquidity: reserves.liquidity,
     createdAt: timestamp,
     asset: baseToken,
     baseToken,
@@ -239,8 +248,8 @@ export const insertMulticurvePoolV4Optimized = async ({
     totalFee0: 0n,
     totalFee1: 0n,
     volumeUsd: 0n,
-    reserves0: 0n,
-    reserves1: 0n,
+    reserves0: reserves.token0Reserve,
+    reserves1: reserves.token1Reserve,
     percentDayChange: 0,
     isToken0,
     marketCapUsd,
