@@ -260,7 +260,12 @@ export const insertMulticurvePoolV4Optimized = async ({
     holderCount: 0,
     lastSwapTimestamp: timestamp,
     lastRefreshed: timestamp,
-    poolKey,
+    poolKey: {
+      ...poolKey,
+      currency0: poolKey.currency0.toLowerCase(),
+      currency1: poolKey.currency1.toLowerCase(),
+      hooks: poolKey.hooks.toLowerCase(),
+    },
     tickLower: tick,
     beneficiaries: beneficiaries
       ? beneficiaries.map(b => ({ beneficiary: b.beneficiary.toLowerCase() as `0x${string}`, shares: b.shares.toString() }))

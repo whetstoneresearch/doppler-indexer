@@ -196,6 +196,11 @@ export const insertZoraPoolV4Optimized = async ({
     holderCount: 0,
     lastSwapTimestamp: timestamp,
     lastRefreshed: timestamp,
-    poolKey,
+    poolKey: {
+      ...poolKey,
+      currency0: poolKey.currency0.toLowerCase(),
+      currency1: poolKey.currency1.toLowerCase(),
+      hooks: poolKey.hooks.toLowerCase(),
+    },
   });
 };

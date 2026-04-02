@@ -299,15 +299,20 @@ ponder.on("ZoraCreatorCoinV4:LiquidityMigrated", async ({ event, context }) => {
       tokenAddress: fromPoolEntity.baseToken,
       context,
       update: {
-        pool: toPoolAddress,
+        pool: toPoolAddress.toLowerCase() as `0x${string}`,
       },
     }),
   ]);
 
   const updateData = {
     ...fromPoolEntity,
-    address: toPoolAddress,
-    poolKey: toPoolKey,
+    address: toPoolAddress.toLowerCase() as `0x${string}`,
+    poolKey: {
+      ...toPoolKey,
+      currency0: toPoolKey.currency0.toLowerCase(),
+      currency1: toPoolKey.currency1.toLowerCase(),
+      hooks: toPoolKey.hooks.toLowerCase(),
+    },
   }
 
   await updatePool({
