@@ -7,6 +7,7 @@ import {
   StateViewABI,
   ZoraV4HookABI,
 } from "@app/abis";
+import { UniswapV4MulticurveInitializerABI } from "@app/abis/multicurve-abis/UniswapV4MulticurveInitializerABI";
 import {
   PoolKey,
   V4PoolConfig,
@@ -526,4 +527,106 @@ export const getReservesV4Zora = async ({
     );
 
   return { reserves, sqrtPriceX96, tick };
+};
+
+export const getReservesMulticurve = async ({
+  initializer,
+  baseToken,
+  poolId,
+  context,
+  slot0Override,
+}: {
+  initializer: Address;
+  baseToken: Address;
+  poolId: `0x${string}`;
+  context: Context;
+  slot0Override?: { sqrtPriceX96: bigint; tick: number };
+}): Promise<{
+  token0Reserve: bigint;
+  token1Reserve: bigint;
+  liquidity: bigint;
+  tick: number;
+  sqrtPriceX96: bigint;
+}> => {
+  const { client } = context;
+  const { stateView } = chainConfigs[context.chain.name].addresses.v4;
+
+  const [positions, slot0Data] = await Promise.all([
+    client.readContract({
+      abi: UniswapV4MulticurveInitializerABI,
+      address: initializer,
+      functionName: "getPositions",
+      args: [baseToken],
+    }),
+    slot0Override
+      ? Promise.resolve(slot0Override)
+      : client
+          .readContract({
+            abi: StateViewABI,
+            address: stateView,
+            functionName: "getSlot0",
+            args: [poolId],
+          })
+          .then((result) => ({
+            sqrtPriceX96: result[0],
+            tick: result[1],
+          })),
+  ]);
+
+  const { tick, sqrtPriceX96 } = slot0Data;
+
+  const result = positions
+    .map((position) => {
+      const { tickLower, tickUpper, liquidity } = position;
+
+      let amount0: bigint;
+      let amount1: bigint;
+
+      if (tick < tickLower) {
+        amount0 = getAmount0Delta({
+          tickLower,
+          tickUpper,
+          liquidity,
+          roundUp: false,
+        });
+        amount1 = 0n;
+      } else if (tick < tickUpper) {
+        amount0 = getAmount0Delta({
+          tickLower: tick,
+          tickUpper,
+          liquidity,
+          roundUp: false,
+        });
+        amount1 = getAmount1Delta({
+          tickLower,
+          tickUpper: tick,
+          liquidity,
+          roundUp: false,
+        });
+      } else {
+        amount0 = 0n;
+        amount1 = getAmount1Delta({
+          tickLower,
+          tickUpper,
+          liquidity,
+          roundUp: false,
+        });
+      }
+
+      return {
+        token0Reserve: amount0,
+        token1Reserve: amount1,
+        liquidity,
+      };
+    })
+    .reduce(
+      (acc, curr) => ({
+        token0Reserve: acc.token0Reserve + curr.token0Reserve,
+        token1Reserve: acc.token1Reserve + curr.token1Reserve,
+        liquidity: acc.liquidity + curr.liquidity,
+      }),
+      { token0Reserve: 0n, token1Reserve: 0n, liquidity: 0n }
+    );
+
+  return { ...result, tick, sqrtPriceX96 };
 };

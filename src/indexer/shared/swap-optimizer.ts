@@ -25,6 +25,8 @@ interface SwapHandlerParams {
   blockNumber: bigint;
   context: Context;
   tick: number;
+  /** Authoritative post-state reserves from on-chain recomputation (getPositions + getSlot0). */
+  computedReserves?: { reserves0: bigint; reserves1: bigint };
 }
 
 interface ProcessedSwapData {
@@ -62,8 +64,8 @@ export function processSwapCalculations(
     quoteDecimals
   });
   
-  const nextReserves0 = reserves0 + amount0;
-  const nextReserves1 = reserves1 + amount1;
+  const nextReserves0 = params.computedReserves?.reserves0 ?? (reserves0 + amount0);
+  const nextReserves1 = params.computedReserves?.reserves1 ?? (reserves1 + amount1);
   const nextReservesAsset = isToken0 ? nextReserves0 : nextReserves1;
   const nextReservesQuote = isToken0 ? nextReserves1 : nextReserves0;
   
@@ -255,6 +257,7 @@ export async function handleOptimizedSwap(
       update: {
         reserves0: swapData.nextReserves0,
         reserves1: swapData.nextReserves1,
+        sqrtPrice: params.sqrtPriceX96,
       },
     }),
   ]);

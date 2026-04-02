@@ -14,7 +14,7 @@ import {
 import { insertPoolIfNotExistsV4, updatePool } from "./shared/entities/pool";
 import { insertAssetIfNotExists } from "./shared/entities/asset";
 import { insertV4ConfigIfNotExists } from "./shared/entities/v4Config";
-import { getReservesV4 } from "@app/utils/v4-utils/getV4PoolData";
+import { getReservesV4, getReservesMulticurve } from "@app/utils/v4-utils/getV4PoolData";
 import { CHAINLINK_ETH_DECIMALS } from "@app/utils/constants";
 import { SwapService, SwapOrchestrator, PriceService, MarketDataService } from "@app/core";
 import { TickMath } from "@uniswap/v3-sdk";
@@ -22,8 +22,6 @@ import { updateFifteenMinuteBucketUsd } from "@app/utils/time-buckets";
 import { UniswapV4ScheduledMulticurveInitializerABI } from "@app/abis/multicurve-abis/UniswapV4ScheduledMulticurveInitializerABI";
 import { chainConfigs } from "@app/config/chains";
 import { insertMulticurvePoolV4Optimized } from "./shared/entities/multicurve/pool";
-import { getAmount1Delta } from "@app/utils/v3-utils/computeGraduationThreshold";
-import { getAmount0Delta } from "@app/utils/v3-utils/computeGraduationThreshold";
 import { pool, token } from "ponder:schema";
 import { handleOptimizedSwap } from "./shared/swap-optimizer";
 import { StateViewABI } from "@app/abis";
@@ -186,58 +184,31 @@ ponder.on(
 
     if (!poolEntity) return;
 
-    const baseTokenEntity = await context.db.find(token, {
-      address: poolEntity.baseToken,
-      chainId: context.chain.id,
-    });
+    const { tickUpper } = params;
 
-    const quoteInfo = await getQuoteInfo(poolEntity.quoteToken, timestamp, context);
+    const [reserves, quoteInfo, baseTokenEntity] = await Promise.all([
+      getReservesMulticurve({
+        initializer: poolEntity.initializer!,
+        baseToken: poolEntity.baseToken,
+        poolId: poolAddress,
+        context,
+      }),
+      getQuoteInfo(poolEntity.quoteToken, timestamp, context),
+      context.db.find(token, {
+        address: poolEntity.baseToken,
+        chainId: context.chain.id,
+      }),
+    ]);
 
-    // Calculate reserves only if needed
-    let token0Reserve = poolEntity.reserves0;
-    let token1Reserve = poolEntity.reserves1;
-    let liquidity = poolEntity.liquidity;
-    const tick = poolEntity.tick;
-    const sqrtPrice = poolEntity.sqrtPrice;
+    const { token0Reserve, token1Reserve, liquidity, tick, sqrtPriceX96 } = reserves;
 
-    const { tickLower, tickUpper, liquidityDelta } = params;
-    liquidity += liquidityDelta;
-    if (tick < tickLower) {
-      token0Reserve += getAmount0Delta({
-        tickLower,
-        tickUpper,
-        liquidity: liquidityDelta,
-        roundUp: false,
-      });
-    } else if (tick < tickUpper) {
-      token0Reserve += getAmount0Delta({
-        tickLower: tick,
-        tickUpper,
-        liquidity: liquidityDelta,
-        roundUp: false,
-      });
-      token1Reserve += getAmount1Delta({
-        tickLower,
-        tickUpper: tick,
-        liquidity: liquidityDelta,
-        roundUp: false,
-      });
-    } else {
-      token1Reserve += getAmount1Delta({
-        tickLower,
-        tickUpper,
-        liquidity: liquidityDelta,
-        roundUp: false,
-      });
-    }
-    
     const price = PriceService.computePriceFromSqrtPriceX96({
-      sqrtPriceX96: sqrtPrice,
+      sqrtPriceX96,
       isToken0: poolEntity.isToken0,
       decimals: 18,
       quoteDecimals: quoteInfo.quoteDecimals
     });
-    
+
     const marketCapUsd = MarketDataService.calculateMarketCap({
       price,
       quotePriceUSD: quoteInfo.quotePrice!,
@@ -275,7 +246,9 @@ ponder.on(
         reserves1: token1Reserve,
         dollarLiquidity,
         marketCapUsd,
-        graduationTick: newGraduationTick
+        graduationTick: newGraduationTick,
+        tick,
+        sqrtPrice: sqrtPriceX96,
       },
     });
   }
@@ -310,10 +283,18 @@ ponder.on(
     }
 
     const tick = slot0[1];
-
-    const quoteInfo = await getQuoteInfo(poolEntity.quoteToken, timestamp, context);
-
     const sqrtPriceX96 = slot0?.[0] ?? 0n;
+
+    const [reserves, quoteInfo] = await Promise.all([
+      getReservesMulticurve({
+        initializer: poolEntity.initializer!,
+        baseToken: poolEntity.baseToken,
+        poolId,
+        context,
+        slot0Override: { sqrtPriceX96, tick },
+      }),
+      getQuoteInfo(poolEntity.quoteToken, timestamp, context),
+    ]);
 
     const isCoinBuy = poolEntity.isToken0
       ? amount0 < 0n
@@ -341,7 +322,11 @@ ponder.on(
           transactionFrom: event.transaction.from,
           blockNumber: event.block.number,
           context,
-          tick
+          tick,
+          computedReserves: {
+            reserves0: reserves.token0Reserve,
+            reserves1: reserves.token1Reserve,
+          },
         },
         quoteInfo,
         poolEntity
