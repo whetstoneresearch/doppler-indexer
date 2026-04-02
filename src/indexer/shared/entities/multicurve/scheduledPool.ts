@@ -23,7 +23,7 @@ export const insertScheduledPool = async ({
   
   return await db.insert(scheduledPools).values({
     chainId,
-    poolId,
+    poolId: poolId.toLowerCase() as `0x${string}`,
     startingTime
   })
 }
