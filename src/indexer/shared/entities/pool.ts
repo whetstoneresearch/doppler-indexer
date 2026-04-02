@@ -9,7 +9,7 @@ import { Context } from "ponder:registry";
 import { pool, token } from "ponder:schema";
 import { Address, zeroAddress } from "viem";
 import { fetchMonadPrice, fetchZoraPrice } from "../oracle";
-import { getQuoteInfo, QuoteToken, QuoteInfo } from "@app/utils/getQuoteInfo";
+import { getQuoteInfo, QuoteToken, QuoteInfo, isValidQuoteToken } from "@app/utils/getQuoteInfo";
 import { getLockableV3PoolData } from "@app/utils/v3-utils/getV3PoolData";
 import { chainConfigs } from "@app/config";
 import { AssetData } from "@app/types";
@@ -144,6 +144,7 @@ export const insertPoolIfNotExists = async ({
         sqrtPrice: 0n,
         tick: 0,
         isQuoteEth,
+        hasValidQuote: isValidQuoteToken(quoteInfo.quoteToken),
         integrator: assetData.integrator,
         migrationType: "v2",
       }),
@@ -228,6 +229,7 @@ export const insertPoolIfNotExists = async ({
       isToken0,
       marketCapUsd,
       isQuoteEth,
+      hasValidQuote: isValidQuoteToken(quoteInfo.quoteToken),
       integrator: assetData.integrator,
       migrationType,
     }),
@@ -298,6 +300,7 @@ export const insertPoolIfNotExists = async ({
     isToken0,
     marketCapUsd,
     isQuoteEth,
+    hasValidQuote: isValidQuoteToken(quoteInfo.quoteToken),
     integrator: assetData.integrator,
     migrationType,
   }),
@@ -467,6 +470,7 @@ export const insertPoolIfNotExistsV4 = async ({
     reserves1: token1Reserve,
     poolKey: JSON.stringify(poolKey),
     isQuoteEth,
+    hasValidQuote: isValidQuoteToken(quoteInfo.quoteToken),
     integrator: assetData.integrator,
     migrationType,
   });
@@ -575,6 +579,7 @@ export const insertPoolIfNotExistsDHook = async ({
     reserves1: 0n,
     poolKey: JSON.stringify(poolKey),
     isQuoteEth,
+    hasValidQuote: isValidQuoteToken(quoteInfo.quoteToken),
     integrator: assetData.integrator,
     migrationType: migrationType,
     beneficiaries: beneficiaries
@@ -672,8 +677,9 @@ export const insertLockableV3PoolIfNotExists = async ({
     marketCapUsd,
     isStreaming: true,
     isQuoteEth,
+    hasValidQuote: isValidQuoteToken(quoteInfo.quoteToken),
     integrator: assetData.integrator,
-  }), 
+  }),
     quoteInfo
   ];
 };
