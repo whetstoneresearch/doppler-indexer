@@ -52,6 +52,7 @@ export const token = onchainTable(
     addressIdx: index().on(table.address),
     chainIdIdx: index().on(table.chainId),
     poolIdx: index().on(table.pool),
+    symbolIdx: index().on(table.symbol),
   })
 );
 
@@ -418,7 +419,20 @@ export const pool = onchainTable(
     quoteTokenIdx: index().on(table.quoteToken),
     lastRefreshedIdx: index().on(table.lastRefreshed),
     lastSwapTimestampIdx: index().on(table.lastSwapTimestamp),
-    poolChainIdx: index().on(table.address, table.chainId),
+    chainIdIdx: index().on(table.chainId),
+    integratorIdx: index().on(table.integrator),
+    marketCapUsdIdx: index().on(table.marketCapUsd),
+    dollarLiquidityIdx: index().on(table.dollarLiquidity),
+    holderCountIdx: index().on(table.holderCount),
+    createdAtIdx: index().on(table.createdAt),
+    // Composite indices for explore query sort modes
+    // Leading (chainId, hasValidQuote) matches the common equality filters,
+    // trailing sort column lets Postgres do an ordered index scan without a separate sort step
+    chainQuoteCreatedIdx: index().on(table.chainId, table.hasValidQuote, table.createdAt),
+    chainQuoteLastSwapIdx: index().on(table.chainId, table.hasValidQuote, table.lastSwapTimestamp),
+    chainQuoteMcapIdx: index().on(table.chainId, table.hasValidQuote, table.marketCapUsd),
+    chainQuoteHoldersIdx: index().on(table.chainId, table.hasValidQuote, table.holderCount),
+    chainQuoteLiquidityIdx: index().on(table.chainId, table.hasValidQuote, table.dollarLiquidity)
   })
 );
 
