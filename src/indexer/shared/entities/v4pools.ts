@@ -1,7 +1,9 @@
 import { Context } from "ponder:registry";
 import { v4pools } from "ponder:schema";
 import { Address } from "viem";
-import { MarketDataService } from "@app/core";
+import { MarketDataService, PriceService } from "@app/core";
+import { StateViewABI } from "@app/abis";
+import { chainConfigs } from "@app/config";
 import { getV4MigrationPoolData } from "@app/utils/v4-utils/getV4MigrationPoolData";
 import { QuoteToken, getQuoteInfo } from "@app/utils/getQuoteInfo";
 import { computeV4Price } from "@app/utils/v4-utils/computeV4Price";
@@ -542,9 +544,20 @@ export const linkAssetToDHookMigrationPool = async ({
     ? numeraireAddress
     : assetAddress;
 
+  const { isRehypeMigrator } = await import("@app/utils/v4-utils/getV4MigrationPoolData");
+  let getAssetDataAddress = migratorAddress;
+  if (isRehypeMigrator(migratorAddress, chain.name)) {
+    const { RehypeDopplerHookMigratorABI } = await import("@app/abis");
+    getAssetDataAddress = await client.readContract({
+      abi: RehypeDopplerHookMigratorABI,
+      address: migratorAddress,
+      functionName: "MIGRATOR",
+    });
+  }
+
   const assetData = await client.readContract({
     abi: DopplerHookMigratorABI,
-    address: migratorAddress,
+    address: getAssetDataAddress,
     functionName: "getAssetData",
     args: [token0, token1],
   });
@@ -579,10 +592,69 @@ export const linkAssetToDHookMigrationPool = async ({
   const quoteInfo = await getQuoteInfo(quoteToken, timestamp, context);
   const isQuoteEth = quoteInfo.quoteToken === QuoteToken.Eth;
 
+  // Always hydrate from StateView — DopplerHookMigrator:Migrate is only subscribed
+  // on mainnet, so this is the sole hydration point on all other chains.
+  const { stateView } = chainConfigs[chain.name].addresses.v4;
+
+  const [slot0Result, liquidityResult] = await client.multicall({
+    contracts: [
+      {
+        abi: StateViewABI,
+        address: stateView,
+        functionName: "getSlot0",
+        args: [poolId],
+      },
+      {
+        abi: StateViewABI,
+        address: stateView,
+        functionName: "getLiquidity",
+        args: [poolId],
+      },
+    ],
+  });
+
+  if (slot0Result.status !== "success" || liquidityResult.status !== "success") {
+    console.warn(`linkAssetToDHookMigrationPool - StateView read failed for pool ${poolId}`);
+    return null;
+  }
+
+  const sqrtPriceX96 = slot0Result.result[0];
+  const tick = slot0Result.result[1];
+  const liquidity = liquidityResult.result;
+
+  const MIN_TICK = -887270;
+  const MAX_TICK = 887270;
+
+  let reserves0 = 0n;
+  let reserves1 = 0n;
+
+  if (liquidity > 0n) {
+    reserves0 = getAmount0Delta({
+      tickLower: tick,
+      tickUpper: MAX_TICK,
+      liquidity,
+      roundUp: false,
+    });
+
+    reserves1 = getAmount1Delta({
+      tickLower: MIN_TICK,
+      tickUpper: tick,
+      liquidity,
+      roundUp: false,
+    });
+  }
+
+  const price = PriceService.computePriceFromSqrtPriceX96({
+    sqrtPriceX96,
+    isToken0,
+    decimals: 18,
+    quoteDecimals: quoteInfo.quoteDecimals,
+  });
+
   const dollarLiquidity = MarketDataService.calculateLiquidity({
-    assetBalance: isToken0 ? existingPool.reserves0 : existingPool.reserves1,
-    quoteBalance: isToken0 ? existingPool.reserves1 : existingPool.reserves0,
-    price: existingPool.price,
+    assetBalance: isToken0 ? reserves0 : reserves1,
+    quoteBalance: isToken0 ? reserves1 : reserves0,
+    price,
     quotePriceUSD: quoteInfo.quotePrice ?? 0n,
     decimals: quoteInfo.quotePriceDecimals,
     assetDecimals: 18,
@@ -602,7 +674,16 @@ export const linkAssetToDHookMigrationPool = async ({
     isToken0,
     isQuoteEth,
     dollarLiquidity,
+    sqrtPriceX96,
+    tick,
+    liquidity,
+    reserves0,
+    reserves1,
+    price,
+    lastRefreshed: timestamp,
   });
+
+  addToV4MigrationPoolCache(chain.id, poolId.toLowerCase());
 
   return { poolId: poolId.toLowerCase() as `0x${string}` };
 };

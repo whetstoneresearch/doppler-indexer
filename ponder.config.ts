@@ -680,6 +680,10 @@ export default createConfig({
     DopplerHookMigrator: {
       abi: DopplerHookMigratorABI,
       chain: {
+        mainnet: {
+          startBlock: mainnet.v4StartBlock,
+          address: mainnet.addresses.v4.DopplerHookMigrator,
+        },
       },
     },
     RehypeDopplerHookMigrator: {
