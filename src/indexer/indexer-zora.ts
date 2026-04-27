@@ -7,7 +7,7 @@ import {
 import { fetchEthPrice, fetchZoraPrice } from "./shared/oracle";
 import { batchUpsertUsersAndAssets, batchUpdateHolderCounts } from "./shared/entities/user-optimized";
 import { handleOptimizedSwap } from "./shared/swap-optimizer";
-import { StateViewABI } from "@app/abis";
+import { StateViewABI, ZoraV4HookABI } from "@app/abis";
 import { zeroAddress } from "viem";
 import { PriceService } from "@app/core";
 import { chainConfigs } from "@app/config";
@@ -15,6 +15,7 @@ import { token, pool } from "ponder:schema";
 import { insertZoraPoolV4Optimized } from "./shared/entities/zora/pool";
 import { getQuoteInfo, QuoteToken } from "@app/utils/getQuoteInfo";
 import { isPrecompileAddress } from "@app/utils/validation";
+import { computeReservesFromPositions } from "@app/utils/v4-utils";
 
 // ponder.on("ZoraFactory:CoinCreatedV4", async ({ event, context }) => {
 //   const { db, chain } = context;
@@ -208,19 +209,25 @@ ponder.on("ZoraFactory:CreatorCoinCreated", async ({ event, context }) => {
 
 ponder.on("ZoraV4CreatorCoinHook:Swapped", async ({ event, context }) => {
   const { db, chain } = context;
-  const { poolKeyHash, swapSender, amount0, amount1, sqrtPriceX96, isCoinBuy } = event.args;
+  const { poolKeyHash, swapSender, amount0, amount1, sqrtPriceX96, isCoinBuy, key } = event.args;
   const timestamp = event.block.timestamp;
   const poolAddress = poolKeyHash.toLowerCase() as `0x${string}`;
 
   const zoraAddress = chainConfigs[context.chain.name].addresses.zora.zoraToken;
 
-  // Parallelize RPC call, quote info lookup, and pool fetch
-  const [slot0, quoteInfo, poolEntity] = await Promise.all([
+  // Parallelize RPC calls, quote info lookup, and pool fetch.
+  const [slot0, poolCoin, quoteInfo, poolEntity] = await Promise.all([
     context.client.readContract({
       abi: StateViewABI,
       address: chainConfigs[context.chain.name].addresses.v4.stateView,
       functionName: "getSlot0",
       args: [poolAddress],
+    }),
+    context.client.readContract({
+      abi: ZoraV4HookABI,
+      address: key.hooks,
+      functionName: "getPoolCoin",
+      args: [key],
     }),
     getQuoteInfo(zoraAddress, timestamp, context),
     db.find(pool, { address: poolAddress, chainId: chain.id }),
@@ -231,6 +238,7 @@ ponder.on("ZoraV4CreatorCoinHook:Swapped", async ({ event, context }) => {
   }
 
   const tick = slot0[1];
+  const reserves = computeReservesFromPositions(poolCoin.positions, tick);
 
   await handleOptimizedSwap(
     {
@@ -245,7 +253,11 @@ ponder.on("ZoraV4CreatorCoinHook:Swapped", async ({ event, context }) => {
       transactionFrom: event.transaction.from,
       blockNumber: event.block.number,
       context,
-      tick
+      tick,
+      computedReserves: {
+        reserves0: reserves.token0Reserve,
+        reserves1: reserves.token1Reserve,
+      },
     },
     quoteInfo,
     poolEntity

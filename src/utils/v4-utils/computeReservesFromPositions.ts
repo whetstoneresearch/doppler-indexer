@@ -16,7 +16,7 @@ interface PositionEntry {
  * contract reads, or anywhere else.
  */
 export function computeReservesFromPositions(
-  positions: PositionEntry[],
+  positions: readonly PositionEntry[],
   tick: number
 ): { token0Reserve: bigint; token1Reserve: bigint } {
   return positions
