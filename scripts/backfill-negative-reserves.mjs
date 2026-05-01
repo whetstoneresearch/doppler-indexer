@@ -508,6 +508,42 @@ function getPoolId(poolKey) {
 
 // ── DHook/Rehype repair ──
 
+// Deployed before getPositions was changed from public to internal
+const INITIALIZERS_WITH_GET_POSITIONS = new Set([
+  "0xaa096f558f3d4c9226de77e7cc05f18e180b2544",
+]);
+
+// "none" = dhook on new initializer, no on-chain position source
+function pickPositionCall({ pool, poolKey, initializerAddr, baseToken, poolAddress, stateView, blockNumber }) {
+  if (initializerAddr && INITIALIZERS_WITH_GET_POSITIONS.has(initializerAddr.toLowerCase())) {
+    return {
+      method: "getPositions",
+      call: {
+        abi: DHOOK_GET_POSITIONS_ABI,
+        address: initializerAddr,
+        functionName: "getPositions",
+        args: [baseToken],
+        blockNumber,
+      },
+    };
+  }
+
+  if (pool.type === "rehype" && poolKey) {
+    return {
+      method: "getPosition",
+      call: {
+        abi: REHYPE_GET_POSITION_ABI,
+        address: poolKey.hooks,
+        functionName: "getPosition",
+        args: [poolAddress],
+        blockNumber,
+      },
+    };
+  }
+
+  return { method: "none", call: null };
+}
+
 async function repairDHookBatch({ client, stateView, blockNumber, pools }) {
   const poolInputs = [];
   const contracts = [];
@@ -518,7 +554,11 @@ async function repairDHookBatch({ client, stateView, blockNumber, pools }) {
     const baseToken = pool.base_token;
     const poolAddress = pool.address;
 
-    poolInputs.push({ pool, poolKey, initializerAddr, baseToken });
+    const posCall = pickPositionCall({
+      pool, poolKey, initializerAddr, baseToken, poolAddress, stateView, blockNumber,
+    });
+
+    poolInputs.push({ pool, poolKey, initializerAddr, baseToken, posMethod: posCall.method });
 
     contracts.push({
       abi: STATE_VIEW_ABI,
@@ -528,36 +568,21 @@ async function repairDHookBatch({ client, stateView, blockNumber, pools }) {
       blockNumber,
     });
 
-    if (initializerAddr) {
-      contracts.push({
-        abi: DHOOK_GET_POSITIONS_ABI,
-        address: initializerAddr,
-        functionName: "getPositions",
-        args: [baseToken],
-        blockNumber,
-      });
-    } else if (poolKey) {
-      contracts.push({
-        abi: REHYPE_GET_POSITION_ABI,
-        address: poolKey.hooks,
-        functionName: "getPosition",
-        args: [poolAddress],
-        blockNumber,
-      });
-    } else {
-      contracts.push({
+    // Use a dummy slot0 call as placeholder when no position source exists
+    contracts.push(
+      posCall.call ?? {
         abi: STATE_VIEW_ABI,
         address: stateView,
         functionName: "getSlot0",
         args: [poolAddress],
         blockNumber,
-      });
-    }
+      },
+    );
   }
 
   const results = await client.multicall({ allowFailure: true, contracts });
 
-  return poolInputs.map(({ pool, poolKey, initializerAddr }, index) => {
+  return poolInputs.map(({ pool, poolKey, initializerAddr, posMethod }, index) => {
     const slot0Result = results[index * 2];
     const posResult = results[index * 2 + 1];
 
@@ -570,20 +595,43 @@ async function repairDHookBatch({ client, stateView, blockNumber, pools }) {
 
     const tick = Number(slot0Result.result[1]);
     const sqrtPriceX96 = slot0Result.result[0];
+
+    if (posMethod === "none") {
+      // DHook on new initializer — no on-chain position reader, clamp to 0
+      const r0 = BigInt(pool.reserves0);
+      const r1 = BigInt(pool.reserves1);
+      return {
+        update: {
+          address: pool.address,
+          chainId: Number(pool.chain_id),
+          type: pool.type,
+          oldReserves0: r0,
+          oldReserves1: r1,
+          reserves0: r0 > 0n ? r0 : 0n,
+          reserves1: r1 > 0n ? r1 : 0n,
+          oldTick: Number(pool.tick),
+          tick,
+          sqrtPriceX96,
+          liquidity: BigInt(pool.liquidity),
+          positionCount: -1,
+        },
+      };
+    }
+
     let positions;
 
     if (posResult?.status === "success") {
       if (Array.isArray(posResult.result)) {
         positions = posResult.result;
       } else {
+        // getPosition returns a single tuple, wrap it
         positions = [posResult.result];
       }
     } else {
       return {
         pool,
         error: new Error(
-          `getPositions failed for ${pool.address}: ${posResult?.error?.shortMessage ?? "unknown"}. ` +
-          `Try getPosition on hook if rehype.`,
+          `${posMethod} failed for ${pool.address}: ${posResult?.error?.shortMessage ?? "unknown"}`,
         ),
       };
     }
@@ -604,73 +652,6 @@ async function repairDHookBatch({ client, stateView, blockNumber, pools }) {
         sqrtPriceX96,
         liquidity: reserves.liquidity,
         positionCount: positions.length,
-      },
-    };
-  });
-}
-
-async function retryDHookFailuresWithRehype({ client, stateView, blockNumber, failedResults }) {
-  const rehypeRetries = failedResults.filter(
-    (r) => r.pool.type === "rehype" && r.pool.pool_key,
-  );
-  if (rehypeRetries.length === 0) return [];
-
-  const contracts = [];
-  for (const { pool } of rehypeRetries) {
-    const poolKey = normalizePoolKey(pool.pool_key);
-    contracts.push(
-      {
-        abi: STATE_VIEW_ABI,
-        address: stateView,
-        functionName: "getSlot0",
-        args: [pool.address],
-        blockNumber,
-      },
-      {
-        abi: REHYPE_GET_POSITION_ABI,
-        address: poolKey.hooks,
-        functionName: "getPosition",
-        args: [pool.address],
-        blockNumber,
-      },
-    );
-  }
-
-  const results = await client.multicall({ allowFailure: true, contracts });
-
-  return rehypeRetries.map(({ pool }, index) => {
-    const slot0Result = results[index * 2];
-    const posResult = results[index * 2 + 1];
-
-    if (slot0Result?.status !== "success" || posResult?.status !== "success") {
-      return {
-        pool,
-        error: new Error(
-          `Rehype retry failed for ${pool.address}: ` +
-          `slot0=${slot0Result?.status}, getPosition=${posResult?.status}`,
-        ),
-      };
-    }
-
-    const tick = Number(slot0Result.result[1]);
-    const sqrtPriceX96 = slot0Result.result[0];
-    const positions = [posResult.result];
-    const reserves = computeReservesFromPositions(positions, tick);
-
-    return {
-      update: {
-        address: pool.address,
-        chainId: Number(pool.chain_id),
-        type: pool.type,
-        oldReserves0: BigInt(pool.reserves0),
-        oldReserves1: BigInt(pool.reserves1),
-        reserves0: reserves.reserves0,
-        reserves1: reserves.reserves1,
-        oldTick: Number(pool.tick),
-        tick,
-        sqrtPriceX96,
-        liquidity: reserves.liquidity,
-        positionCount: 1,
       },
     };
   });
@@ -951,44 +932,12 @@ async function main() {
         )
       ).flat();
 
-      const failedInBatch = batchResults.filter((r) => r.error);
-      if (failedInBatch.length > 0) {
-        const rehypeRetries = await retryDHookFailuresWithRehype({
-          client,
-          stateView: args.stateView,
-          blockNumber,
-          failedResults: failedInBatch,
-        });
-
-        const rehypeFixed = new Set(
-          rehypeRetries.filter((r) => r.update).map((r) => r.update.address),
-        );
-
-        for (const result of batchResults) {
-          if (result.error && rehypeFixed.has(result.pool.address)) continue;
-          if (result.error) {
-            failed++;
-            if (args.verbose) console.error(`  FAIL ${result.pool.address}: ${result.error.message}`);
-            continue;
-          }
+      for (const result of batchResults) {
+        if (result.error) {
+          failed++;
+          if (args.verbose) console.error(`  FAIL ${result.pool.address}: ${result.error.message}`);
+        } else {
           allUpdates.push(result.update);
-        }
-        for (const result of rehypeRetries) {
-          if (result.error) {
-            failed++;
-            if (args.verbose) console.error(`  FAIL ${result.pool.address}: ${result.error.message}`);
-          } else {
-            allUpdates.push(result.update);
-          }
-        }
-      } else {
-        for (const result of batchResults) {
-          if (result.error) {
-            failed++;
-            if (args.verbose) console.error(`  FAIL ${result.pool.address}: ${result.error.message}`);
-          } else {
-            allUpdates.push(result.update);
-          }
         }
       }
 
