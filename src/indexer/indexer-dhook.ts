@@ -10,7 +10,7 @@ import { pool, token, asset } from "ponder:schema";
 import { Address } from "viem";
 import { getQuoteInfo } from "@app/utils/getQuoteInfo";
 import { computeReservesFromPositions } from "@app/utils/v4-utils/computeReservesFromPositions";
-import { upsertPositionLedger, getPositionsForPool } from "./shared/entities/positionLedger";
+import { upsertPositionLedger } from "./shared/entities/positionLedger";
 import { PoolKey } from "@app/types/v4-types";
 import { getDHookPoolData } from "@app/utils/dhook-utils";
 import { StateViewABI, DopplerHookInitializerABI, DopplerHookMigratorABI } from "@app/abis";
@@ -92,11 +92,17 @@ ponder.on("DopplerHookInitializer:Create", async ({ event, context }) => {
     decimals: quoteInfo.quotePriceDecimals,
   });
 
-  // Seed reserves from position ledger (ModifyLiquidity events fire before Create)
-  const positions = await getPositionsForPool({ poolId: poolAddress, context });
-  if (positions.length > 0) {
+  // Seed reserves from on-chain positions
+  const onChainPositions = await context.client.readContract({
+    abi: DopplerHookInitializerABI,
+    address: initializerAddress,
+    functionName: "getPositions",
+    args: [assetAddress],
+  });
+
+  if (onChainPositions.length > 0) {
     const tick = poolData.slot0Data.tick;
-    const reserves = computeReservesFromPositions(positions, tick);
+    const reserves = computeReservesFromPositions(onChainPositions, tick);
 
     const dollarLiquidity = MarketDataService.calculateLiquidity({
       assetBalance: poolEntity.isToken0 ? reserves.token0Reserve : reserves.token1Reserve,
@@ -191,12 +197,22 @@ ponder.on("DopplerHookInitializer:Swap", async ({ event, context }) => {
   }
 
   const { stateView } = chainConfigs[chain.name].addresses.v4;
-  const slot0 = await client.readContract({
-    abi: StateViewABI,
-    address: stateView,
-    functionName: "getSlot0",
-    args: [poolId],
-  });
+  const initializerAddress = (poolEntity.initializer ?? event.log.address) as `0x${string}`;
+
+  const [slot0, onChainPositions] = await Promise.all([
+    client.readContract({
+      abi: StateViewABI,
+      address: stateView,
+      functionName: "getSlot0",
+      args: [poolId],
+    }),
+    client.readContract({
+      abi: DopplerHookInitializerABI,
+      address: initializerAddress,
+      functionName: "getPositions",
+      args: [poolEntity.baseToken],
+    }),
+  ]);
 
   const [sqrtPriceX96, currentTick] = slot0;
 
@@ -232,23 +248,10 @@ ponder.on("DopplerHookInitializer:Swap", async ({ event, context }) => {
     decimals: quoteInfo.quotePriceDecimals,
   });
 
-  // Recompute reserves from position ledger + live tick
-  const positions = await getPositionsForPool({ poolId: poolAddress, context });
-  let newReserves0: bigint;
-  let newReserves1: bigint;
-  if (positions.length > 0) {
-    const reserves = computeReservesFromPositions(positions, currentTick);
-    newReserves0 = reserves.token0Reserve;
-    newReserves1 = reserves.token1Reserve;
-  } else {
-    if (poolEntity.liquidity > 0n) {
-      console.error(
-        `DHook swap: empty position ledger but pool has non-zero liquidity for pool=${poolAddress} chain=${chain.id}. Falling back to incremental reserves.`
-      );
-    }
-    newReserves0 = poolEntity.reserves0 + BigInt(amount0);
-    newReserves1 = poolEntity.reserves1 + BigInt(amount1);
-  }
+  // Compute reserves from on-chain positions
+  const reserves = computeReservesFromPositions(onChainPositions, currentTick);
+  const newReserves0 = reserves.token0Reserve;
+  const newReserves1 = reserves.token1Reserve;
 
   const dollarLiquidity = MarketDataService.calculateLiquidity({
     assetBalance: poolEntity.isToken0 ? newReserves0 : newReserves1,
@@ -383,34 +386,41 @@ ponder.on("DopplerHookInitializer:ModifyLiquidity", async ({ event, context }) =
   });
 
   if (!poolEntity) {
-    // Pool not created yet — Create handler will seed reserves from the ledger
     return;
   }
 
   const { stateView } = chainConfigs[chain.name].addresses.v4;
-  const [slot0, liquidityResult] = await client.multicall({
-    contracts: [
-      {
-        abi: StateViewABI,
-        address: stateView,
-        functionName: "getSlot0",
-        args: [computedPoolId],
-      },
-      {
-        abi: StateViewABI,
-        address: stateView,
-        functionName: "getLiquidity",
-        args: [computedPoolId],
-      },
-    ],
-  });
+  const [multicallResults, onChainPositions] = await Promise.all([
+    client.multicall({
+      contracts: [
+        {
+          abi: StateViewABI,
+          address: stateView,
+          functionName: "getSlot0",
+          args: [computedPoolId],
+        },
+        {
+          abi: StateViewABI,
+          address: stateView,
+          functionName: "getLiquidity",
+          args: [computedPoolId],
+        },
+      ],
+    }),
+    client.readContract({
+      abi: DopplerHookInitializerABI,
+      address: event.log.address,
+      functionName: "getPositions",
+      args: [poolEntity.baseToken],
+    }),
+  ]);
 
+  const [slot0, liquidityResult] = multicallResults;
   const tick = slot0.result?.[1] ?? 0;
   const sqrtPriceX96 = slot0.result?.[0] ?? 0n;
   const liquidity = liquidityResult.result ?? 0n;
 
-  const positions = await getPositionsForPool({ poolId: poolAddress, context });
-  const reserves = computeReservesFromPositions(positions, tick);
+  const reserves = computeReservesFromPositions(onChainPositions, tick);
 
   const quoteInfo = await getQuoteInfo(poolEntity.quoteToken, timestamp, context);
 
