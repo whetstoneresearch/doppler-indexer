@@ -10,7 +10,7 @@ import { pool, token, asset } from "ponder:schema";
 import { Address } from "viem";
 import { getQuoteInfo } from "@app/utils/getQuoteInfo";
 import { computeReservesFromPositions } from "@app/utils/v4-utils/computeReservesFromPositions";
-import { upsertPositionLedger } from "./shared/entities/positionLedger";
+import { upsertPositionLedger, getPositionsForPool } from "./shared/entities/positionLedger";
 import { PoolKey } from "@app/types/v4-types";
 import { getDHookPoolData } from "@app/utils/dhook-utils";
 import { StateViewABI, DopplerHookInitializerABI, DopplerHookMigratorABI } from "@app/abis";
@@ -18,6 +18,32 @@ import { isPrecompileAddress } from "@app/utils/validation";
 import { updateCumulatedFees } from "./shared/cumulatedFees";
 import { fetchV4MigrationPool, updateV4Pool } from "./shared/entities/v4pools";
 import { v4pools } from "ponder:schema";
+import { Context } from "ponder:registry";
+
+type PositionEntry = { tickLower: number; tickUpper: number; liquidity: bigint };
+
+async function fetchPositions({
+  initializerAddress,
+  assetAddress,
+  poolId,
+  context,
+}: {
+  initializerAddress: `0x${string}`;
+  assetAddress: `0x${string}`;
+  poolId: `0x${string}`;
+  context: Context;
+}): Promise<readonly PositionEntry[]> {
+  try {
+    return await context.client.readContract({
+      abi: DopplerHookInitializerABI,
+      address: initializerAddress,
+      functionName: "getPositions",
+      args: [assetAddress],
+    });
+  } catch {
+    return getPositionsForPool({ poolId, context });
+  }
+}
 
 ponder.on("DopplerHookInitializer:Create", async ({ event, context }) => {
   const { poolOrHook, asset: assetId, numeraire } = event.args;
@@ -92,12 +118,13 @@ ponder.on("DopplerHookInitializer:Create", async ({ event, context }) => {
     decimals: quoteInfo.quotePriceDecimals,
   });
 
-  // Seed reserves from on-chain positions
-  const onChainPositions = await context.client.readContract({
-    abi: DopplerHookInitializerABI,
-    address: initializerAddress,
-    functionName: "getPositions",
-    args: [assetAddress],
+  // Seed reserves from on-chain positions (falls back to position ledger for
+  // newer contracts where getPositions was changed to internal visibility)
+  const onChainPositions = await fetchPositions({
+    initializerAddress: initializerAddress as `0x${string}`,
+    assetAddress,
+    poolId: poolAddress,
+    context,
   });
 
   if (onChainPositions.length > 0) {
@@ -206,11 +233,11 @@ ponder.on("DopplerHookInitializer:Swap", async ({ event, context }) => {
       functionName: "getSlot0",
       args: [poolId],
     }),
-    client.readContract({
-      abi: DopplerHookInitializerABI,
-      address: initializerAddress,
-      functionName: "getPositions",
-      args: [poolEntity.baseToken],
+    fetchPositions({
+      initializerAddress,
+      assetAddress: poolEntity.baseToken,
+      poolId: poolAddress,
+      context,
     }),
   ]);
 
@@ -407,11 +434,11 @@ ponder.on("DopplerHookInitializer:ModifyLiquidity", async ({ event, context }) =
         },
       ],
     }),
-    client.readContract({
-      abi: DopplerHookInitializerABI,
-      address: event.log.address,
-      functionName: "getPositions",
-      args: [poolEntity.baseToken],
+    fetchPositions({
+      initializerAddress: event.log.address as `0x${string}`,
+      assetAddress: poolEntity.baseToken,
+      poolId: poolAddress,
+      context,
     }),
   ]);
 
