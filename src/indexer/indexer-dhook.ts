@@ -13,7 +13,7 @@ import { computeReservesFromPositions } from "@app/utils/v4-utils/computeReserve
 import { upsertPositionLedger, getPositionsForPool } from "./shared/entities/positionLedger";
 import { PoolKey } from "@app/types/v4-types";
 import { getDHookPoolData } from "@app/utils/dhook-utils";
-import { StateViewABI, DopplerHookInitializerABI, DopplerHookMigratorABI } from "@app/abis";
+import { StateViewABI, DopplerHookInitializerABI, DopplerHookMigratorABI, RehypeDopplerHookInitializerABI } from "@app/abis";
 import { isPrecompileAddress } from "@app/utils/validation";
 import { updateCumulatedFees } from "./shared/cumulatedFees";
 import { fetchV4MigrationPool, updateV4Pool } from "./shared/entities/v4pools";
@@ -22,27 +22,48 @@ import { Context } from "ponder:registry";
 
 type PositionEntry = { tickLower: number; tickUpper: number; liquidity: bigint };
 
+// Deployed before getPositions was changed from public to internal
+const INITIALIZERS_WITH_GET_POSITIONS = new Set([
+  "0xaa096f558f3d4c9226de77e7cc05f18e180b2544",
+]);
+
 async function fetchPositions({
   initializerAddress,
   assetAddress,
   poolId,
+  hookAddress,
+  poolType,
   context,
 }: {
   initializerAddress: `0x${string}`;
   assetAddress: `0x${string}`;
   poolId: `0x${string}`;
+  hookAddress?: `0x${string}`;
+  poolType?: string;
   context: Context;
 }): Promise<readonly PositionEntry[]> {
-  try {
-    return await context.client.readContract({
+  if (INITIALIZERS_WITH_GET_POSITIONS.has(initializerAddress.toLowerCase())) {
+    return context.client.readContract({
       abi: DopplerHookInitializerABI,
       address: initializerAddress,
       functionName: "getPositions",
       args: [assetAddress],
     });
-  } catch {
-    return getPositionsForPool({ poolId, context });
   }
+
+  if (poolType === "rehype" && hookAddress) {
+    const result = await context.client.readContract({
+      abi: RehypeDopplerHookInitializerABI,
+      address: hookAddress,
+      functionName: "getPosition",
+      args: [poolId],
+    });
+    const [tickLower, tickUpper, liquidity] = result;
+    if (liquidity > 0n) return [{ tickLower, tickUpper, liquidity }];
+    return [];
+  }
+
+  return getPositionsForPool({ poolId, context });
 }
 
 ponder.on("DopplerHookInitializer:Create", async ({ event, context }) => {
@@ -124,6 +145,8 @@ ponder.on("DopplerHookInitializer:Create", async ({ event, context }) => {
     initializerAddress: initializerAddress as `0x${string}`,
     assetAddress,
     poolId: poolAddress,
+    hookAddress: poolData.poolKey.hooks.toLowerCase() as `0x${string}`,
+    poolType: poolEntity.type,
     context,
   });
 
@@ -237,6 +260,8 @@ ponder.on("DopplerHookInitializer:Swap", async ({ event, context }) => {
       initializerAddress,
       assetAddress: poolEntity.baseToken,
       poolId: poolAddress,
+      hookAddress: poolKey.hooks?.toLowerCase() as `0x${string}`,
+      poolType: poolEntity.type,
       context,
     }),
   ]);
@@ -438,6 +463,8 @@ ponder.on("DopplerHookInitializer:ModifyLiquidity", async ({ event, context }) =
       initializerAddress: event.log.address as `0x${string}`,
       assetAddress: poolEntity.baseToken,
       poolId: poolAddress,
+      hookAddress: (poolEntity.poolKey as PoolKey)?.hooks?.toLowerCase() as `0x${string}`,
+      poolType: poolEntity.type,
       context,
     }),
   ]);
