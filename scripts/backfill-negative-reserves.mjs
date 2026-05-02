@@ -149,6 +149,7 @@ function parseArgs(argv) {
   const args = {
     apply: false,
     all: false,
+    includeZeroed: false,
     applyBatchSize: 25,
     chainId: DEFAULT_CHAIN_ID,
     concurrency: 2,
@@ -174,6 +175,8 @@ function parseArgs(argv) {
       args.apply = true;
     } else if (arg === "--all") {
       args.all = true;
+    } else if (arg === "--include-zeroed") {
+      args.includeZeroed = true;
     } else if (arg === "--skip-verify") {
       args.verify = false;
     } else if (arg === "--verbose") {
@@ -229,6 +232,8 @@ Options:
   --types <list>           Comma-separated pool types to fix (dhook,rehype,v3,v4).
                            Defaults to all types with negative reserves.
   --all                    Backfill all matching pools, not just negative reserves.
+  --include-zeroed         Also select dhook/rehype/v4 pools with both reserves = 0
+                           (previously clamped). Use to re-repair from position ledger.
   --limit <n>              Limit selected rows.
   --rpc-batch-size <n>     Pools per multicall batch. Defaults to 50.
   --concurrency <n>        Concurrent RPC batches. Defaults to 2.
@@ -250,7 +255,7 @@ function psqlJson(databaseUrl, sql) {
   const stdout = execFileSync(
     "psql",
     [databaseUrl, "-X", "-A", "-t", "-v", "ON_ERROR_STOP=1", "-c", sql],
-    { encoding: "utf8", maxBuffer: 1024 * 1024 * 64 },
+    { encoding: "utf8", maxBuffer: 1024 * 1024 * 512 },
   ).trim();
   return JSON.parse(stdout || "[]");
 }
@@ -395,7 +400,7 @@ function buildColumnMap(columns) {
 
 // ── Pool loading ──
 
-function loadPools({ databaseUrl, table, columns, chainId, types, all, limit }) {
+function loadPools({ databaseUrl, table, columns, chainId, types, all, includeZeroed, limit }) {
   const qualifiedTable = `${qi(table.schema)}.${qi(table.table)}`;
   const filters = [`${qi(columns.chainId.name)}::numeric = ${Number(chainId)}`];
 
@@ -407,11 +412,15 @@ function loadPools({ databaseUrl, table, columns, chainId, types, all, limit }) 
   if (!all) {
     const r0 = qi(columns.reserves0.name);
     const r1 = qi(columns.reserves1.name);
-    const typ = qi(columns.type.name);
-    // Negative reserves on any type, OR both-zero on dhook/rehype/v4 (previously clamped)
-    filters.push(
-      `(${r0}::numeric < 0 or ${r1}::numeric < 0 or (${r0}::numeric = 0 and ${r1}::numeric = 0 and lower(${typ}::text) in ('dhook', 'rehype', 'v4')))`,
-    );
+    const negative = `(${r0}::numeric < 0 or ${r1}::numeric < 0)`;
+    if (includeZeroed) {
+      const typ = qi(columns.type.name);
+      filters.push(
+        `(${negative} or (${r0}::numeric = 0 and ${r1}::numeric = 0 and lower(${typ}::text) in ('dhook', 'rehype', 'v4')))`,
+      );
+    } else {
+      filters.push(negative);
+    }
   }
 
   const selectCols = [
@@ -948,6 +957,7 @@ async function main() {
     chainId: args.chainId,
     types: args.types,
     all: args.all,
+    includeZeroed: args.includeZeroed,
     limit: args.limit,
   });
 
