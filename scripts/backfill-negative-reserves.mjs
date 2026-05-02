@@ -101,6 +101,34 @@ const REHYPE_GET_POSITION_ABI = [
   },
 ];
 
+const DHOOK_GET_STATE_ABI = [
+  {
+    type: "function",
+    name: "getState",
+    stateMutability: "view",
+    inputs: [{ name: "asset", type: "address" }],
+    outputs: [
+      { name: "numeraire", type: "address" },
+      { name: "totalTokensOnBondingCurve", type: "uint256" },
+      { name: "dopplerHook", type: "address" },
+      { name: "graduationDopplerHookCalldata", type: "bytes" },
+      { name: "status", type: "uint8" },
+      {
+        name: "poolKey",
+        type: "tuple",
+        components: [
+          { name: "currency0", type: "address" },
+          { name: "currency1", type: "address" },
+          { name: "fee", type: "uint24" },
+          { name: "tickSpacing", type: "int24" },
+          { name: "hooks", type: "address" },
+        ],
+      },
+      { name: "farTick", type: "int24" },
+    ],
+  },
+];
+
 function loadDotEnv(path) {
   if (!existsSync(path)) return;
   for (const rawLine of readFileSync(path, "utf8").split(/\r?\n/)) {
@@ -513,148 +541,147 @@ const INITIALIZERS_WITH_GET_POSITIONS = new Set([
   "0xaa096f558f3d4c9226de77e7cc05f18e180b2544",
 ]);
 
-// "none" = dhook on new initializer, no on-chain position source
-function pickPositionCall({ pool, poolKey, initializerAddr, baseToken, poolAddress, stateView, blockNumber }) {
-  if (initializerAddr && INITIALIZERS_WITH_GET_POSITIONS.has(initializerAddr.toLowerCase())) {
-    return {
-      method: "getPositions",
-      call: {
-        abi: DHOOK_GET_POSITIONS_ABI,
-        address: initializerAddr,
-        functionName: "getPositions",
-        args: [baseToken],
-        blockNumber,
-      },
-    };
-  }
-
-  if (pool.type === "rehype" && poolKey) {
-    return {
-      method: "getPosition",
-      call: {
-        abi: REHYPE_GET_POSITION_ABI,
-        address: poolKey.hooks,
-        functionName: "getPosition",
-        args: [poolAddress],
-        blockNumber,
-      },
-    };
-  }
-
-  return { method: "none", call: null };
-}
-
 async function repairDHookBatch({ client, stateView, blockNumber, pools }) {
-  const poolInputs = [];
-  const contracts = [];
+  // Separate pools by strategy
+  const oldInitPools = []; // getPositions works
+  const rehypePools = [];  // need getState → dopplerHook → getPosition
+  const clampPools = [];   // dhook on new initializer, no on-chain reader
 
   for (const pool of pools) {
-    const poolKey = pool.pool_key ? normalizePoolKey(pool.pool_key) : null;
     const initializerAddr = pool.initializer;
-    const baseToken = pool.base_token;
-    const poolAddress = pool.address;
-
-    const posCall = pickPositionCall({
-      pool, poolKey, initializerAddr, baseToken, poolAddress, stateView, blockNumber,
-    });
-
-    poolInputs.push({ pool, poolKey, initializerAddr, baseToken, posMethod: posCall.method });
-
-    contracts.push({
-      abi: STATE_VIEW_ABI,
-      address: stateView,
-      functionName: "getSlot0",
-      args: [poolAddress],
-      blockNumber,
-    });
-
-    // Use a dummy slot0 call as placeholder when no position source exists
-    contracts.push(
-      posCall.call ?? {
-        abi: STATE_VIEW_ABI,
-        address: stateView,
-        functionName: "getSlot0",
-        args: [poolAddress],
-        blockNumber,
-      },
-    );
+    if (initializerAddr && INITIALIZERS_WITH_GET_POSITIONS.has(initializerAddr.toLowerCase())) {
+      oldInitPools.push(pool);
+    } else if (pool.type === "rehype" && initializerAddr && pool.base_token) {
+      rehypePools.push(pool);
+    } else {
+      clampPools.push(pool);
+    }
   }
 
-  const results = await client.multicall({ allowFailure: true, contracts });
+  const results = [];
 
-  return poolInputs.map(({ pool, poolKey, initializerAddr, posMethod }, index) => {
-    const slot0Result = results[index * 2];
-    const posResult = results[index * 2 + 1];
-
-    if (slot0Result?.status !== "success") {
-      return {
-        pool,
-        error: new Error(`getSlot0 failed: ${slot0Result?.error?.shortMessage ?? "unknown"}`),
-      };
+  // ── Old initializer pools: getSlot0 + getPositions ──
+  if (oldInitPools.length > 0) {
+    const contracts = [];
+    for (const pool of oldInitPools) {
+      contracts.push(
+        { abi: STATE_VIEW_ABI, address: stateView, functionName: "getSlot0", args: [pool.address], blockNumber },
+        { abi: DHOOK_GET_POSITIONS_ABI, address: pool.initializer, functionName: "getPositions", args: [pool.base_token], blockNumber },
+      );
     }
-
-    const tick = Number(slot0Result.result[1]);
-    const sqrtPriceX96 = slot0Result.result[0];
-
-    if (posMethod === "none") {
-      // DHook on new initializer — no on-chain position reader, clamp to 0
-      const r0 = BigInt(pool.reserves0);
-      const r1 = BigInt(pool.reserves1);
-      return {
-        update: {
-          address: pool.address,
-          chainId: Number(pool.chain_id),
-          type: pool.type,
-          oldReserves0: r0,
-          oldReserves1: r1,
-          reserves0: r0 > 0n ? r0 : 0n,
-          reserves1: r1 > 0n ? r1 : 0n,
-          oldTick: Number(pool.tick),
-          tick,
-          sqrtPriceX96,
-          liquidity: BigInt(pool.liquidity),
-          positionCount: -1,
-        },
-      };
-    }
-
-    let positions;
-
-    if (posResult?.status === "success") {
-      if (Array.isArray(posResult.result)) {
-        positions = posResult.result;
-      } else {
-        // getPosition returns a single tuple, wrap it
-        positions = [posResult.result];
+    const mcResults = await client.multicall({ allowFailure: true, contracts });
+    for (let i = 0; i < oldInitPools.length; i++) {
+      const pool = oldInitPools[i];
+      const slot0R = mcResults[i * 2];
+      const posR = mcResults[i * 2 + 1];
+      if (slot0R?.status !== "success") {
+        results.push({ pool, error: new Error(`getSlot0 failed: ${slot0R?.error?.shortMessage ?? "unknown"}`) });
+        continue;
       }
-    } else {
-      return {
-        pool,
-        error: new Error(
-          `${posMethod} failed for ${pool.address}: ${posResult?.error?.shortMessage ?? "unknown"}`,
-        ),
-      };
+      if (posR?.status !== "success") {
+        results.push({ pool, error: new Error(`getPositions failed: ${posR?.error?.shortMessage ?? "unknown"}`) });
+        continue;
+      }
+      const tick = Number(slot0R.result[1]);
+      const reserves = computeReservesFromPositions(posR.result, tick);
+      results.push({ update: makeUpdate(pool, reserves, tick, slot0R.result[0], posR.result.length) });
+    }
+  }
+
+  // ── Rehype pools: pass 1 getSlot0 + getState, pass 2 getPosition on dopplerHook ──
+  if (rehypePools.length > 0) {
+    const pass1Contracts = [];
+    for (const pool of rehypePools) {
+      pass1Contracts.push(
+        { abi: STATE_VIEW_ABI, address: stateView, functionName: "getSlot0", args: [pool.address], blockNumber },
+        { abi: DHOOK_GET_STATE_ABI, address: pool.initializer, functionName: "getState", args: [pool.base_token], blockNumber },
+      );
+    }
+    const pass1 = await client.multicall({ allowFailure: true, contracts: pass1Contracts });
+
+    const pass2Inputs = [];
+    const pass2Contracts = [];
+    for (let i = 0; i < rehypePools.length; i++) {
+      const pool = rehypePools[i];
+      const slot0R = pass1[i * 2];
+      const stateR = pass1[i * 2 + 1];
+      if (slot0R?.status !== "success") {
+        results.push({ pool, error: new Error(`getSlot0 failed: ${slot0R?.error?.shortMessage ?? "unknown"}`) });
+        continue;
+      }
+      if (stateR?.status !== "success") {
+        results.push({ pool, error: new Error(`getState failed: ${stateR?.error?.shortMessage ?? "unknown"}`) });
+        continue;
+      }
+      const dopplerHook = normalizeHex(stateR.result[2]);
+      pass2Inputs.push({ pool, tick: Number(slot0R.result[1]), sqrtPriceX96: slot0R.result[0] });
+      pass2Contracts.push({
+        abi: REHYPE_GET_POSITION_ABI,
+        address: dopplerHook,
+        functionName: "getPosition",
+        args: [pool.address],
+        blockNumber,
+      });
     }
 
-    const reserves = computeReservesFromPositions(positions, tick);
+    if (pass2Contracts.length > 0) {
+      const pass2 = await client.multicall({ allowFailure: true, contracts: pass2Contracts });
+      for (let i = 0; i < pass2Inputs.length; i++) {
+        const { pool, tick, sqrtPriceX96 } = pass2Inputs[i];
+        const posR = pass2[i];
+        if (posR?.status !== "success") {
+          results.push({ pool, error: new Error(`getPosition failed: ${posR?.error?.shortMessage ?? "unknown"}`) });
+          continue;
+        }
+        const [tickLower, tickUpper, liquidity] = posR.result;
+        const positions = liquidity > 0n ? [{ tickLower, tickUpper, liquidity }] : [];
+        const reserves = computeReservesFromPositions(positions, tick);
+        results.push({ update: makeUpdate(pool, reserves, tick, sqrtPriceX96, positions.length) });
+      }
+    }
+  }
 
-    return {
+  // ── DHook on new initializer: clamp to 0 ──
+  for (const pool of clampPools) {
+    const r0 = BigInt(pool.reserves0);
+    const r1 = BigInt(pool.reserves1);
+    // Still fetch tick from on-chain for accuracy
+    results.push({
       update: {
         address: pool.address,
         chainId: Number(pool.chain_id),
         type: pool.type,
-        oldReserves0: BigInt(pool.reserves0),
-        oldReserves1: BigInt(pool.reserves1),
-        reserves0: reserves.reserves0,
-        reserves1: reserves.reserves1,
+        oldReserves0: r0,
+        oldReserves1: r1,
+        reserves0: r0 > 0n ? r0 : 0n,
+        reserves1: r1 > 0n ? r1 : 0n,
         oldTick: Number(pool.tick),
-        tick,
-        sqrtPriceX96,
-        liquidity: reserves.liquidity,
-        positionCount: positions.length,
+        tick: Number(pool.tick),
+        sqrtPriceX96: BigInt(pool.sqrt_price),
+        liquidity: BigInt(pool.liquidity),
+        positionCount: -1,
       },
-    };
-  });
+    });
+  }
+
+  return results;
+}
+
+function makeUpdate(pool, reserves, tick, sqrtPriceX96, positionCount) {
+  return {
+    address: pool.address,
+    chainId: Number(pool.chain_id),
+    type: pool.type,
+    oldReserves0: BigInt(pool.reserves0),
+    oldReserves1: BigInt(pool.reserves1),
+    reserves0: reserves.reserves0,
+    reserves1: reserves.reserves1,
+    oldTick: Number(pool.tick),
+    tick,
+    sqrtPriceX96,
+    liquidity: reserves.liquidity,
+    positionCount,
+  };
 }
 
 // ── V3 repair ──
@@ -912,25 +939,15 @@ async function main() {
     console.log(`\nProcessing ${dhookPools.length} dhook/rehype pools...`);
     const batchSize = args.rpcBatchSize;
 
-    for (let i = 0; i < dhookPools.length; i += batchSize * args.concurrency) {
-      const window = dhookPools.slice(i, i + batchSize * args.concurrency);
-      const batches = [];
-      for (let j = 0; j < window.length; j += batchSize) {
-        batches.push(window.slice(j, j + batchSize));
-      }
+    for (let i = 0; i < dhookPools.length; i += batchSize) {
+      const batch = dhookPools.slice(i, i + batchSize);
 
-      const batchResults = (
-        await Promise.all(
-          batches.map((batch) =>
-            repairBatchWithRetry({
-              repairFn: (p) =>
-                repairDHookBatch({ client, stateView: args.stateView, blockNumber, pools: p }),
-              pools: batch,
-              retries: args.retries,
-            }),
-          ),
-        )
-      ).flat();
+      const batchResults = await repairDHookBatch({
+        client,
+        stateView: args.stateView,
+        blockNumber,
+        pools: batch,
+      }).catch((error) => batch.map((pool) => ({ pool, error })));
 
       for (const result of batchResults) {
         if (result.error) {
@@ -942,7 +959,7 @@ async function main() {
       }
 
       console.log(
-        `  dhook/rehype: ${Math.min(i + batchSize * args.concurrency, dhookPools.length)}/${dhookPools.length} processed, ${allUpdates.length} repairs, ${failed} failed`,
+        `  dhook/rehype: ${Math.min(i + batchSize, dhookPools.length)}/${dhookPools.length} processed, ${allUpdates.length} repairs, ${failed} failed`,
       );
     }
   }
