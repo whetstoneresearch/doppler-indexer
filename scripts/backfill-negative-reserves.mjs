@@ -399,16 +399,20 @@ function loadPools({ databaseUrl, table, columns, chainId, types, all, limit }) 
   const qualifiedTable = `${qi(table.schema)}.${qi(table.table)}`;
   const filters = [`${qi(columns.chainId.name)}::numeric = ${Number(chainId)}`];
 
-  if (!all) {
-    filters.push(
-      `(${qi(columns.reserves0.name)}::numeric < 0 or ${qi(columns.reserves1.name)}::numeric < 0 or (${qi(columns.reserves0.name)}::numeric = 0 and ${qi(columns.reserves1.name)}::numeric = 0))`,
-    );
-  }
-
   const poolTypes = types ?? ["dhook", "rehype", "v3", "v4"];
   filters.push(
     `lower(${qi(columns.type.name)}::text) in (${poolTypes.map((t) => ql(t)).join(", ")})`,
   );
+
+  if (!all) {
+    const r0 = qi(columns.reserves0.name);
+    const r1 = qi(columns.reserves1.name);
+    const typ = qi(columns.type.name);
+    // Negative reserves on any type, OR both-zero on dhook/rehype/v4 (previously clamped)
+    filters.push(
+      `(${r0}::numeric < 0 or ${r1}::numeric < 0 or (${r0}::numeric = 0 and ${r1}::numeric = 0 and lower(${typ}::text) in ('dhook', 'rehype', 'v4')))`,
+    );
+  }
 
   const selectCols = [
     selectHexAddress(columns.address, "address"),
