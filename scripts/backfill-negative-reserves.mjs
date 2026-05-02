@@ -792,30 +792,32 @@ async function repairV3Batch({ client, blockNumber, pools }) {
   });
 }
 
-// ── V4 migrated repair (clamp only) ──
+// ── V4 migrated repair (ledger → clamp) ──
 
-function repairV4Clamped(pools) {
-  return pools.map((pool) => {
+async function repairV4Batch({ client, stateView, blockNumber, pools, databaseUrl, schema }) {
+  // Fetch on-chain tick for all pools
+  const slot0Contracts = pools.map((pool) => ({
+    abi: STATE_VIEW_ABI,
+    address: stateView,
+    functionName: "getSlot0",
+    args: [pool.address],
+    blockNumber,
+  }));
+  const slot0Results = await client.multicall({ allowFailure: true, contracts: slot0Contracts });
+
+  return pools.map((pool, i) => {
     const r0 = BigInt(pool.reserves0);
     const r1 = BigInt(pool.reserves1);
     if (r0 >= 0n && r1 >= 0n) return null;
 
-    return {
-      update: {
-        address: pool.address,
-        chainId: Number(pool.chain_id),
-        type: pool.type,
-        oldReserves0: r0,
-        oldReserves1: r1,
-        reserves0: r0 > 0n ? r0 : 0n,
-        reserves1: r1 > 0n ? r1 : 0n,
-        oldTick: Number(pool.tick),
-        tick: Number(pool.tick),
-        sqrtPriceX96: BigInt(pool.sqrt_price),
-        liquidity: BigInt(pool.liquidity),
-        positionCount: -1,
-      },
-    };
+    const slot0R = slot0Results[i];
+    const tick = slot0R?.status === "success" ? Number(slot0R.result[1]) : Number(pool.tick);
+    const sqrtPriceX96 = slot0R?.status === "success" ? slot0R.result[0] : BigInt(pool.sqrt_price);
+
+    const ledgerResult = repairFromLedger({ databaseUrl, schema, pool, tick, sqrtPriceX96 });
+    if (ledgerResult) return ledgerResult;
+
+    return clampUpdate(pool, tick, sqrtPriceX96);
   }).filter(Boolean);
 }
 
@@ -1039,12 +1041,19 @@ async function main() {
     }
   }
 
-  // ── V4 migrated (clamp only) ──
+  // ── V4 migrated (ledger → clamp) ──
   if (v4Pools.length > 0) {
-    console.log(`\nProcessing ${v4Pools.length} v4-migrated pools (clamp to 0)...`);
-    const v4Updates = repairV4Clamped(v4Pools);
+    console.log(`\nProcessing ${v4Pools.length} v4-migrated pools (ledger → clamp)...`);
+    const v4Updates = await repairV4Batch({
+      client,
+      stateView: args.stateView,
+      blockNumber,
+      pools: v4Pools,
+      databaseUrl: args.databaseUrl,
+      schema: args.schema,
+    });
     allUpdates.push(...v4Updates.map((r) => r.update));
-    console.log(`  v4: clamped ${v4Updates.length} pools`);
+    console.log(`  v4: repaired ${v4Updates.length} pools`);
   }
 
   // ── Summary ──
