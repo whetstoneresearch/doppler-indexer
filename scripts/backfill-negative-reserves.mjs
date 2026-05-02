@@ -952,7 +952,10 @@ async function main() {
       for (const result of batchResults) {
         if (result.error) {
           failed++;
-          if (args.verbose) console.error(`  FAIL ${result.pool.address}: ${result.error.message}`);
+          const p = result.pool;
+          console.error(
+            `  FAIL ${p.address} | type=${p.type} | initializer=${p.initializer ?? "null"} | base_token=${p.base_token ?? "null"} | hooks=${p.pool_key ? normalizePoolKey(p.pool_key).hooks : "null"} | ${result.error.message}`,
+          );
         } else {
           allUpdates.push(result.update);
         }
