@@ -22,47 +22,53 @@ import { Context } from "ponder:registry";
 
 type PositionEntry = { tickLower: number; tickUpper: number; liquidity: bigint };
 
-// Deployed before getPositions was changed from public to internal
-const INITIALIZERS_WITH_GET_POSITIONS = new Set([
-  "0xaa096f558f3d4c9226de77e7cc05f18e180b2544",
-]);
-
 async function fetchPositions({
   initializerAddress,
   assetAddress,
   poolId,
-  hookAddress,
   poolType,
   context,
 }: {
   initializerAddress: `0x${string}`;
   assetAddress: `0x${string}`;
   poolId: `0x${string}`;
-  hookAddress?: `0x${string}`;
   poolType?: string;
   context: Context;
 }): Promise<readonly PositionEntry[]> {
-  if (INITIALIZERS_WITH_GET_POSITIONS.has(initializerAddress.toLowerCase())) {
-    return context.client.readContract({
+  // Try getPositions (public on older initializer deployments, internal on newer)
+  try {
+    const positions = await context.client.readContract({
       abi: DopplerHookInitializerABI,
       address: initializerAddress,
       functionName: "getPositions",
       args: [assetAddress],
     });
-  }
+    return positions;
+  } catch {}
 
-  if (poolType === "rehype" && hookAddress) {
-    const result = await context.client.readContract({
-      abi: RehypeDopplerHookInitializerABI,
-      address: hookAddress,
-      functionName: "getPosition",
-      args: [poolId],
+  // Fallback: use getState to discover dopplerHook, then getPosition on it
+  try {
+    const state = await context.client.readContract({
+      abi: DopplerHookInitializerABI,
+      address: initializerAddress,
+      functionName: "getState",
+      args: [assetAddress],
     });
-    const [tickLower, tickUpper, liquidity] = result;
-    if (liquidity > 0n) return [{ tickLower, tickUpper, liquidity }];
-    return [];
-  }
+    const dopplerHook = (state[2] as string).toLowerCase() as `0x${string}`;
+    if (dopplerHook !== "0x0000000000000000000000000000000000000000") {
+      const result = await context.client.readContract({
+        abi: RehypeDopplerHookInitializerABI,
+        address: dopplerHook,
+        functionName: "getPosition",
+        args: [poolId],
+      });
+      const [tickLower, tickUpper, liquidity] = result;
+      if (liquidity > 0n) return [{ tickLower, tickUpper, liquidity }];
+      return [];
+    }
+  } catch {}
 
+  // Last resort: position ledger
   return getPositionsForPool({ poolId, context });
 }
 
@@ -145,7 +151,6 @@ ponder.on("DopplerHookInitializer:Create", async ({ event, context }) => {
     initializerAddress: initializerAddress as `0x${string}`,
     assetAddress,
     poolId: poolAddress,
-    hookAddress: poolData.poolKey.hooks.toLowerCase() as `0x${string}`,
     poolType: poolEntity.type,
     context,
   });
@@ -260,7 +265,6 @@ ponder.on("DopplerHookInitializer:Swap", async ({ event, context }) => {
       initializerAddress,
       assetAddress: poolEntity.baseToken,
       poolId: poolAddress,
-      hookAddress: poolKey.hooks?.toLowerCase() as `0x${string}`,
       poolType: poolEntity.type,
       context,
     }),
@@ -463,7 +467,6 @@ ponder.on("DopplerHookInitializer:ModifyLiquidity", async ({ event, context }) =
       initializerAddress: event.log.address as `0x${string}`,
       assetAddress: poolEntity.baseToken,
       poolId: poolAddress,
-      hookAddress: (poolEntity.poolKey as PoolKey)?.hooks?.toLowerCase() as `0x${string}`,
       poolType: poolEntity.type,
       context,
     }),

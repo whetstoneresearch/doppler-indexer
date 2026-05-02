@@ -536,116 +536,56 @@ function getPoolId(poolKey) {
 
 // ── DHook/Rehype repair ──
 
-// Deployed before getPositions was changed from public to internal
-const INITIALIZERS_WITH_GET_POSITIONS = new Set([
-  "0xaa096f558f3d4c9226de77e7cc05f18e180b2544",
-]);
-
 async function repairDHookBatch({ client, stateView, blockNumber, pools }) {
-  // Separate pools by strategy
-  const oldInitPools = []; // getPositions works
-  const rehypePools = [];  // need getState → dopplerHook → getPosition
-  const clampPools = [];   // dhook on new initializer, no on-chain reader
-
+  // Pass 1: getSlot0 + getPositions + getState for every pool.
+  // getPositions may revert (internal on some deployments) — that's fine,
+  // we use getState to discover the dopplerHook and call getPosition as fallback.
+  const pass1Contracts = [];
   for (const pool of pools) {
-    const initializerAddr = pool.initializer;
-    if (initializerAddr && INITIALIZERS_WITH_GET_POSITIONS.has(initializerAddr.toLowerCase())) {
-      oldInitPools.push(pool);
-    } else if (pool.type === "rehype" && initializerAddr && pool.base_token) {
-      rehypePools.push(pool);
-    } else {
-      clampPools.push(pool);
-    }
+    pass1Contracts.push(
+      { abi: STATE_VIEW_ABI, address: stateView, functionName: "getSlot0", args: [pool.address], blockNumber },
+      { abi: DHOOK_GET_POSITIONS_ABI, address: pool.initializer ?? stateView, functionName: pool.initializer ? "getPositions" : "getSlot0", args: [pool.initializer ? pool.base_token : pool.address], blockNumber },
+      { abi: DHOOK_GET_STATE_ABI, address: pool.initializer ?? stateView, functionName: pool.initializer ? "getState" : "getSlot0", args: [pool.initializer ? pool.base_token : pool.address], blockNumber },
+    );
   }
+  const pass1 = await client.multicall({ allowFailure: true, contracts: pass1Contracts });
 
   const results = [];
+  const needPass2 = []; // pools where getPositions failed but getState succeeded
 
-  // ── Old initializer pools: getSlot0 + getPositions ──
-  if (oldInitPools.length > 0) {
-    const contracts = [];
-    for (const pool of oldInitPools) {
-      contracts.push(
-        { abi: STATE_VIEW_ABI, address: stateView, functionName: "getSlot0", args: [pool.address], blockNumber },
-        { abi: DHOOK_GET_POSITIONS_ABI, address: pool.initializer, functionName: "getPositions", args: [pool.base_token], blockNumber },
-      );
+  for (let i = 0; i < pools.length; i++) {
+    const pool = pools[i];
+    const slot0R = pass1[i * 3];
+    const posR = pass1[i * 3 + 1];
+    const stateR = pass1[i * 3 + 2];
+
+    if (slot0R?.status !== "success") {
+      results.push({ pool, error: new Error(`getSlot0 failed: ${slot0R?.error?.shortMessage ?? "unknown"}`) });
+      continue;
     }
-    const mcResults = await client.multicall({ allowFailure: true, contracts });
-    for (let i = 0; i < oldInitPools.length; i++) {
-      const pool = oldInitPools[i];
-      const slot0R = mcResults[i * 2];
-      const posR = mcResults[i * 2 + 1];
-      if (slot0R?.status !== "success") {
-        results.push({ pool, error: new Error(`getSlot0 failed: ${slot0R?.error?.shortMessage ?? "unknown"}`) });
-        continue;
-      }
-      if (posR?.status !== "success") {
-        results.push({ pool, error: new Error(`getPositions failed: ${posR?.error?.shortMessage ?? "unknown"}`) });
-        continue;
-      }
-      const tick = Number(slot0R.result[1]);
+
+    const tick = Number(slot0R.result[1]);
+    const sqrtPriceX96 = slot0R.result[0];
+
+    // Happy path: getPositions worked
+    if (posR?.status === "success" && Array.isArray(posR.result)) {
       const reserves = computeReservesFromPositions(posR.result, tick);
-      results.push({ update: makeUpdate(pool, reserves, tick, slot0R.result[0], posR.result.length) });
+      results.push({ update: makeUpdate(pool, reserves, tick, sqrtPriceX96, posR.result.length) });
+      continue;
     }
-  }
 
-  // ── Rehype pools: pass 1 getSlot0 + getState, pass 2 getPosition on dopplerHook ──
-  if (rehypePools.length > 0) {
-    const pass1Contracts = [];
-    for (const pool of rehypePools) {
-      pass1Contracts.push(
-        { abi: STATE_VIEW_ABI, address: stateView, functionName: "getSlot0", args: [pool.address], blockNumber },
-        { abi: DHOOK_GET_STATE_ABI, address: pool.initializer, functionName: "getState", args: [pool.base_token], blockNumber },
-      );
-    }
-    const pass1 = await client.multicall({ allowFailure: true, contracts: pass1Contracts });
-
-    const pass2Inputs = [];
-    const pass2Contracts = [];
-    for (let i = 0; i < rehypePools.length; i++) {
-      const pool = rehypePools[i];
-      const slot0R = pass1[i * 2];
-      const stateR = pass1[i * 2 + 1];
-      if (slot0R?.status !== "success") {
-        results.push({ pool, error: new Error(`getSlot0 failed: ${slot0R?.error?.shortMessage ?? "unknown"}`) });
-        continue;
-      }
-      if (stateR?.status !== "success") {
-        results.push({ pool, error: new Error(`getState failed: ${stateR?.error?.shortMessage ?? "unknown"}`) });
-        continue;
-      }
+    // Fallback: use dopplerHook from getState → getPosition
+    if (stateR?.status === "success" && stateR.result[2]) {
       const dopplerHook = normalizeHex(stateR.result[2]);
-      pass2Inputs.push({ pool, tick: Number(slot0R.result[1]), sqrtPriceX96: slot0R.result[0] });
-      pass2Contracts.push({
-        abi: REHYPE_GET_POSITION_ABI,
-        address: dopplerHook,
-        functionName: "getPosition",
-        args: [pool.address],
-        blockNumber,
-      });
-    }
-
-    if (pass2Contracts.length > 0) {
-      const pass2 = await client.multicall({ allowFailure: true, contracts: pass2Contracts });
-      for (let i = 0; i < pass2Inputs.length; i++) {
-        const { pool, tick, sqrtPriceX96 } = pass2Inputs[i];
-        const posR = pass2[i];
-        if (posR?.status !== "success") {
-          results.push({ pool, error: new Error(`getPosition failed: ${posR?.error?.shortMessage ?? "unknown"}`) });
-          continue;
-        }
-        const [tickLower, tickUpper, liquidity] = posR.result;
-        const positions = liquidity > 0n ? [{ tickLower, tickUpper, liquidity }] : [];
-        const reserves = computeReservesFromPositions(positions, tick);
-        results.push({ update: makeUpdate(pool, reserves, tick, sqrtPriceX96, positions.length) });
+      if (dopplerHook !== "0x0000000000000000000000000000000000000000") {
+        needPass2.push({ pool, tick, sqrtPriceX96, dopplerHook });
+        continue;
       }
     }
-  }
 
-  // ── DHook on new initializer: clamp to 0 ──
-  for (const pool of clampPools) {
+    // Last resort: clamp negative reserves to 0
     const r0 = BigInt(pool.reserves0);
     const r1 = BigInt(pool.reserves1);
-    // Still fetch tick from on-chain for accuracy
     results.push({
       update: {
         address: pool.address,
@@ -656,12 +596,56 @@ async function repairDHookBatch({ client, stateView, blockNumber, pools }) {
         reserves0: r0 > 0n ? r0 : 0n,
         reserves1: r1 > 0n ? r1 : 0n,
         oldTick: Number(pool.tick),
-        tick: Number(pool.tick),
-        sqrtPriceX96: BigInt(pool.sqrt_price),
+        tick,
+        sqrtPriceX96,
         liquidity: BigInt(pool.liquidity),
         positionCount: -1,
       },
     });
+  }
+
+  // Pass 2: getPosition on the dopplerHook for pools where getPositions failed
+  if (needPass2.length > 0) {
+    const pass2Contracts = needPass2.map(({ pool, dopplerHook }) => ({
+      abi: REHYPE_GET_POSITION_ABI,
+      address: dopplerHook,
+      functionName: "getPosition",
+      args: [pool.address],
+      blockNumber,
+    }));
+    const pass2 = await client.multicall({ allowFailure: true, contracts: pass2Contracts });
+
+    for (let i = 0; i < needPass2.length; i++) {
+      const { pool, tick, sqrtPriceX96 } = needPass2[i];
+      const posR = pass2[i];
+
+      if (posR?.status === "success") {
+        const [tickLower, tickUpper, liquidity] = posR.result;
+        const positions = liquidity > 0n ? [{ tickLower, tickUpper, liquidity }] : [];
+        const reserves = computeReservesFromPositions(positions, tick);
+        results.push({ update: makeUpdate(pool, reserves, tick, sqrtPriceX96, positions.length) });
+      } else {
+        // getPosition also failed — clamp to 0
+        const r0 = BigInt(pool.reserves0);
+        const r1 = BigInt(pool.reserves1);
+        results.push({
+          update: {
+            address: pool.address,
+            chainId: Number(pool.chain_id),
+            type: pool.type,
+            oldReserves0: r0,
+            oldReserves1: r1,
+            reserves0: r0 > 0n ? r0 : 0n,
+            reserves1: r1 > 0n ? r1 : 0n,
+            oldTick: Number(pool.tick),
+            tick,
+            sqrtPriceX96,
+            liquidity: BigInt(pool.liquidity),
+            positionCount: -1,
+          },
+        });
+      }
+    }
   }
 
   return results;
