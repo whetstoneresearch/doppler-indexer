@@ -150,7 +150,7 @@ function parseArgs(argv) {
     apply: false,
     all: false,
     includeZeroed: false,
-    applyBatchSize: 25,
+    applyBatchSize: 500,
     chainId: DEFAULT_CHAIN_ID,
     concurrency: 2,
     rpcBatchSize: 50,
