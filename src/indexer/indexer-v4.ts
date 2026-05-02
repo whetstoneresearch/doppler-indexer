@@ -718,12 +718,15 @@ ponder.on("PoolManager:Swap", async ({ event, context }) => {
     newReserves0 = reserves.token0Reserve + (v4Pool.donated0 ?? 0n);
     newReserves1 = reserves.token1Reserve + (v4Pool.donated1 ?? 0n);
   } else {
-    // Fallback: no positions in ledger yet (edge case during migration)
+    // Fallback: no positions in ledger yet (edge case during migration).
+    // Clamp to 0n to prevent negative reserves from incremental tracking.
     console.warn(
-      `PoolManager:Swap: empty position ledger for migrated pool=${poolId} chain=${chain.id}. Using incremental reserves.`
+      `PoolManager:Swap: empty position ledger for migrated pool=${poolId} chain=${chain.id}. Using clamped incremental reserves.`
     );
-    newReserves0 = v4Pool.reserves0 + BigInt(amount0);
-    newReserves1 = v4Pool.reserves1 + BigInt(amount1);
+    const raw0 = v4Pool.reserves0 + BigInt(amount0);
+    const raw1 = v4Pool.reserves1 + BigInt(amount1);
+    newReserves0 = raw0 > 0n ? raw0 : 0n;
+    newReserves1 = raw1 > 0n ? raw1 : 0n;
   }
 
   const dollarLiquidity = MarketDataService.calculateLiquidity({
