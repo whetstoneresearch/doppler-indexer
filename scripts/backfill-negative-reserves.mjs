@@ -536,7 +536,85 @@ function getPoolId(poolKey) {
 
 // ── DHook/Rehype repair ──
 
-async function repairDHookBatch({ client, stateView, blockNumber, pools }) {
+function loadPositionLedger({ databaseUrl, schema, poolId, chainId }) {
+  const poolIdHex = hexNoPrefix(poolId);
+  const schemaFilter = schema
+    ? `and table_schema = ${ql(schema)}`
+    : "and table_schema not in ('pg_catalog', 'information_schema')";
+
+  // Find the position_ledger table
+  const tables = psqlJson(
+    databaseUrl,
+    `select coalesce(json_agg(q), '[]'::json)
+     from (
+       select table_schema, table_name
+       from information_schema.tables
+       where table_name = 'position_ledger' ${schemaFilter}
+       limit 1
+     ) q`,
+  );
+  if (tables.length === 0) return [];
+
+  const { table_schema, table_name } = tables[0];
+  const qualifiedTable = `${qi(table_schema)}.${qi(table_name)}`;
+
+  return psqlJson(
+    databaseUrl,
+    `select coalesce(json_agg(q), '[]'::json)
+     from (
+       select
+         ${qi("tick_lower")}::integer as "tickLower",
+         ${qi("tick_upper")}::integer as "tickUpper",
+         ${qi("liquidity")}::text as "liquidity"
+       from ${qualifiedTable}
+       where lower(${qi("pool_id")}::text) = ${ql(poolIdHex)}
+         and ${qi("chain_id")}::integer = ${Number(chainId)}
+         and ${qi("liquidity")}::numeric > 0
+     ) q`,
+  );
+}
+
+function repairFromLedger({ databaseUrl, schema, pool, tick, sqrtPriceX96 }) {
+  const positions = loadPositionLedger({
+    databaseUrl,
+    schema,
+    poolId: pool.address,
+    chainId: pool.chain_id,
+  });
+  if (positions.length > 0) {
+    const parsed = positions.map((p) => ({
+      tickLower: p.tickLower,
+      tickUpper: p.tickUpper,
+      liquidity: BigInt(p.liquidity),
+    }));
+    const reserves = computeReservesFromPositions(parsed, tick);
+    return { update: makeUpdate(pool, reserves, tick, sqrtPriceX96, positions.length) };
+  }
+  return null;
+}
+
+function clampUpdate(pool, tick, sqrtPriceX96) {
+  const r0 = BigInt(pool.reserves0);
+  const r1 = BigInt(pool.reserves1);
+  return {
+    update: {
+      address: pool.address,
+      chainId: Number(pool.chain_id),
+      type: pool.type,
+      oldReserves0: r0,
+      oldReserves1: r1,
+      reserves0: r0 > 0n ? r0 : 0n,
+      reserves1: r1 > 0n ? r1 : 0n,
+      oldTick: Number(pool.tick),
+      tick,
+      sqrtPriceX96,
+      liquidity: BigInt(pool.liquidity),
+      positionCount: -1,
+    },
+  };
+}
+
+async function repairDHookBatch({ client, stateView, blockNumber, pools, databaseUrl, schema }) {
   // Pass 1: getSlot0 + getPositions + getState for every pool.
   // getPositions may revert (internal on some deployments) — that's fine,
   // we use getState to discover the dopplerHook and call getPosition as fallback.
@@ -583,25 +661,9 @@ async function repairDHookBatch({ client, stateView, blockNumber, pools }) {
       }
     }
 
-    // Last resort: clamp negative reserves to 0
-    const r0 = BigInt(pool.reserves0);
-    const r1 = BigInt(pool.reserves1);
-    results.push({
-      update: {
-        address: pool.address,
-        chainId: Number(pool.chain_id),
-        type: pool.type,
-        oldReserves0: r0,
-        oldReserves1: r1,
-        reserves0: r0 > 0n ? r0 : 0n,
-        reserves1: r1 > 0n ? r1 : 0n,
-        oldTick: Number(pool.tick),
-        tick,
-        sqrtPriceX96,
-        liquidity: BigInt(pool.liquidity),
-        positionCount: -1,
-      },
-    });
+    // Last resort: position ledger from DB, then clamp
+    const ledgerResult = repairFromLedger({ databaseUrl, schema, pool, tick, sqrtPriceX96 });
+    results.push(ledgerResult ?? clampUpdate(pool, tick, sqrtPriceX96));
   }
 
   // Pass 2: getPosition on the dopplerHook for pools where getPositions failed
@@ -625,25 +687,9 @@ async function repairDHookBatch({ client, stateView, blockNumber, pools }) {
         const reserves = computeReservesFromPositions(positions, tick);
         results.push({ update: makeUpdate(pool, reserves, tick, sqrtPriceX96, positions.length) });
       } else {
-        // getPosition also failed — clamp to 0
-        const r0 = BigInt(pool.reserves0);
-        const r1 = BigInt(pool.reserves1);
-        results.push({
-          update: {
-            address: pool.address,
-            chainId: Number(pool.chain_id),
-            type: pool.type,
-            oldReserves0: r0,
-            oldReserves1: r1,
-            reserves0: r0 > 0n ? r0 : 0n,
-            reserves1: r1 > 0n ? r1 : 0n,
-            oldTick: Number(pool.tick),
-            tick,
-            sqrtPriceX96,
-            liquidity: BigInt(pool.liquidity),
-            positionCount: -1,
-          },
-        });
+        // getPosition also failed — try position ledger, then clamp
+        const ledgerResult = repairFromLedger({ databaseUrl, schema, pool, tick, sqrtPriceX96 });
+        results.push(ledgerResult ?? clampUpdate(pool, tick, sqrtPriceX96));
       }
     }
   }
@@ -931,6 +977,8 @@ async function main() {
         stateView: args.stateView,
         blockNumber,
         pools: batch,
+        databaseUrl: args.databaseUrl,
+        schema: args.schema,
       }).catch((error) => batch.map((pool) => ({ pool, error })));
 
       for (const result of batchResults) {
