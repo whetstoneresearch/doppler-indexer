@@ -395,6 +395,7 @@ function buildColumnMap(columns) {
     quoteToken: pickColumn(columns, ["quote_token", "quoteToken"], false),
     poolKey: pickColumn(columns, ["pool_key", "poolKey"], false),
     initializer: pickColumn(columns, ["initializer"], false),
+    lastSwapTimestamp: pickColumn(columns, ["last_swap_timestamp", "lastSwapTimestamp"], false),
   };
 }
 
@@ -413,10 +414,11 @@ function loadPools({ databaseUrl, table, columns, chainId, types, all, includeZe
     const r0 = qi(columns.reserves0.name);
     const r1 = qi(columns.reserves1.name);
     const negative = `(${r0}::numeric < 0 or ${r1}::numeric < 0)`;
-    if (includeZeroed) {
+    if (includeZeroed && columns.lastSwapTimestamp) {
       const typ = qi(columns.type.name);
+      const swapped = `${qi(columns.lastSwapTimestamp.name)} is not null`;
       filters.push(
-        `(${negative} or (${r0}::numeric = 0 and ${r1}::numeric = 0 and lower(${typ}::text) in ('dhook', 'rehype', 'v4')))`,
+        `(${negative} or (${r0}::numeric = 0 and ${r1}::numeric = 0 and lower(${typ}::text) in ('dhook', 'rehype', 'v4') and ${swapped}))`,
       );
     } else {
       filters.push(negative);
