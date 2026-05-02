@@ -401,7 +401,7 @@ function loadPools({ databaseUrl, table, columns, chainId, types, all, limit }) 
 
   if (!all) {
     filters.push(
-      `(${qi(columns.reserves0.name)}::numeric < 0 or ${qi(columns.reserves1.name)}::numeric < 0)`,
+      `(${qi(columns.reserves0.name)}::numeric < 0 or ${qi(columns.reserves1.name)}::numeric < 0 or (${qi(columns.reserves0.name)}::numeric = 0 and ${qi(columns.reserves1.name)}::numeric = 0))`,
     );
   }
 
@@ -808,7 +808,7 @@ async function repairV4Batch({ client, stateView, blockNumber, pools, databaseUr
   return pools.map((pool, i) => {
     const r0 = BigInt(pool.reserves0);
     const r1 = BigInt(pool.reserves1);
-    if (r0 >= 0n && r1 >= 0n) return null;
+    if (r0 > 0n && r1 > 0n) return null;
 
     const slot0R = slot0Results[i];
     const tick = slot0R?.status === "success" ? Number(slot0R.result[1]) : Number(pool.tick);
@@ -817,7 +817,8 @@ async function repairV4Batch({ client, stateView, blockNumber, pools, databaseUr
     const ledgerResult = repairFromLedger({ databaseUrl, schema, pool, tick, sqrtPriceX96 });
     if (ledgerResult) return ledgerResult;
 
-    return clampUpdate(pool, tick, sqrtPriceX96);
+    if (r0 < 0n || r1 < 0n) return clampUpdate(pool, tick, sqrtPriceX96);
+    return null;
   }).filter(Boolean);
 }
 
