@@ -162,9 +162,21 @@ export const insertTokenIfNotExists = async ({
     let vestingStart: bigint | undefined;
     let vestingDuration: bigint | undefined;
     let vestedTotalAmount: bigint | undefined;
+    let isBalanceLimitActive: boolean | undefined;
+    let balanceLimitEnd: bigint | undefined;
+    let maxBalanceLimit: bigint | undefined;
+    let balanceLimitController: Address | undefined;
 
     if (isDerc20) {
-      const [vestingStartResult, vestingDurationResult, vestedTotalAmountResult] =
+      const [
+        vestingStartResult,
+        vestingDurationResult,
+        vestedTotalAmountResult,
+        isBalanceLimitActiveResult,
+        balanceLimitEndResult,
+        maxBalanceLimitResult,
+        balanceLimitControllerResult,
+      ] =
         await context.client.multicall({
           contracts: [
             {
@@ -182,6 +194,26 @@ export const insertTokenIfNotExists = async ({
               address,
               functionName: "vestedTotalAmount",
             },
+            {
+              abi: DERC20ABI,
+              address,
+              functionName: "isBalanceLimitActive",
+            },
+            {
+              abi: DERC20ABI,
+              address,
+              functionName: "balanceLimitEnd",
+            },
+            {
+              abi: DERC20ABI,
+              address,
+              functionName: "maxBalanceLimit",
+            },
+            {
+              abi: DERC20ABI,
+              address,
+              functionName: "controller",
+            },
           ],
           ...multicallOptions,
         });
@@ -194,6 +226,18 @@ export const insertTokenIfNotExists = async ({
       }
       if (vestedTotalAmountResult?.status === "success") {
         vestedTotalAmount = vestedTotalAmountResult.result;
+      }
+      if (isBalanceLimitActiveResult?.status === "success") {
+        isBalanceLimitActive = isBalanceLimitActiveResult.result;
+      }
+      if (balanceLimitEndResult?.status === "success") {
+        balanceLimitEnd = BigInt(balanceLimitEndResult.result);
+      }
+      if (maxBalanceLimitResult?.status === "success") {
+        maxBalanceLimit = maxBalanceLimitResult.result;
+      }
+      if (balanceLimitControllerResult?.status === "success") {
+        balanceLimitController = balanceLimitControllerResult.result.toLowerCase() as Address;
       }
     }
 
@@ -261,6 +305,10 @@ export const insertTokenIfNotExists = async ({
         vestingStart,
         vestingDuration,
         vestedTotalAmount,
+        isBalanceLimitActive,
+        balanceLimitEnd,
+        maxBalanceLimit,
+        balanceLimitController,
         tokenUri: tokenURIResult?.result ?? "",
         image: image ?? "",
       })
