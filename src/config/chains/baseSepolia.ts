@@ -69,7 +69,7 @@ export const baseSepoliaConfig: ChainConfig = {
         "0xF84378C9F39e0FF267f3101c88773359c5393876"
       ] as Address[],
       v4ScheduledMulticurveInitializerHook:
-        "0x5d663f9c993deff2d17ce4232d75f347df7dadc0" as Address,
+        "0xc6a562cb5CbFA29BCB1bDCCF903b8B8f2E4A2DC0" as Address,
       DecayMulticurveInitializer: [
         "0xd59ce43e53d69f190e15d9822fb4540dccc91178",
         "0x8652ee6a8e0002d38ef1ab204782227c7723a292"
@@ -110,6 +110,7 @@ export const baseSepoliaConfig: ChainConfig = {
     shared: {
       airlock: "0x3411306ce66c9469bff1535ba955503c4bde1c6e" as Address,
       tokenFactory: "0xc69ba223c617f7d936b3cf2012aa644815dbe9ff" as Address,
+      dn404Factory: "0x98b0Aa2e0f134dbB3eb157b5646D387E6D55243a" as Address,
       universalRouter: "0x492e6456d9528771018deb9e87ef7750ef184104" as Address,
       governanceFactory:
         "0x9dbfaadc8c0cb2c34ba698dd9426555336992e20" as Address,

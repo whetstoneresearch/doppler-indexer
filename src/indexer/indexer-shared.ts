@@ -12,6 +12,29 @@ import { fetchExistingPool, updatePool, updatePoolDirect } from "./shared/entiti
 import { zeroAddress } from "viem";
 import { getV4MigratorForAsset, getDHookMigratorForAsset } from "@app/utils/v4-utils";
 import { isPrecompileAddress } from "@app/utils/validation";
+import { readDN404TokenData } from "./shared/entities/dn404";
+
+ponder.on("DN404Factory:DN404Created", async ({ event, context }) => {
+  const { timestamp } = event.block;
+  const tokenAddress = event.args.token.toLowerCase() as `0x${string}`;
+  const mirrorAddress = event.args.collection.toLowerCase() as `0x${string}`;
+  const creatorAddress = event.args.owner.toLowerCase() as `0x${string}`;
+
+  const dn404Data = await readDN404TokenData({
+    tokenAddress,
+    mirrorAddress,
+    context,
+  });
+
+  await insertTokenIfNotExists({
+    tokenAddress,
+    creatorAddress,
+    timestamp,
+    context,
+    isDerc20: true,
+    dn404Data,
+  });
+});
 
 ponder.on("Airlock:Migrate", async ({ event, context }) => {
   const { timestamp } = event.block;
