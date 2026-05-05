@@ -10,7 +10,7 @@ import { pool, token, asset } from "ponder:schema";
 import { Address } from "viem";
 import { getQuoteInfo } from "@app/utils/getQuoteInfo";
 import { computeReservesFromPositions } from "@app/utils/v4-utils/computeReservesFromPositions";
-import { upsertPositionLedger, getPositionsForPool } from "./shared/entities/positionLedger";
+import { getPositionsForPool } from "./shared/entities/positionLedger";
 import { PoolKey } from "@app/types/v4-types";
 import { getDHookPoolData } from "@app/utils/dhook-utils";
 import { StateViewABI, DopplerHookInitializerABI, DopplerHookMigratorABI, RehypeDopplerHookInitializerABI } from "@app/abis";
@@ -406,7 +406,7 @@ ponder.on("DopplerHookInitializer:Swap", async ({ event, context }) => {
 });
 
 ponder.on("DopplerHookInitializer:ModifyLiquidity", async ({ event, context }) => {
-  const { key: poolKeyTuple, params } = event.args;
+  const { key: poolKeyTuple } = event.args;
   const timestamp = event.block.timestamp;
   const { chain, client, db } = context;
 
@@ -425,16 +425,7 @@ ponder.on("DopplerHookInitializer:ModifyLiquidity", async ({ event, context }) =
   const computedPoolId = getPoolId(poolKey);
   const poolAddress = computedPoolId.toLowerCase() as `0x${string}`;
 
-  const { tickLower, tickUpper, liquidityDelta } = params;
-
-  // Always upsert the position ledger — ModifyLiquidity fires before Create
-  await upsertPositionLedger({
-    poolId: poolAddress,
-    tickLower,
-    tickUpper,
-    liquidityDelta,
-    context,
-  });
+  // Position ledger is upserted by the PoolManager:ModifyLiquidity handler.
 
   const poolEntity = await db.find(pool, {
     address: poolAddress,

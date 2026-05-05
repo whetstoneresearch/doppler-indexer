@@ -801,8 +801,7 @@ ponder.on("PoolManager:Swap", async ({ event, context }) => {
 });
 
 ponder.on("UniswapV4MigratorHook:ModifyLiquidity", async ({ event, context }) => {
-  const { key, params } = event.args;
-  const { tickLower, tickUpper, liquidityDelta } = params;
+  const { key } = event.args;
   const { timestamp } = event.block;
 
   if (isPrecompileAddress(key.currency0) || isPrecompileAddress(key.currency1)) {
@@ -817,14 +816,7 @@ ponder.on("UniswapV4MigratorHook:ModifyLiquidity", async ({ event, context }) =>
     hooks: key.hooks,
   });
 
-  // Always upsert ledger before pool lookup
-  await upsertPositionLedger({
-    poolId: poolId as `0x${string}`,
-    tickLower: Number(tickLower),
-    tickUpper: Number(tickUpper),
-    liquidityDelta,
-    context,
-  });
+  // Position ledger is upserted by the PoolManager:ModifyLiquidity handler.
 
   const v4Pool = await fetchV4MigrationPool({
     poolId: poolId as `0x${string}`,
@@ -1006,6 +998,17 @@ ponder.on("PoolManager:Initialize", async ({ event, context }) => {
       sqrtPriceX96: sqrtPriceX96,
       lastRefreshed: timestamp,
     },
+  });
+});
+
+ponder.on("PoolManager:ModifyLiquidity", async ({ event, context }) => {
+  const { id, tickLower, tickUpper, liquidityDelta } = event.args;
+  await upsertPositionLedger({
+    poolId: (id as string).toLowerCase() as `0x${string}`,
+    tickLower: Number(tickLower),
+    tickUpper: Number(tickUpper),
+    liquidityDelta,
+    context,
   });
 });
 
