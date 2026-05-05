@@ -37,6 +37,7 @@ export interface ChainAddresses {
 export interface SharedAddresses {
   airlock: Address;
   tokenFactory: Address;
+  dn404Factory?: Address;
   universalRouter: Address;
   governanceFactory: Address;
   // TODO: make required?

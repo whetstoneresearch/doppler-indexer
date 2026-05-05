@@ -6,6 +6,7 @@ import {
   UniswapV3PoolABI,
   AirlockABI,
   DERC20ABI,
+  DN404FactoryABI,
   DopplerABI,
   PoolManagerABI,
   UniswapV2PairABI,
@@ -70,6 +71,10 @@ export default createConfig({
     },
   },
   contracts: {
+    DN404Factory: {
+      abi: DN404FactoryABI,
+      chain: {},
+    },
     Airlock: {
       abi: AirlockABI,
       chain: {

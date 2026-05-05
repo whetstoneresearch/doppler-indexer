@@ -4,6 +4,7 @@ import { getMulticallOptions } from "@app/core/utils";
 import { Context } from "ponder:registry";
 import { token } from "ponder:schema";
 import { Address, zeroAddress } from "viem";
+import { readDN404TokenData } from "./dn404";
 
 /**
  * Optimized version that combines insert and update in a single operation
@@ -31,6 +32,17 @@ export const upsertTokenWithPool = async ({
 }): Promise<typeof token.$inferSelect> => {
   const { db, chain, client } = context;
   const address = tokenAddress.toLowerCase() as `0x${string}`;
+  const existingToken = await db.find(token, {
+    address,
+    chainId: chain.id,
+  });
+  const dn404Data = existingToken?.tokenVariant === "doppler404"
+    ? await readDN404TokenData({
+      tokenAddress: address,
+      mirrorAddress: existingToken.dn404MirrorAddress,
+      context,
+    })
+    : null;
 
   const wethAddress = chainConfigs[chain.name]?.addresses?.shared?.weth;
   const zoraAddress = chainConfigs[chain.name]?.addresses?.zora?.zoraToken;
@@ -46,6 +58,7 @@ export const upsertTokenWithPool = async ({
     creatorAddress: creatorAddress.toLowerCase() as `0x${string}`,
     firstSeenAt: timestamp,
     lastSeenAt: timestamp,
+    ...(dn404Data ?? {}),
   };
 
   if (
@@ -145,6 +158,7 @@ export const upsertTokenWithPool = async ({
         isContentCoin,
         creatorCoinPid: creatorCoinPid ? creatorCoinPid.toLowerCase() as `0x${string}` : null,
         lastSeenAt: timestamp,
+        ...(dn404Data ?? {}),
         // Keep existing totalSupply if it's already set
         totalSupply: existing.totalSupply || tokenData.totalSupply,
         isBalanceLimitActive: tokenData.isBalanceLimitActive,
