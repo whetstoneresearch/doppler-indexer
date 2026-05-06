@@ -495,8 +495,8 @@ export default createConfig({
         monad: {
           startBlock: monad.startBlock,
           address: factory({
-            address: monad.addresses.v4.v4ScheduledMulticurveInitializer,
-            event: getAbiItem({ abi: UniswapV4ScheduledMulticurveInitializerABI, name: "Create"}),
+            address: monad.addresses.v4.v4Initializer,
+            event: getAbiItem({ abi: UniswapV4InitializerABI, name: "Create"}),
             parameter: "poolOrHook"
           }),
         },

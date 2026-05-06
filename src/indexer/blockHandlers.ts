@@ -1,4 +1,4 @@
-import { ponder } from "ponder:registry";
+import { onIndexerEvent } from "./entrypoint";
 import { ChainlinkOracleABI } from "@app/abis/ChainlinkOracleABI";
 import { ethPrice, zoraUsdcPrice, fxhWethPrice, noiceWethPrice, monadUsdcPrice, eurcUsdcPrice, bankrWethPrice, usdcPrice, usdtPrice } from "ponder.schema";
 import { UniswapV3PoolABI } from "@app/abis/v3-abis/UniswapV3PoolABI";
@@ -7,7 +7,7 @@ import { PriceService } from "@app/core";
 import { chainConfigs } from "@app/config";
 import { parseUnits, zeroAddress, createPublicClient, http, numberToHex } from "viem";
 
-ponder.on("BaseChainlinkEthPriceFeed:block", async ({ event, context }) => {
+onIndexerEvent("BaseChainlinkEthPriceFeed:block", async ({ event, context }) => {
   const { db, client, chain } = context;
   const { timestamp } = event.block;
 
@@ -32,7 +32,7 @@ ponder.on("BaseChainlinkEthPriceFeed:block", async ({ event, context }) => {
     .onConflictDoNothing();
 });
 
-ponder.on("MainnetChainlinkEthPriceFeed:block", async ({ event, context }) => {
+onIndexerEvent("MainnetChainlinkEthPriceFeed:block", async ({ event, context }) => {
   const { db, client, chain } = context;
   const { timestamp } = event.block;
 
@@ -57,7 +57,7 @@ ponder.on("MainnetChainlinkEthPriceFeed:block", async ({ event, context }) => {
     .onConflictDoNothing();
 });
 
-ponder.on("SepoliaChainlinkEthPriceFeed:block", async ({ event, context }) => {
+onIndexerEvent("SepoliaChainlinkEthPriceFeed:block", async ({ event, context }) => {
   const { db, client, chain } = context;
   const { timestamp } = event.block;
 
@@ -82,7 +82,7 @@ ponder.on("SepoliaChainlinkEthPriceFeed:block", async ({ event, context }) => {
     .onConflictDoNothing();
 });
 
-ponder.on("UnichainChainlinkEthPriceFeed:block", async ({ event, context }) => {
+onIndexerEvent("UnichainChainlinkEthPriceFeed:block", async ({ event, context }) => {
   const { db, client, chain } = context;
   const { timestamp } = event.block;
 
@@ -107,7 +107,7 @@ ponder.on("UnichainChainlinkEthPriceFeed:block", async ({ event, context }) => {
     .onConflictDoNothing();
 });
 
-ponder.on("InkChainlinkEthPriceFeed:block", async ({ event, context }) => {
+onIndexerEvent("InkChainlinkEthPriceFeed:block", async ({ event, context }) => {
   const { db, client, chain } = context;
   const { timestamp } = event.block;
 
@@ -132,7 +132,7 @@ ponder.on("InkChainlinkEthPriceFeed:block", async ({ event, context }) => {
     .onConflictDoNothing();
 });
 
-ponder.on("MonadChainlinkEthPriceFeed:block", async ({ event, context }) => {
+onIndexerEvent("MonadChainlinkEthPriceFeed:block", async ({ event, context }) => {
   const { db, client, chain } = context;
   const { timestamp } = event.block;
 
@@ -157,7 +157,7 @@ ponder.on("MonadChainlinkEthPriceFeed:block", async ({ event, context }) => {
     .onConflictDoNothing();
 });
 
-ponder.on("ZoraUsdcPrice:block", async ({ event, context }) => {
+onIndexerEvent("ZoraUsdcPrice:block", async ({ event, context }) => {
   const { db, client, chain } = context;
   const { timestamp, number: blockNumber } = event.block;
   const poolAddress = chainConfigs[chain.name].addresses.zora.zoraTokenPool;
@@ -231,7 +231,7 @@ ponder.on("ZoraUsdcPrice:block", async ({ event, context }) => {
   }
 });
 
-ponder.on(
+onIndexerEvent(
   "BaseSepoliaChainlinkEthPriceFeed:block",
   async ({ event, context }) => {
     const { db, client, chain } = context;
@@ -259,7 +259,7 @@ ponder.on(
   }
 );
 
-ponder.on("FxhWethPrice:block", async ({ event, context }) => {
+onIndexerEvent("FxhWethPrice:block", async ({ event, context }) => {
   const { db, client, chain } = context;
   const { timestamp } = event.block;
 
@@ -291,7 +291,7 @@ ponder.on("FxhWethPrice:block", async ({ event, context }) => {
     .onConflictDoNothing();
 });
 
-ponder.on("NoiceWethPrice:block", async ({ event, context }) => {
+onIndexerEvent("NoiceWethPrice:block", async ({ event, context }) => {
   const { db, client, chain } = context;
   const { timestamp } = event.block;
 
@@ -323,7 +323,7 @@ ponder.on("NoiceWethPrice:block", async ({ event, context }) => {
     .onConflictDoNothing();
 });
 
-ponder.on("MonadUsdcPrice:block", async ({ event, context }) => {
+onIndexerEvent("MonadUsdcPrice:block", async ({ event, context }) => {
   const { db, client, chain } = context;
   const { timestamp, number: blockNumber } = event.block;
   
@@ -383,7 +383,7 @@ ponder.on("MonadUsdcPrice:block", async ({ event, context }) => {
     .onConflictDoNothing();
 });
 
-ponder.on("EurcUsdcPrice:block", async ({ event, context }) => {
+onIndexerEvent("EurcUsdcPrice:block", async ({ event, context }) => {
   const { db, client, chain } = context;
   const { timestamp } = event.block;
   
@@ -424,7 +424,7 @@ ponder.on("EurcUsdcPrice:block", async ({ event, context }) => {
   }
 });
 
-ponder.on("BankrWethPrice:block", async ({ event, context }) => {
+onIndexerEvent("BankrWethPrice:block", async ({ event, context }) => {
   const { db, client, chain } = context;
   const { timestamp } = event.block;
 

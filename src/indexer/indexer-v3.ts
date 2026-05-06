@@ -2,7 +2,7 @@ import { PriceService, SwapOrchestrator, SwapService, MarketDataService } from "
 import { CHAINLINK_ETH_DECIMALS, WAD } from "@app/utils/constants";
 import { computeGraduationThresholdDelta } from "@app/utils/v3-utils/computeGraduationThreshold";
 import { isPrecompileAddress } from "@app/utils/validation";
-import { ponder } from "ponder:registry";
+import { onIndexerEvent } from "./entrypoint";
 import {
   insertLockableV3PoolIfNotExists,
   insertPoolIfNotExists,
@@ -19,7 +19,7 @@ import { fetchV3MigrationPool, updateMigrationPool } from "./shared/entities/mig
 import { insertAssetIfNotExists, updateAsset } from "./shared/entities";
 import { LockableUniswapV3InitializerABI, UniswapV3PoolABI } from "@app/abis";
 
-ponder.on("UniswapV3Initializer:Create", async ({ event, context }) => {
+onIndexerEvent("UniswapV3Initializer:Create", async ({ event, context }) => {
   const { poolOrHook, asset, numeraire } = event.args;
   const timestamp = event.block.timestamp;
 
@@ -68,7 +68,7 @@ ponder.on("UniswapV3Initializer:Create", async ({ event, context }) => {
   });
 });
 
-ponder.on("LockableUniswapV3Initializer:Create", async ({ event, context }) => {
+onIndexerEvent("LockableUniswapV3Initializer:Create", async ({ event, context }) => {
   const { poolOrHook, asset, numeraire } = event.args;
   const timestamp = event.block.timestamp;
 
@@ -123,7 +123,7 @@ ponder.on("LockableUniswapV3Initializer:Create", async ({ event, context }) => {
   });
 });
 
-ponder.on("LockableUniswapV3Initializer:Lock", async ({ event, context }) => {
+onIndexerEvent("LockableUniswapV3Initializer:Lock", async ({ event, context }) => {
   const { pool } = event.args;
 
   await updatePool({
@@ -135,7 +135,7 @@ ponder.on("LockableUniswapV3Initializer:Lock", async ({ event, context }) => {
   });
 });
 
-ponder.on("LockableUniswapV3Pool:Mint", async ({ event, context }) => {
+onIndexerEvent("LockableUniswapV3Pool:Mint", async ({ event, context }) => {
   const address = event.log.address.toLowerCase() as `0x${string}`;
   const { tickLower, tickUpper, amount, owner, amount0, amount1 } = event.args;
   const timestamp = event.block.timestamp;  
@@ -214,7 +214,7 @@ ponder.on("LockableUniswapV3Pool:Mint", async ({ event, context }) => {
   }
 });
 
-ponder.on("LockableUniswapV3Pool:Burn", async ({ event, context }) => {
+onIndexerEvent("LockableUniswapV3Pool:Burn", async ({ event, context }) => {
   const address = event.log.address.toLowerCase() as `0x${string}`;
   const timestamp = event.block.timestamp;
   const { tickLower, tickUpper, owner, amount, amount0, amount1 } = event.args;
@@ -289,7 +289,7 @@ ponder.on("LockableUniswapV3Pool:Burn", async ({ event, context }) => {
   ]);
 });
 
-ponder.on("LockableUniswapV3Pool:Swap", async ({ event, context }) => {
+onIndexerEvent("LockableUniswapV3Pool:Swap", async ({ event, context }) => {
   const address = event.log.address.toLowerCase() as `0x${string}`;
   const timestamp = event.block.timestamp;
   const { amount0, amount1, sqrtPriceX96 } = event.args;
@@ -471,7 +471,7 @@ ponder.on("LockableUniswapV3Pool:Swap", async ({ event, context }) => {
   ]);
 });
 
-ponder.on("UniswapV3Pool:Mint", async ({ event, context }) => {
+onIndexerEvent("UniswapV3Pool:Mint", async ({ event, context }) => {
   const address = event.log.address.toLowerCase() as `0x${string}`;
   const { tickLower, tickUpper, amount, owner, amount0, amount1 } = event.args;
   const timestamp = event.block.timestamp;  
@@ -561,7 +561,7 @@ ponder.on("UniswapV3Pool:Mint", async ({ event, context }) => {
   }
 });
 
-ponder.on("UniswapV3Pool:Burn", async ({ event, context }) => {
+onIndexerEvent("UniswapV3Pool:Burn", async ({ event, context }) => {
   const address = event.log.address.toLowerCase() as `0x${string}`;
   const timestamp = event.block.timestamp;
   const { tickLower, tickUpper, owner, amount, amount0, amount1 } = event.args;  
@@ -647,7 +647,7 @@ ponder.on("UniswapV3Pool:Burn", async ({ event, context }) => {
   ]);
 });
 
-ponder.on("UniswapV3Pool:Swap", async ({ event, context }) => {
+onIndexerEvent("UniswapV3Pool:Swap", async ({ event, context }) => {
   const { chain } = context;
   const address = event.log.address.toLowerCase() as `0x${string}`;
   const timestamp = event.block.timestamp;
@@ -836,7 +836,7 @@ ponder.on("UniswapV3Pool:Swap", async ({ event, context }) => {
   ]);
 });
 
-ponder.on("MigrationPool:Swap(address indexed sender, address indexed recipient, int256 amount0, int256 amount1, uint160 sqrtPriceX96, uint128 liquidity, int24 tick)", async ({ event, context }) => {
+onIndexerEvent("MigrationPool:Swap(address indexed sender, address indexed recipient, int256 amount0, int256 amount1, uint160 sqrtPriceX96, uint128 liquidity, int24 tick)", async ({ event, context }) => {
   const { timestamp } = event.block;
   const { amount0, amount1, sqrtPriceX96 } = event.args;
   

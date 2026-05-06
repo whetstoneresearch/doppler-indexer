@@ -1,0 +1,387 @@
+import { createConfig, factory, mergeAbis } from "ponder";
+import { getAbiItem } from "viem";
+import {
+  UniswapV3InitializerABI,
+  UniswapV4InitializerABI,
+  UniswapV3PoolABI,
+  AirlockABI,
+  DERC20ABI,
+  DopplerABI,
+  PoolManagerABI,
+  UniswapV2PairABI,
+  ZoraFactoryABI,
+  ZoraV4HookABI,
+  ZoraCreatorCoinABI,
+  V4MigratorHookABI,
+  V4MigratorABI,
+  DopplerHookInitializerABI,
+  DopplerHookMigratorABI,
+  RehypeDopplerHookMigratorABI,
+} from "./src/abis";
+import { BLOCK_INTERVALS } from "./src/config/chains/constants";
+import { chainConfigs, CHAIN_IDS } from "./src/config/chains";
+import { LockableUniswapV3InitializerABI } from "@app/abis/v3-abis/LockableUniswapV3InitializerABI";
+import { UniswapV3MigratorAbi } from "@app/abis/v3-abis/UniswapV3Migrator";
+import { UniswapV4MulticurveInitializerHookABI } from "@app/abis/multicurve-abis/UniswapV4MulticurveInitializerHookABI";
+import { UniswapV4MulticurveInitializerABI } from "@app/abis/multicurve-abis/UniswapV4MulticurveInitializerABI";
+import { configureIndexerEntrypoint } from "./src/indexer/entrypointConfig";
+
+const { base, mainnet } = chainConfigs;
+
+// First blocks at or after 2026-05-05 12:00:00 UTC.
+const LOCAL_START_BLOCKS = {
+  mainnet: 25028663,
+  base: 45596527,
+} as const;
+
+const blocks = {
+    BaseChainlinkEthPriceFeed: {
+      chain: "base",
+      startBlock: LOCAL_START_BLOCKS.base,
+      interval: BLOCK_INTERVALS.FIVE_MINUTES,
+    },
+    MainnetChainlinkEthPriceFeed: {
+      chain: "mainnet",
+      startBlock: LOCAL_START_BLOCKS.mainnet,
+      interval: BLOCK_INTERVALS.FIFTY_BLOCKS,
+    },
+    ZoraUsdcPrice: {
+      chain: "base",
+      startBlock: LOCAL_START_BLOCKS.base,
+      interval: BLOCK_INTERVALS.FIVE_MINUTES,
+    },
+    FxhWethPrice: {
+      chain: "base",
+      startBlock: LOCAL_START_BLOCKS.base,
+      interval: BLOCK_INTERVALS.FIVE_MINUTES,
+    },
+    NoiceWethPrice: {
+      chain: "base",
+      startBlock: LOCAL_START_BLOCKS.base,
+      interval: BLOCK_INTERVALS.FIVE_MINUTES,
+    },
+    EurcUsdcPrice: {
+      chain: "base",
+      startBlock: LOCAL_START_BLOCKS.base,
+      interval: BLOCK_INTERVALS.FIVE_MINUTES,
+    },
+    BankrWethPrice: {
+      chain: "base",
+      startBlock: LOCAL_START_BLOCKS.base,
+      interval: BLOCK_INTERVALS.FIVE_MINUTES,
+    },
+
+} as const;
+
+const contracts = {
+    Airlock: {
+      abi: AirlockABI,
+      chain: {
+        base: {
+          startBlock: LOCAL_START_BLOCKS.base,
+          address: base.addresses.shared.airlock,
+        },
+        mainnet: {
+          startBlock: LOCAL_START_BLOCKS.mainnet,
+          address: mainnet.addresses.shared.airlock,
+        },
+      },
+    },
+    MigrationPool: {
+      abi: mergeAbis([UniswapV3PoolABI, UniswapV2PairABI]),
+      chain: {
+        base: {
+          startBlock: LOCAL_START_BLOCKS.base,
+          address: factory({
+            address: base.addresses.shared.airlock,
+            event: getAbiItem({ abi: AirlockABI, name: "Migrate" }),
+            parameter: "pool",
+          }),
+        },
+        mainnet: {
+          startBlock: LOCAL_START_BLOCKS.mainnet,
+          address: factory({
+            address: mainnet.addresses.shared.airlock,
+            event: getAbiItem({ abi: AirlockABI, name: "Migrate" }),
+            parameter: "pool",
+          }),
+        },
+      },
+    },
+    UniswapV3Initializer: {
+      abi: UniswapV3InitializerABI,
+      chain: {
+        base: {
+          startBlock: LOCAL_START_BLOCKS.base,
+          address: base.addresses.v3.v3Initializer,
+        },
+      },
+    },
+    DERC20: {
+      abi: DERC20ABI,
+      chain: {
+        base: {
+          startBlock: LOCAL_START_BLOCKS.base,
+          address: factory({
+            address: base.addresses.shared.airlock,
+            event: getAbiItem({ abi: AirlockABI, name: "Create" }),
+            parameter: "asset",
+          }),
+        },
+        mainnet: {
+          startBlock: LOCAL_START_BLOCKS.mainnet,
+          address: factory({
+            address: mainnet.addresses.shared.airlock,
+            event: getAbiItem({ abi: AirlockABI, name: "Create" }),
+            parameter: "asset",
+          }),
+        },
+      },
+    },
+    UniswapV3Migrator: {
+      abi: UniswapV3MigratorAbi,
+      chain: {
+        base: {
+          startBlock: LOCAL_START_BLOCKS.base,
+          address: base.addresses.v3.v3Migrator,
+        },
+      },
+    },
+    UniswapV3Pool: {
+      abi: UniswapV3PoolABI,
+      chain: {
+        base: {
+          startBlock: LOCAL_START_BLOCKS.base,
+          address: factory({
+            address: base.addresses.v3.v3Initializer,
+            event: getAbiItem({ abi: UniswapV3InitializerABI, name: "Create" }),
+            parameter: "poolOrHook",
+          }),
+        },
+      },
+    },
+    LockableUniswapV3Pool: {
+      abi: UniswapV3PoolABI,
+      chain: {
+        base: {
+          startBlock: LOCAL_START_BLOCKS.base,
+          address: factory({
+            address: base.addresses.v3.lockableV3Initializer,
+            event: getAbiItem({
+              abi: LockableUniswapV3InitializerABI,
+              name: "Create",
+            }),
+            parameter: "poolOrHook",
+          }),
+        },
+      },
+    },
+    PoolManager: {
+      abi: PoolManagerABI,
+      chain: {
+        base: {
+          startBlock: LOCAL_START_BLOCKS.base,
+          address: base.addresses.v4.poolManager,
+        },
+        mainnet: {
+          startBlock: LOCAL_START_BLOCKS.mainnet,
+          address: mainnet.addresses.v4.poolManager,
+        },
+      },
+    },
+    UniswapV4MigratorHook: {
+      abi: V4MigratorHookABI,
+      chain: {
+        base: {
+          startBlock: LOCAL_START_BLOCKS.base,
+          address: base.addresses.v4.v4MigratorHook,
+        },
+        mainnet: {
+          startBlock: LOCAL_START_BLOCKS.mainnet,
+          address: mainnet.addresses.v4.v4MigratorHook,
+        },
+      },
+    },
+    UniswapV4Migrator: {
+      abi: V4MigratorABI,
+      chain: {
+        base: {
+          startBlock: LOCAL_START_BLOCKS.base,
+          address: base.addresses.v4.v4Migrator,
+        },
+        mainnet: {
+          startBlock: LOCAL_START_BLOCKS.mainnet,
+          address: mainnet.addresses.v4.v4Migrator,
+        },
+      },
+    },
+    UniswapV4Pool: {
+      abi: DopplerABI,
+      chain: {
+        base: {
+          startBlock: LOCAL_START_BLOCKS.base,
+          address: factory({
+            address: base.addresses.v4.v4Initializer,
+            event: getAbiItem({ abi: UniswapV4InitializerABI, name: "Create" }),
+            parameter: "poolOrHook",
+          }),
+        },
+        mainnet: {
+          startBlock: LOCAL_START_BLOCKS.mainnet,
+          address: factory({
+            address: mainnet.addresses.v4.v4Initializer,
+            event: getAbiItem({ abi: UniswapV4InitializerABI, name: "Create" }),
+            parameter: "poolOrHook",
+          }),
+        },
+      },
+    },
+    UniswapV4Initializer: {
+      abi: UniswapV4InitializerABI,
+      chain: {
+        base: {
+          startBlock: LOCAL_START_BLOCKS.base,
+          address: base.addresses.v4.v4Initializer,
+        },
+        mainnet: {
+          startBlock: LOCAL_START_BLOCKS.mainnet,
+          address: mainnet.addresses.v4.v4Initializer,
+        },
+      },
+    },
+    LockableUniswapV3Initializer: {
+      abi: LockableUniswapV3InitializerABI,
+      chain: {
+        base: {
+          startBlock: LOCAL_START_BLOCKS.base,
+          address: base.addresses.v3.lockableV3Initializer,
+        },
+      },
+    },
+    ZoraFactory: {
+      abi: ZoraFactoryABI,
+      chain: {
+        base: {
+          startBlock: LOCAL_START_BLOCKS.base,
+          address: base.addresses.zora.zoraFactory,
+        },
+      },
+    },
+    ZoraCreatorCoinV4: {
+      abi: ZoraCreatorCoinABI,
+      chain: {
+        base: {
+          startBlock: LOCAL_START_BLOCKS.base,
+          address: factory({
+            address: base.addresses.zora.zoraFactory,
+            event: getAbiItem({
+              abi: ZoraFactoryABI,
+              name: "CreatorCoinCreated",
+            }),
+            parameter: "coin",
+          }),
+        },
+      },
+    },
+    ZoraV4CreatorCoinHook: {
+      abi: ZoraV4HookABI,
+      chain: {
+        base: {
+          startBlock: LOCAL_START_BLOCKS.base,
+          address: factory({
+            address: base.addresses.zora.zoraFactory,
+            event: getAbiItem({
+              abi: ZoraFactoryABI,
+              name: "CreatorCoinCreated",
+            }),
+            parameter: "poolKey.hooks",
+          }),
+        },
+      },
+    },
+    UniswapV4MulticurveInitializer: {
+      abi: UniswapV4MulticurveInitializerABI,
+      chain: {
+        base: {
+          startBlock: LOCAL_START_BLOCKS.base,
+          address: base.addresses.v4.v4MulticurveInitializer,
+        },
+      },
+    },
+    UniswapV4MulticurveInitializerHook: {
+      abi: UniswapV4MulticurveInitializerHookABI,
+      chain: {
+        base: {
+          startBlock: LOCAL_START_BLOCKS.base,
+          address: base.addresses.v4.v4MulticurveInitializerHook,
+        },
+      },
+    },
+    DecayMulticurveInitializer: {
+      abi: UniswapV4MulticurveInitializerABI,
+      chain: {
+        base: {
+          startBlock: LOCAL_START_BLOCKS.base,
+          address: base.addresses.v4.DecayMulticurveInitializer,
+        },
+      },
+    },
+    DecayMulticurveInitializerHook: {
+      abi: UniswapV4MulticurveInitializerHookABI,
+      chain: {
+        base: {
+          startBlock: LOCAL_START_BLOCKS.base,
+          address: base.addresses.v4.DecayMulticurveInitializerHook,
+        },
+      },
+    },
+    DopplerHookInitializer: {
+      abi: DopplerHookInitializerABI,
+      chain: {
+        base: {
+          startBlock: LOCAL_START_BLOCKS.base,
+          address: base.addresses.v4.DopplerHookInitializer,
+        },
+        mainnet: {
+          startBlock: LOCAL_START_BLOCKS.mainnet,
+          address: mainnet.addresses.v4.DopplerHookInitializer,
+        },
+      },
+    },
+    DopplerHookMigrator: {
+      abi: DopplerHookMigratorABI,
+      chain: {},
+    },
+    RehypeDopplerHookMigrator: {
+      abi: RehypeDopplerHookMigratorABI,
+      chain: {},
+    },
+
+} as const;
+
+configureIndexerEntrypoint({
+  sources: [...Object.keys(blocks), ...Object.keys(contracts)],
+});
+
+export default createConfig({
+  database: {
+    kind: "postgres",
+    connectionString: process.env.DATABASE_URL,
+    poolConfig: {
+      max: 100,
+    },
+  },
+  ordering: "multichain",
+  chains: {
+    mainnet: {
+      id: CHAIN_IDS.mainnet,
+      rpc: process.env.PONDER_RPC_URL_1,
+    },
+    base: {
+      id: CHAIN_IDS.base,
+      rpc: process.env.PONDER_RPC_URL_8453,
+    },
+  },
+  blocks,
+  contracts,
+});

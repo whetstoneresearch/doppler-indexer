@@ -8,6 +8,7 @@
     "dev": "ponder dev",
     "start": "ponder start",
     "db": "ponder db",
+    "db:local-compat": "docker compose exec -T doppler-indexer-database psql -U postgres -d default -v ON_ERROR_STOP=1 -f - < scripts/create-local-compat-views.sql",
     "codegen": "ponder codegen",
     "lint": "eslint .",
     "typecheck": "tsc",
