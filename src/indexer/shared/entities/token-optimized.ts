@@ -96,6 +96,42 @@ export const upsertTokenWithPool = async ({
       derc20Data: isDerc20 ? address : undefined,
       tokenUri: tokenURIResult?.result ?? "",
     };
+
+    if (isDerc20) {
+      const [
+        vestingStartResult,
+        vestingDurationResult,
+        vestedTotalAmountResult,
+        isBalanceLimitActiveResult,
+        balanceLimitEndResult,
+        maxBalanceLimitResult,
+        balanceLimitControllerResult,
+      ] = await client.multicall({
+        contracts: [
+          { abi: DERC20ABI, address, functionName: "vestingStart" },
+          { abi: DERC20ABI, address, functionName: "vestingDuration" },
+          { abi: DERC20ABI, address, functionName: "vestedTotalAmount" },
+          { abi: DERC20ABI, address, functionName: "isBalanceLimitActive" },
+          { abi: DERC20ABI, address, functionName: "balanceLimitEnd" },
+          { abi: DERC20ABI, address, functionName: "maxBalanceLimit" },
+          { abi: DERC20ABI, address, functionName: "controller" },
+        ],
+        ...multicallOptions,
+      });
+
+      tokenData = {
+        ...tokenData,
+        vestingStart: vestingStartResult.status === "success" ? vestingStartResult.result : undefined,
+        vestingDuration: vestingDurationResult.status === "success" ? vestingDurationResult.result : undefined,
+        vestedTotalAmount: vestedTotalAmountResult.status === "success" ? vestedTotalAmountResult.result : undefined,
+        isBalanceLimitActive: isBalanceLimitActiveResult.status === "success" ? isBalanceLimitActiveResult.result : undefined,
+        balanceLimitEnd: balanceLimitEndResult.status === "success" ? BigInt(balanceLimitEndResult.result) : undefined,
+        maxBalanceLimit: maxBalanceLimitResult.status === "success" ? maxBalanceLimitResult.result : undefined,
+        balanceLimitController: balanceLimitControllerResult.status === "success"
+          ? balanceLimitControllerResult.result.toLowerCase() as `0x${string}`
+          : undefined,
+      };
+    }
   }
 
   if (poolAddress) {
@@ -111,6 +147,10 @@ export const upsertTokenWithPool = async ({
         lastSeenAt: timestamp,
         // Keep existing totalSupply if it's already set
         totalSupply: existing.totalSupply || tokenData.totalSupply,
+        isBalanceLimitActive: tokenData.isBalanceLimitActive,
+        balanceLimitEnd: tokenData.balanceLimitEnd,
+        maxBalanceLimit: tokenData.maxBalanceLimit,
+        balanceLimitController: tokenData.balanceLimitController,
       }));
   } else {
     return await db

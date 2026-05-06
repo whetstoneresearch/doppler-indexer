@@ -36,6 +36,12 @@ export const token = onchainTable(
     vestingStart: t.bigint(),
     vestingDuration: t.bigint(),
     vestedTotalAmount: t.bigint(),
+    isBalanceLimitActive: t.boolean(),
+    balanceLimitEnd: t.bigint(),
+    maxBalanceLimit: t.bigint(),
+    balanceLimitController: t.hex(),
+    balanceLimitDisabledAt: t.bigint(),
+    balanceLimitDisabledExpired: t.boolean(),
     firstSeenAt: t.bigint().notNull(),
     lastSeenAt: t.bigint().notNull(),
     pool: t.hex(),
@@ -53,6 +59,69 @@ export const token = onchainTable(
     chainIdIdx: index().on(table.chainId),
     poolIdx: index().on(table.pool),
     symbolIdx: index().on(table.symbol),
+  })
+);
+
+export const tokenVestingSchedule = onchainTable(
+  "token_vesting_schedule",
+  (t) => ({
+    token: t.hex().notNull(),
+    chainId: t.integer().notNull(),
+    scheduleId: t.bigint().notNull(),
+    cliff: t.bigint().notNull(),
+    duration: t.bigint().notNull(),
+    createdAt: t.bigint().notNull(),
+  }),
+  (table) => ({
+    pk: primaryKey({
+      columns: [table.token, table.chainId, table.scheduleId],
+    }),
+    tokenIdx: index().on(table.token),
+    chainIdIdx: index().on(table.chainId),
+  })
+);
+
+export const tokenVestingAllocation = onchainTable(
+  "token_vesting_allocation",
+  (t) => ({
+    token: t.hex().notNull(),
+    chainId: t.integer().notNull(),
+    beneficiary: t.hex().notNull(),
+    scheduleId: t.bigint().notNull(),
+    allocatedAmount: t.bigint().notNull(),
+    releasedAmount: t.bigint().notNull().default(0n),
+    createdAt: t.bigint().notNull(),
+    lastReleasedAt: t.bigint(),
+  }),
+  (table) => ({
+    pk: primaryKey({
+      columns: [table.token, table.chainId, table.beneficiary, table.scheduleId],
+    }),
+    tokenIdx: index().on(table.token),
+    beneficiaryIdx: index().on(table.beneficiary),
+    scheduleIdx: index().on(table.token, table.chainId, table.scheduleId),
+  })
+);
+
+export const tokenVestingRelease = onchainTable(
+  "token_vesting_release",
+  (t) => ({
+    txHash: t.hex().notNull(),
+    logIndex: t.integer().notNull(),
+    token: t.hex().notNull(),
+    chainId: t.integer().notNull(),
+    beneficiary: t.hex().notNull(),
+    scheduleId: t.bigint().notNull(),
+    amount: t.bigint().notNull(),
+    timestamp: t.bigint().notNull(),
+  }),
+  (table) => ({
+    pk: primaryKey({
+      columns: [table.txHash, table.logIndex, table.chainId],
+    }),
+    tokenIdx: index().on(table.token),
+    beneficiaryIdx: index().on(table.beneficiary),
+    scheduleIdx: index().on(table.token, table.chainId, table.scheduleId),
   })
 );
 
@@ -733,6 +802,42 @@ export const tokenRelations = relations(token, ({ one }) => ({
   derc20Data: one(asset, {
     fields: [token.derc20Data],
     references: [asset.address],
+  }),
+}));
+
+export const tokenVestingScheduleRelations = relations(tokenVestingSchedule, ({ one, many }) => ({
+  token: one(token, {
+    fields: [tokenVestingSchedule.token, tokenVestingSchedule.chainId],
+    references: [token.address, token.chainId],
+  }),
+  allocations: many(tokenVestingAllocation),
+  releases: many(tokenVestingRelease),
+}));
+
+export const tokenVestingAllocationRelations = relations(tokenVestingAllocation, ({ one, many }) => ({
+  token: one(token, {
+    fields: [tokenVestingAllocation.token, tokenVestingAllocation.chainId],
+    references: [token.address, token.chainId],
+  }),
+  schedule: one(tokenVestingSchedule, {
+    fields: [tokenVestingAllocation.token, tokenVestingAllocation.chainId, tokenVestingAllocation.scheduleId],
+    references: [tokenVestingSchedule.token, tokenVestingSchedule.chainId, tokenVestingSchedule.scheduleId],
+  }),
+  releases: many(tokenVestingRelease),
+}));
+
+export const tokenVestingReleaseRelations = relations(tokenVestingRelease, ({ one }) => ({
+  token: one(token, {
+    fields: [tokenVestingRelease.token, tokenVestingRelease.chainId],
+    references: [token.address, token.chainId],
+  }),
+  schedule: one(tokenVestingSchedule, {
+    fields: [tokenVestingRelease.token, tokenVestingRelease.chainId, tokenVestingRelease.scheduleId],
+    references: [tokenVestingSchedule.token, tokenVestingSchedule.chainId, tokenVestingSchedule.scheduleId],
+  }),
+  allocation: one(tokenVestingAllocation, {
+    fields: [tokenVestingRelease.token, tokenVestingRelease.chainId, tokenVestingRelease.beneficiary, tokenVestingRelease.scheduleId],
+    references: [tokenVestingAllocation.token, tokenVestingAllocation.chainId, tokenVestingAllocation.beneficiary, tokenVestingAllocation.scheduleId],
   }),
 }));
 

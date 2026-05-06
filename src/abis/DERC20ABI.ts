@@ -65,6 +65,13 @@ export const DERC20ABI = [
   },
   {
     type: "function",
+    name: "balanceLimitEnd",
+    inputs: [],
+    outputs: [{ name: "", type: "uint48", internalType: "uint48" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
     name: "checkpoints",
     inputs: [
       { name: "account", type: "address", internalType: "address" },
@@ -95,6 +102,13 @@ export const DERC20ABI = [
     name: "currentYearStart",
     inputs: [],
     outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "controller",
+    inputs: [],
+    outputs: [{ name: "", type: "address", internalType: "address" }],
     stateMutability: "view",
   },
   {
@@ -190,6 +204,20 @@ export const DERC20ABI = [
   },
   {
     type: "function",
+    name: "isBalanceLimitActive",
+    inputs: [],
+    outputs: [{ name: "", type: "bool", internalType: "bool" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "isExcludedFromBalanceLimit",
+    inputs: [{ name: "account", type: "address", internalType: "address" }],
+    outputs: [{ name: "excluded", type: "bool", internalType: "bool" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
     name: "lastMintTimestamp",
     inputs: [],
     outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
@@ -208,6 +236,13 @@ export const DERC20ABI = [
     inputs: [],
     outputs: [],
     stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "maxBalanceLimit",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
+    stateMutability: "view",
   },
   {
     type: "function",
@@ -263,6 +298,37 @@ export const DERC20ABI = [
     type: "function",
     name: "release",
     inputs: [{ name: "amount", type: "uint256", internalType: "uint256" }],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "release",
+    inputs: [
+      { name: "scheduleId", type: "uint256", internalType: "uint256" },
+      { name: "amount", type: "uint256", internalType: "uint256" },
+    ],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "releaseFor",
+    inputs: [
+      { name: "beneficiary", type: "address", internalType: "address" },
+      { name: "amount", type: "uint256", internalType: "uint256" },
+    ],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "releaseFor",
+    inputs: [
+      { name: "beneficiary", type: "address", internalType: "address" },
+      { name: "scheduleId", type: "uint256", internalType: "uint256" },
+      { name: "amount", type: "uint256", internalType: "uint256" },
+    ],
     outputs: [],
     stateMutability: "nonpayable",
   },
@@ -345,6 +411,36 @@ export const DERC20ABI = [
   },
   {
     type: "function",
+    name: "vestingOf",
+    inputs: [
+      { name: "beneficiary", type: "address", internalType: "address" },
+      { name: "scheduleId", type: "uint256", internalType: "uint256" },
+    ],
+    outputs: [
+      { name: "totalAmount", type: "uint256", internalType: "uint256" },
+      { name: "releasedAmount", type: "uint256", internalType: "uint256" },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "vestingScheduleCount",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "vestingSchedules",
+    inputs: [{ name: "", type: "uint256", internalType: "uint256" }],
+    outputs: [
+      { name: "cliff", type: "uint64", internalType: "uint64" },
+      { name: "duration", type: "uint64", internalType: "uint64" },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
     name: "vestingDuration",
     inputs: [],
     outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
@@ -386,6 +482,14 @@ export const DERC20ABI = [
         indexed: false,
         internalType: "uint256",
       },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "BalanceLimitDisabled",
+    inputs: [
+      { name: "expired", type: "bool", indexed: false, internalType: "bool" },
     ],
     anonymous: false,
   },
@@ -471,6 +575,44 @@ export const DERC20ABI = [
         indexed: false,
         internalType: "uint256",
       },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "TokensReleased",
+    inputs: [
+      { name: "beneficiary", type: "address", indexed: true, internalType: "address" },
+      { name: "scheduleId", type: "uint256", indexed: true, internalType: "uint256" },
+      { name: "amount", type: "uint256", indexed: false, internalType: "uint256" },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "UpdateTokenURI",
+    inputs: [
+      { name: "tokenURI", type: "string", indexed: false, internalType: "string" },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "VestingAllocated",
+    inputs: [
+      { name: "beneficiary", type: "address", indexed: true, internalType: "address" },
+      { name: "scheduleId", type: "uint256", indexed: true, internalType: "uint256" },
+      { name: "amount", type: "uint256", indexed: false, internalType: "uint256" },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "VestingScheduleCreated",
+    inputs: [
+      { name: "scheduleId", type: "uint256", indexed: true, internalType: "uint256" },
+      { name: "cliff", type: "uint64", indexed: false, internalType: "uint64" },
+      { name: "duration", type: "uint64", indexed: false, internalType: "uint64" },
     ],
     anonymous: false,
   },

@@ -1,5 +1,5 @@
 import { ponder } from "ponder:registry";
-import { pool } from "ponder:schema";
+import { pool, tokenVestingAllocation, tokenVestingRelease, tokenVestingSchedule } from "ponder:schema";
 import { insertV3MigrationPoolIfNotExists } from "./shared/entities/migrationPool";
 import { insertAssetIfNotExists, updateAsset } from "./shared/entities/asset";
 import { insertTokenIfNotExists, updateToken } from "./shared/entities/token";
@@ -302,4 +302,95 @@ ponder.on("DERC20:Transfer", async ({ event, context }) => {
   }
 
   await Promise.all(updatePromises);
+});
+
+ponder.on("DERC20:VestingScheduleCreated", async ({ event, context }) => {
+  const tokenAddress = event.log.address.toLowerCase() as `0x${string}`;
+  const { scheduleId, cliff, duration } = event.args;
+
+  await context.db
+    .insert(tokenVestingSchedule)
+    .values({
+      token: tokenAddress,
+      chainId: context.chain.id,
+      scheduleId,
+      cliff: BigInt(cliff),
+      duration: BigInt(duration),
+      createdAt: event.block.timestamp,
+    })
+    .onConflictDoUpdate(() => ({
+      cliff: BigInt(cliff),
+      duration: BigInt(duration),
+    }));
+});
+
+ponder.on("DERC20:VestingAllocated", async ({ event, context }) => {
+  const tokenAddress = event.log.address.toLowerCase() as `0x${string}`;
+  const beneficiary = event.args.beneficiary.toLowerCase() as `0x${string}`;
+  const { scheduleId, amount } = event.args;
+
+  await context.db
+    .insert(tokenVestingAllocation)
+    .values({
+      token: tokenAddress,
+      chainId: context.chain.id,
+      beneficiary,
+      scheduleId,
+      allocatedAmount: amount,
+      releasedAmount: 0n,
+      createdAt: event.block.timestamp,
+    })
+    .onConflictDoUpdate((existing) => ({
+      allocatedAmount: existing.allocatedAmount + amount,
+    }));
+});
+
+ponder.on("DERC20:TokensReleased", async ({ event, context }) => {
+  const tokenAddress = event.log.address.toLowerCase() as `0x${string}`;
+  const beneficiary = event.args.beneficiary.toLowerCase() as `0x${string}`;
+  const { scheduleId, amount } = event.args;
+
+  await Promise.all([
+    context.db
+      .insert(tokenVestingRelease)
+      .values({
+        txHash: event.transaction.hash,
+        logIndex: event.log.logIndex,
+        token: tokenAddress,
+        chainId: context.chain.id,
+        beneficiary,
+        scheduleId,
+        amount,
+        timestamp: event.block.timestamp,
+      })
+      .onConflictDoNothing(),
+    context.db
+      .insert(tokenVestingAllocation)
+      .values({
+        token: tokenAddress,
+        chainId: context.chain.id,
+        beneficiary,
+        scheduleId,
+        allocatedAmount: 0n,
+        releasedAmount: amount,
+        createdAt: event.block.timestamp,
+        lastReleasedAt: event.block.timestamp,
+      })
+      .onConflictDoUpdate((existing) => ({
+        releasedAmount: existing.releasedAmount + amount,
+        lastReleasedAt: event.block.timestamp,
+      })),
+  ]);
+});
+
+ponder.on("DERC20:BalanceLimitDisabled", async ({ event, context }) => {
+  await updateToken({
+    tokenAddress: event.log.address,
+    context,
+    update: {
+      isBalanceLimitActive: false,
+      balanceLimitDisabledAt: event.block.timestamp,
+      balanceLimitDisabledExpired: event.args.expired,
+    },
+  });
 });
