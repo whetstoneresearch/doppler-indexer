@@ -13,6 +13,7 @@ export const mainnetConfig: ChainConfig = {
   id: CHAIN_IDS.mainnet,
   name: "mainnet",
   startBlock: START_BLOCKS.mainnet,
+  v4StartBlock: V4_START_BLOCKS.mainnet,
   oracleStartBlock: START_BLOCKS.mainnet,
   rpcEnvVar: RPC_ENV_VARS.mainnet,
   addresses: {

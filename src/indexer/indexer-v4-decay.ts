@@ -1,4 +1,4 @@
-import { ponder } from "ponder:registry";
+import { onIndexerEvent } from "./entrypoint";
 import { getPoolId, getV4PoolData } from "@app/utils/v4-utils";
 import { isPrecompileAddress } from "@app/utils/validation";
 import { insertTokenIfNotExists } from "./shared/entities/token";
@@ -30,7 +30,7 @@ import { getQuoteInfo } from "@app/utils/getQuoteInfo";
 import { readContractWithZeroDataPadding } from "@app/utils/readContractWithZeroDataPadding";
 import { updateCumulatedFees, handleCollect } from "./shared/cumulatedFees";
 
-ponder.on(
+onIndexerEvent(
   "DecayMulticurveInitializer:Create",
   async ({ event, context }) => {
     const { asset: assetId } = event.args;
@@ -114,7 +114,7 @@ ponder.on(
   }
 );
 
-ponder.on(
+onIndexerEvent(
   "DecayMulticurveInitializer:Collect",
   async ({ event, context }) => {
     const { poolId, beneficiary, fees0, fees1 } = event.args;
@@ -156,7 +156,7 @@ ponder.on(
   }
 );
 
-ponder.on(
+onIndexerEvent(
   "DecayMulticurveInitializerHook:ModifyLiquidity",
   async ({ event, context }) => {
     const { key, params } = event.args;
@@ -256,7 +256,7 @@ ponder.on(
   }
 );
 
-ponder.on(
+onIndexerEvent(
   "DecayMulticurveInitializerHook:Swap",
   async ({ event, context }) => {
     const { poolId, sender, amount0, amount1 } = event.args;

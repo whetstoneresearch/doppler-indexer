@@ -1,4 +1,4 @@
-import { ponder } from "ponder:registry";
+import { onIndexerEvent } from "./entrypoint";
 import { getPoolId, getV4PoolData, isV4MigratorHook } from "@app/utils/v4-utils";
 import { computeV4Price } from "@app/utils/v4-utils/computeV4Price";
 import { isPrecompileAddress } from "@app/utils/validation";
@@ -33,7 +33,7 @@ import { updateCumulatedFees, handleCollect } from "./shared/cumulatedFees";
 import { computeReservesFromPositions } from "@app/utils/v4-utils/computeReservesFromPositions";
 import { upsertPositionLedger, getPositionsForPool } from "./shared/entities/positionLedger";
 
-ponder.on("UniswapV4Initializer:Create", async ({ event, context }) => {
+onIndexerEvent("UniswapV4Initializer:Create", async ({ event, context }) => {
   const { poolOrHook, asset: assetId, numeraire } = event.args;
   const { block } = event;
   const timestamp = block.timestamp;
@@ -113,7 +113,7 @@ ponder.on("UniswapV4Initializer:Create", async ({ event, context }) => {
   ]);
 });
 
-ponder.on("UniswapV4Pool:Swap", async ({ event, context }) => {
+onIndexerEvent("UniswapV4Pool:Swap", async ({ event, context }) => {
   const address = event.log.address.toLowerCase() as `0x${string}`;
   const { chain } = context;
   const { currentTick, totalProceeds, totalTokensSold } = event.args;
@@ -294,7 +294,7 @@ ponder.on("UniswapV4Pool:Swap", async ({ event, context }) => {
   ]);
 });
 
-ponder.on(
+onIndexerEvent(
   "UniswapV4MulticurveInitializer:Create",
   async ({ event, context }) => {
     const { asset: assetId } = event.args;
@@ -378,7 +378,7 @@ ponder.on(
   }
 );
 
-ponder.on(
+onIndexerEvent(
   "UniswapV4MulticurveInitializer:Collect",
   async ({ event, context }) => {
     const { poolId, beneficiary, fees0, fees1 } = event.args;
@@ -420,7 +420,7 @@ ponder.on(
   }
 );
 
-ponder.on(
+onIndexerEvent(
   "UniswapV4MulticurveInitializerHook:ModifyLiquidity",
   async ({ event, context }) => {
     const { key, params } = event.args;
@@ -505,7 +505,7 @@ ponder.on(
   }
 );
 
-ponder.on(
+onIndexerEvent(
   "UniswapV4MulticurveInitializerHook:Swap",
   async ({ event, context }) => {
     const { poolId, sender, amount0, amount1 } = event.args;
@@ -595,7 +595,7 @@ ponder.on(
   },
 );
 
-ponder.on("PoolManager:Swap", async ({ event, context }) => {
+onIndexerEvent("PoolManager:Swap", async ({ event, context }) => {
   const { id: poolId, sender, amount0, amount1, sqrtPriceX96, liquidity, tick, fee } = event.args;
   const { timestamp } = event.block;
   const { hash: txHash, from: txFrom } = event.transaction;
@@ -800,7 +800,7 @@ ponder.on("PoolManager:Swap", async ({ event, context }) => {
   ]);
 });
 
-ponder.on("UniswapV4MigratorHook:ModifyLiquidity", async ({ event, context }) => {
+onIndexerEvent("UniswapV4MigratorHook:ModifyLiquidity", async ({ event, context }) => {
   const { key } = event.args;
   const { timestamp } = event.block;
 
@@ -890,7 +890,7 @@ ponder.on("UniswapV4MigratorHook:ModifyLiquidity", async ({ event, context }) =>
   });
 });
 
-ponder.on("PoolManager:Donate", async ({ event, context }) => {
+onIndexerEvent("PoolManager:Donate", async ({ event, context }) => {
   const { id: poolId, amount0, amount1 } = event.args;
   const { timestamp } = event.block;
   const { chain } = context;
@@ -941,7 +941,7 @@ ponder.on("PoolManager:Donate", async ({ event, context }) => {
   });
 });
 
-ponder.on("PoolManager:Initialize", async ({ event, context }) => {
+onIndexerEvent("PoolManager:Initialize", async ({ event, context }) => {
   const { id: poolId, currency0, currency1, fee, tickSpacing, hooks, sqrtPriceX96, tick } = event.args;
   const { timestamp } = event.block;
   const { chain } = context;
@@ -1001,7 +1001,7 @@ ponder.on("PoolManager:Initialize", async ({ event, context }) => {
   });
 });
 
-ponder.on("PoolManager:ModifyLiquidity", async ({ event, context }) => {
+onIndexerEvent("PoolManager:ModifyLiquidity", async ({ event, context }) => {
   const { id, tickLower, tickUpper, liquidityDelta } = event.args;
   await upsertPositionLedger({
     poolId: (id as string).toLowerCase() as `0x${string}`,
@@ -1012,7 +1012,7 @@ ponder.on("PoolManager:ModifyLiquidity", async ({ event, context }) => {
   });
 });
 
-ponder.on("UniswapV4Migrator:Migrate", async ({ event, context }) => {
+onIndexerEvent("UniswapV4Migrator:Migrate", async ({ event, context }) => {
   const { poolId, sqrtPriceX96, liquidity, reserves0, reserves1 } = event.args;
   const { timestamp } = event.block;
   const { chain } = context;

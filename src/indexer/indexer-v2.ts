@@ -1,4 +1,4 @@
-import { ponder } from "ponder:registry";
+import { onIndexerEvent } from "./entrypoint";
 import { v2Pool } from "ponder.schema";
 import { getPairData } from "@app/utils/v2-utils/getPairData";
 import { fetchEthPrice } from "./shared/oracle";
@@ -15,7 +15,7 @@ import { chainConfigs } from "@app/config";
 import { SwapService, SwapOrchestrator, PriceService, MarketDataService } from "@app/core";
 import { updateFifteenMinuteBucketUsd } from "@app/utils/time-buckets";
 
-ponder.on("MigrationPool:Swap(address indexed sender, uint256 amount0In, uint256 amount1In, uint256 amount0Out, uint256 amount1Out, address indexed to)", async ({ event, context }) => {
+onIndexerEvent("MigrationPool:Swap(address indexed sender, uint256 amount0In, uint256 amount1In, uint256 amount0Out, uint256 amount1Out, address indexed to)", async ({ event, context }) => {
   const { db, chain } = context;
   const { timestamp } = event.block;
   const { amount0In, amount1In, amount0Out, amount1Out } = event.args;
