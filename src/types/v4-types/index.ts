@@ -6,13 +6,22 @@ import { Address, Hex } from "viem";
 export interface V4Addresses {
   poolManager: Address;
   dopplerDeployer: Address;
-  v4Initializer: Address;
-  v4Initializer2: Address;
-  v4InitializerSelfCorrecting: Address;
+  v4Initializer: Address | Address[];
   stateView: Address;
   dopplerLens: Address;
-  v4Migrator: Address;
-  v4MigratorHook: Address;
+  v4Migrator: Address | Address[];
+  v4MigratorHook: Address | Address[];
+  v4MulticurveInitializer: Address | Address[];
+  v4MulticurveInitializerHook: Address | Address[];
+  v4ScheduledMulticurveInitializer: Address | Address[];
+  v4ScheduledMulticurveInitializerHook: Address | Address[];
+  DecayMulticurveInitializer: Address | Address[];
+  DecayMulticurveInitializerHook: Address | Address[];
+  DopplerHookInitializer: Address | Address[];
+  RehypeHook: Address | Address[];
+  RehypeDopplerHookMigrator: Address | Address[];
+  RehypeDopplerHookInitializer: Address | Address[];
+  DopplerHookMigrator: Address | Address[];
 }
 
 /**

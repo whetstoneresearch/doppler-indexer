@@ -14,7 +14,7 @@ export interface V4Addresses {
   v4MulticurveInitializer: Address | Address[];
   v4MulticurveInitializerHook: Address | Address[];
   v4ScheduledMulticurveInitializer: Address | Address[];
-  v4ScheduledMulticurveInitializerHook: Address;
+  v4ScheduledMulticurveInitializerHook: Address | Address[];
   DecayMulticurveInitializer: Address | Address[];
   DecayMulticurveInitializerHook: Address | Address[];
   DopplerHookInitializer: Address | Address [];

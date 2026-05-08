@@ -1,4 +1,4 @@
-import { Address } from "viem";
+import { Address, zeroAddress } from "viem";
 import { Context } from "ponder:registry";
 import {
   DERC20ABI,
@@ -12,6 +12,8 @@ import { chainConfigs } from "@app/config";
 import { PriceService } from "@app/core/pricing";
 import { getQuoteInfo } from "../getQuoteInfo";
 import { isPrecompileAddress } from "../validation";
+
+type LockablePoolStateResult = readonly [Address, Address, number, number, bigint, bigint, number];
 
 export const getSlot0Data = async ({
   address,
@@ -214,6 +216,8 @@ export const getLockableV3PoolData = async ({
 
   const poolState = await getLockablePoolState({
     poolAddress: address,
+    token0,
+    token1,
     context,
   });
 
@@ -335,22 +339,42 @@ const getPoolState = async ({
 
 const getLockablePoolState = async ({
   poolAddress,
+  token0,
+  token1,
   context,
 }: {
   poolAddress: Address;
+  token0: Address;
+  token1: Address;
   context: Context;
 }) => {
   const { client } = context;
   const lockableV3Initializer = chainConfigs[context.chain.name].addresses.v3.lockableV3Initializer;
+  const initializerAddresses = Array.isArray(lockableV3Initializer) ? lockableV3Initializer : [lockableV3Initializer];
 
-  const poolData = await client.readContract({
-    abi: LockableUniswapV3InitializerABI,
-    address: lockableV3Initializer,
-    functionName: "getState",
-    args: [poolAddress],
-  }).catch(() => null);
+  let poolData: LockablePoolStateResult | null = null;
+  let lastError: unknown;
+  for (const initializerAddress of initializerAddresses) {
+    const candidate = await client.readContract({
+      abi: LockableUniswapV3InitializerABI,
+      address: initializerAddress,
+      functionName: "getState",
+      args: [poolAddress],
+    }).catch((error) => {
+      lastError = error;
+      return null;
+    });
+
+    if (candidate && candidate[0] !== zeroAddress && candidate[1] !== zeroAddress && [token0, token1].every((token) =>
+      [candidate[0], candidate[1]].some((stateToken) => stateToken.toLowerCase() === token.toLowerCase())
+    )) {
+      poolData = candidate;
+      break;
+    }
+  }
 
   if (!poolData) {
+    if (lastError) throw lastError;
     throw new Error(`getState returned empty/zero data for pool ${poolAddress} - pool may not be initialized`);
   }
 
