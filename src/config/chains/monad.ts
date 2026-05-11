@@ -34,18 +34,24 @@ export const monadConfig: ChainConfig = {
       v4Initializer: "0x53b4c21a6Cb61D64F636ABBfa6E8E90E6558e8ad" as Address,
       stateView: "0x77395f3b2e73ae90843717371294fa97cc419d64" as Address,
       dopplerLens: COMMON_ADDRESSES.ZERO_ADDRESS,
-      v4Migrator: COMMON_ADDRESSES.ZERO_ADDRESS,
-      v4MigratorHook: COMMON_ADDRESSES.ZERO_ADDRESS,
+      v4Migrator: "0x44bf742e57cd8cF23ABbc8dab2c44e2a3228356E" as Address,
+      v4MigratorHook: "0x3E4c689BBf33b37106eBC13Db8aa5BF13a25e500" as Address,
       v4MulticurveInitializer: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
       v4MulticurveInitializerHook: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
       v4ScheduledMulticurveInitializer: "0xce3099b2f07029b086e5e92a1573c5f5a3071783" as Address,
       v4ScheduledMulticurveInitializerHook: "0x580ca49389d83b019d07e17e99454f2f218e2dc0" as Address,
       DecayMulticurveInitializer: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
       DecayMulticurveInitializerHook: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
-      DopplerHookInitializer: "0xaa096f558f3d4c9226de77e7cc05f18e180b2544" as Address,
+      DopplerHookInitializer: [
+        "0xaa096f558f3d4c9226de77e7cc05f18e180b2544",
+        "0x56ea13Da5f39863D3B3d54826187306Af7ada544"
+      ] as Address[],
       RehypeHook: "0x97cad5684fb7cc2bed9a9b5ebfba67138f4f2503" as Address,
-      RehypeDopplerHookMigrator: "0xd199e7836e91654c0475a90e0c1d0e402bb84372" as Address,
-      RehypeDopplerHookInitializer: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
+      RehypeDopplerHookMigrator: [
+        "0xd199e7836e91654c0475a90e0c1d0e402bb84372",
+        "0xaa6b67BB06C5cb2502530d190261a9f3d57A2065"
+      ] as Address[],
+      RehypeDopplerHookInitializer: "0x34159D65BF89015D0Be068A99E41dE6e399B111B" as Address,
       DopplerHookMigrator: [
         "0x1e40b0875dda35f41e15cfb475403859b8c860c4",
         "0x65b6737c7a897029afe54dbb61bc4a84b232e0c4"

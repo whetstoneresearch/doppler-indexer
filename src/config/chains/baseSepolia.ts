@@ -24,8 +24,10 @@ export const baseSepoliaConfig: ChainConfig = {
     },
     v3: {
       v3Initializer: "0x4c3062b9ccfdbcb10353f57c1b59a29d4c5cfa47" as Address,
-      lockableV3Initializer:
-        "0x1fb8a108ff5c16213ebe3456314858d6b069a23b" as Address,
+      lockableV3Initializer: [
+        "0x1fb8a108ff5c16213ebe3456314858d6b069a23b",
+        "0x16AdA5Be50C3c2D94Af5fEae6b539C40A78Ad53c"
+      ] as Address[],
       v3Migrator: "0x0A3d3678b31cfF5F926c2A0384E742E4747605A0" as Address,
       nimCustomV3Migrator: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
     },
@@ -68,8 +70,10 @@ export const baseSepoliaConfig: ChainConfig = {
         "0x5c10d3e14aae2ef95619b25e907e013260e832e4",
         "0xF84378C9F39e0FF267f3101c88773359c5393876"
       ] as Address[],
-      v4ScheduledMulticurveInitializerHook:
-        "0x5d663f9c993deff2d17ce4232d75f347df7dadc0" as Address,
+      v4ScheduledMulticurveInitializerHook: [
+        "0x5d663f9c993deff2d17ce4232d75f347df7dadc0",
+        "0xc6a562cb5CbFA29BCB1bDCCF903b8B8f2E4A2DC0"
+      ] as Address[],
       DecayMulticurveInitializer: [
         "0xd59ce43e53d69f190e15d9822fb4540dccc91178",
         "0x8652ee6a8e0002d38ef1ab204782227c7723a292"
@@ -94,11 +98,13 @@ export const baseSepoliaConfig: ChainConfig = {
         "0xc3c9f4cfd1dc0a7837cc4b202b3455b4156a8005",
         "0x6477ae25bca3db3911af7cbb48a0ace38692720b",
         "0x82d5e22911fbbcb8d3e45812d74ee6203c5824e0",
-        "0xd199e7836e91654c0475a90e0c1d0e402bb84372"
+        "0xd199e7836e91654c0475a90e0c1d0e402bb84372",
+        "0xea95DfdF69B90c65C827070852F7039D6aF6Dd7b"
       ] as Address[],
       RehypeDopplerHookInitializer: [
         "0xC918c6Edb8e0B62B5B73B3F812249a986ba8066d",
-        "0x6ab5ae3191c914de8437431091776fc90f314be4"
+        "0x6ab5ae3191c914de8437431091776fc90f314be4",
+        "0xBF4195ab0B03e1eB3345dd1e83BeD7650b1ed123"
       ] as Address[],
       DopplerHookMigrator: [
         "0x1e40b0875dda35f41e15cfb475403859b8c860c4",

@@ -1,4 +1,4 @@
-import { Address } from "viem";
+import { Address, zeroAddress } from "viem";
 import { Context } from "ponder:registry";
 import {
   DERC20ABI,
@@ -6,16 +6,31 @@ import {
   UniswapV3PoolABI,
 } from "@app/abis";
 import { getMulticallOptions } from "@app/core/utils";
-import { LockablePoolState, LockableV3PoolData, PoolState, V3PoolData } from "@app/types/v3-types";
+import {
+  LockablePoolState,
+  LockableV3PoolData,
+  PoolState,
+  V3PoolData,
+} from "@app/types/v3-types";
 import { LockableUniswapV3InitializerABI } from "@app/abis";
 import { chainConfigs } from "@app/config";
 import { PriceService } from "@app/core/pricing";
 import { getQuoteInfo } from "../getQuoteInfo";
 import { isPrecompileAddress } from "../validation";
 
+type LockablePoolStateResult = readonly [
+  Address,
+  Address,
+  number,
+  number,
+  bigint,
+  bigint,
+  number,
+];
+
 export const getSlot0Data = async ({
   address,
-  context
+  context,
 }: {
   address: Address;
   context: Context;
@@ -72,7 +87,7 @@ export const getSlot0Data = async ({
     token1: token1Result.toLowerCase() as `0x${string}`,
     fee: feeResult,
   };
-}
+};
 
 export const getV3MigrationPoolData = async ({
   address,
@@ -83,7 +98,6 @@ export const getV3MigrationPoolData = async ({
   baseToken: Address;
   context: Context;
 }) => {
-
   const { slot0Data, liquidity, token0, token1, fee } = await getSlot0Data({
     address,
     context,
@@ -109,12 +123,12 @@ export const getV3MigrationPoolData = async ({
   } else {
     quoteInfo = await getQuoteInfo(token0, null, context);
   }
-  
+
   const price = PriceService.computePriceFromSqrtPriceX96({
     sqrtPriceX96: slot0Data.sqrtPrice,
     isToken0,
     decimals: 18,
-    quoteDecimals: quoteInfo.quoteDecimals
+    quoteDecimals: quoteInfo.quoteDecimals,
   });
 
   return {
@@ -128,12 +142,12 @@ export const getV3MigrationPoolData = async ({
     reserve1,
     isToken0,
   };
-}
+};
 
 export const getV3PoolData = async ({
   address,
   context,
-  asset,  
+  asset,
 }: {
   address: Address;
   context: Context;
@@ -167,19 +181,19 @@ export const getV3PoolData = async ({
   } else {
     isToken0 = token0.toLowerCase() === poolState.asset.toLowerCase();
   }
-  
+
   let quoteInfo;
   if (isToken0) {
     quoteInfo = await getQuoteInfo(token1, null, context);
   } else {
     quoteInfo = await getQuoteInfo(token0, null, context);
   }
-  
+
   const price = PriceService.computePriceFromSqrtPriceX96({
     sqrtPriceX96: slot0Data.sqrtPrice,
     isToken0,
     decimals: 18,
-    quoteDecimals: quoteInfo.quoteDecimals
+    quoteDecimals: quoteInfo.quoteDecimals,
   });
 
   return {
@@ -214,6 +228,8 @@ export const getLockableV3PoolData = async ({
 
   const poolState = await getLockablePoolState({
     poolAddress: address,
+    token0,
+    token1,
     context,
   });
 
@@ -225,19 +241,19 @@ export const getLockableV3PoolData = async ({
   });
 
   const isToken0 = token0.toLowerCase() === poolState.asset.toLowerCase();
-  
+
   let quoteInfo;
   if (isToken0) {
     quoteInfo = await getQuoteInfo(token1, null, context);
   } else {
     quoteInfo = await getQuoteInfo(token0, null, context);
   }
-  
+
   const price = PriceService.computePriceFromSqrtPriceX96({
     sqrtPriceX96: slot0Data.sqrtPrice,
     isToken0,
     decimals: 18,
-    quoteDecimals: quoteInfo.quoteDecimals
+    quoteDecimals: quoteInfo.quoteDecimals,
   });
 
   return {
@@ -252,7 +268,6 @@ export const getLockableV3PoolData = async ({
     reserve1,
   };
 };
-
 
 export const getV3PoolReserves = async ({
   token0,
@@ -304,17 +319,22 @@ const getPoolState = async ({
   context: Context;
 }) => {
   const { client } = context;
-  const v3Initializer = chainConfigs[context.chain.name].addresses.v3.v3Initializer;
+  const v3Initializer =
+    chainConfigs[context.chain.name].addresses.v3.v3Initializer;
 
-  const poolData = await client.readContract({
-    abi: UniswapV3InitializerABI,
-    address: v3Initializer,
-    functionName: "getState",
-    args: [poolAddress],
-  }).catch(() => null);
+  const poolData = await client
+    .readContract({
+      abi: UniswapV3InitializerABI,
+      address: v3Initializer,
+      functionName: "getState",
+      args: [poolAddress],
+    })
+    .catch(() => null);
 
   if (!poolData) {
-    throw new Error(`getState returned empty/zero data for pool ${poolAddress} - pool may not be initialized`);
+    throw new Error(
+      `getState returned empty/zero data for pool ${poolAddress} - pool may not be initialized`,
+    );
   }
 
   const poolState: PoolState = {
@@ -335,23 +355,69 @@ const getPoolState = async ({
 
 const getLockablePoolState = async ({
   poolAddress,
+  token0,
+  token1,
   context,
 }: {
   poolAddress: Address;
+  token0: Address;
+  token1: Address;
   context: Context;
 }) => {
   const { client } = context;
-  const lockableV3Initializer = chainConfigs[context.chain.name].addresses.v3.lockableV3Initializer;
+  const lockableV3Initializer =
+    chainConfigs[context.chain.name].addresses.v3.lockableV3Initializer;
+  const initializerAddresses = Array.isArray(lockableV3Initializer)
+    ? lockableV3Initializer
+    : [lockableV3Initializer];
 
-  const poolData = await client.readContract({
-    abi: LockableUniswapV3InitializerABI,
-    address: lockableV3Initializer,
-    functionName: "getState",
-    args: [poolAddress],
-  }).catch(() => null);
+  const results = await Promise.all(
+    initializerAddresses.map((initializerAddress) =>
+      client
+        .readContract({
+          abi: LockableUniswapV3InitializerABI,
+          address: initializerAddress,
+          functionName: "getState",
+          args: [poolAddress],
+        })
+        .then(
+          (candidate) => ({ candidate, error: null as unknown }),
+          (error) => ({
+            candidate: null as LockablePoolStateResult | null,
+            error,
+          }),
+        ),
+    ),
+  );
+
+  let poolData: LockablePoolStateResult | null = null;
+  let lastError: unknown;
+  for (const { candidate, error } of results) {
+    if (error) {
+      lastError = error;
+      continue;
+    }
+
+    if (
+      candidate &&
+      candidate[0] !== zeroAddress &&
+      candidate[1] !== zeroAddress &&
+      [token0, token1].every((token) =>
+        [candidate[0], candidate[1]].some(
+          (stateToken) => stateToken.toLowerCase() === token.toLowerCase(),
+        ),
+      )
+    ) {
+      poolData = candidate;
+      break;
+    }
+  }
 
   if (!poolData) {
-    throw new Error(`getState returned empty/zero data for pool ${poolAddress} - pool may not be initialized`);
+    if (lastError) throw lastError;
+    throw new Error(
+      `getState returned empty/zero data for pool ${poolAddress} - pool may not be initialized`,
+    );
   }
 
   const poolState: LockablePoolState = {

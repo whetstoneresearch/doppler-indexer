@@ -12,15 +12,41 @@ export const insertScheduledPool = async ({
 }): Promise<typeof scheduledPools.$inferSelect> => {
   const { db, chain, client } = context;
   const chainId = chain.id;
+  const hookAddresses = chainConfigs[chain.name].addresses.v4.v4ScheduledMulticurveInitializerHook;
+  const addresses = Array.isArray(hookAddresses) ? hookAddresses : [hookAddresses];
   
-  let startingTime;
-  startingTime = await client.readContract({
-    abi: UniswapV4ScheduledMulticurveInitializerHookABI,
-    address: chainConfigs[chain.name].addresses.v4.v4ScheduledMulticurveInitializerHook,
-    functionName: "startingTimeOf",
-    args: [poolId]
-  });
-  
+  const results = await Promise.all(
+    addresses.map((address) =>
+      client.readContract({
+        abi: UniswapV4ScheduledMulticurveInitializerHookABI,
+        address,
+        functionName: "startingTimeOf",
+        args: [poolId]
+      }).then(
+        (result) => ({ result, error: null as unknown }),
+        (error) => ({ result: null as bigint | null, error })
+      )
+    )
+  );
+
+  let startingTime: bigint | undefined;
+  let lastError: unknown;
+  for (const { result, error } of results) {
+    if (error) {
+      lastError = error;
+      continue;
+    }
+
+    if (result !== null && result > 0n) {
+      startingTime = result;
+      break;
+    }
+  }
+
+  if (startingTime === undefined) {
+    throw lastError ?? new Error(`Unable to read nonzero scheduled pool starting time for ${poolId}`);
+  }
+   
   return await db.insert(scheduledPools).values({
     chainId,
     poolId: poolId.toLowerCase() as `0x${string}`,
