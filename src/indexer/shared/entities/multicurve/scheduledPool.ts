@@ -15,23 +15,31 @@ export const insertScheduledPool = async ({
   const hookAddresses = chainConfigs[chain.name].addresses.v4.v4ScheduledMulticurveInitializerHook;
   const addresses = Array.isArray(hookAddresses) ? hookAddresses : [hookAddresses];
   
-  let startingTime;
-  let lastError: unknown;
-  for (const address of addresses) {
-    try {
-      const result = await client.readContract({
+  const results = await Promise.all(
+    addresses.map((address) =>
+      client.readContract({
         abi: UniswapV4ScheduledMulticurveInitializerHookABI,
         address,
         functionName: "startingTimeOf",
         args: [poolId]
-      });
+      }).then(
+        (result) => ({ result, error: null as unknown }),
+        (error) => ({ result: null as bigint | null, error })
+      )
+    )
+  );
 
-      if (result > 0n) {
-        startingTime = result;
-        break;
-      }
-    } catch (error) {
+  let startingTime: bigint | undefined;
+  let lastError: unknown;
+  for (const { result, error } of results) {
+    if (error) {
       lastError = error;
+      continue;
+    }
+
+    if (result !== null && result > 0n) {
+      startingTime = result;
+      break;
     }
   }
 
