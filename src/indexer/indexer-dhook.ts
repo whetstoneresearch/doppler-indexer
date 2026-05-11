@@ -17,10 +17,32 @@ import { StateViewABI, DopplerHookInitializerABI, DopplerHookMigratorABI, Rehype
 import { isPrecompileAddress } from "@app/utils/validation";
 import { updateCumulatedFees } from "./shared/cumulatedFees";
 import { fetchV4MigrationPool, updateV4Pool } from "./shared/entities/v4pools";
-import { v4pools } from "ponder:schema";
 import { Context } from "ponder:registry";
+import { updateFeeRecipientBeneficiary } from "./shared/entities/feeRecipient";
+import { sanitizeErrorMetadata } from "./shared/logging";
+import { refreshRehypeInitializerAirlockOwnerFees, refreshRehypeMigratorAirlockOwnerFees } from "./shared/rehypeAirlockOwnerFees";
 
 type PositionEntry = { tickLower: number; tickUpper: number; liquidity: bigint };
+
+async function refreshKnownRehypeInitializerAirlockOwnerFees({
+  poolId,
+  hookAddress,
+  timestamp,
+  context,
+}: {
+  poolId: `0x${string}`;
+  hookAddress: `0x${string}`;
+  timestamp: bigint;
+  context: Context;
+}): Promise<void> {
+  const poolAddress = poolId.toLowerCase() as `0x${string}`;
+  await refreshRehypeInitializerAirlockOwnerFees({
+    poolId: poolAddress,
+    hookAddress,
+    timestamp,
+    context,
+  });
+}
 
 async function fetchPositions({
   initializerAddress,
@@ -44,7 +66,14 @@ async function fetchPositions({
       args: [assetAddress],
     });
     return positions;
-  } catch {}
+  } catch (error) {
+    console.warn("DHook getPositions read failed; falling back to hook position discovery", {
+      initializerAddress,
+      assetAddress,
+      poolId,
+      error: sanitizeErrorMetadata(error),
+    });
+  }
 
   // Fallback: use getState to discover dopplerHook, then getPosition on it
   try {
@@ -66,7 +95,14 @@ async function fetchPositions({
       if (liquidity > 0n) return [{ tickLower, tickUpper, liquidity }];
       return [];
     }
-  } catch {}
+  } catch (error) {
+    console.warn("DHook hook position discovery failed; falling back to position ledger", {
+      initializerAddress,
+      assetAddress,
+      poolId,
+      error: sanitizeErrorMetadata(error),
+    });
+  }
 
   // Last resort: position ledger
   return getPositionsForPool({ poolId, context });
@@ -186,6 +222,15 @@ onIndexerEvent("DopplerHookInitializer:Create", async ({ event, context }) => {
     context,
     marketCapUsd,
   });
+
+  if (poolEntity.type === "rehype") {
+    await refreshRehypeInitializerAirlockOwnerFees({
+      poolId: poolAddress,
+      hookAddress: poolData.poolKey.hooks.toLowerCase() as `0x${string}`,
+      timestamp,
+      context,
+    });
+  }
 });
 
 onIndexerEvent("DopplerHookInitializer:Collect", async ({ event, context }) => {
@@ -220,6 +265,42 @@ onIndexerEvent("DopplerHookInitializer:Collect", async ({ event, context }) => {
     isToken0: poolEntity.isToken0,
     price,
     quoteInfo,
+    context,
+  });
+});
+
+onIndexerEvent("DopplerHookInitializer:UpdateBeneficiary", async ({ event, context }) => {
+  const { poolId, oldBeneficiary, newBeneficiary } = event.args;
+
+  await updateFeeRecipientBeneficiary({
+    poolId: poolId as `0x${string}`,
+    chainId: context.chain.id,
+    oldBeneficiary: oldBeneficiary as `0x${string}`,
+    newBeneficiary: newBeneficiary as `0x${string}`,
+    context,
+  });
+});
+
+onIndexerEvent("RehypeDopplerHookInitializer:AirlockOwnerFeesClaimed", async ({ event, context }) => {
+  const { poolId, airlockOwner } = event.args;
+
+  await refreshRehypeInitializerAirlockOwnerFees({
+    poolId: (poolId as string).toLowerCase() as `0x${string}`,
+    airlockOwner: airlockOwner.toLowerCase() as `0x${string}`,
+    hookAddress: event.log.address.toLowerCase() as `0x${string}`,
+    timestamp: event.block.timestamp,
+    context,
+  });
+});
+
+onIndexerEvent("RehypeDopplerHookMigrator:AirlockOwnerFeesClaimed", async ({ event, context }) => {
+  const { poolId, airlockOwner } = event.args;
+
+  await refreshRehypeMigratorAirlockOwnerFees({
+    poolId: (poolId as string).toLowerCase() as `0x${string}`,
+    airlockOwner: airlockOwner.toLowerCase() as `0x${string}`,
+    hookAddress: event.log.address.toLowerCase() as `0x${string}`,
+    timestamp: event.block.timestamp,
     context,
   });
 });
@@ -403,6 +484,15 @@ onIndexerEvent("DopplerHookInitializer:Swap", async ({ event, context }) => {
       context,
     }),
   ]);
+
+  if (poolEntity.type === "rehype") {
+    await refreshKnownRehypeInitializerAirlockOwnerFees({
+      poolId: poolAddress,
+      hookAddress: poolKey.hooks.toLowerCase() as `0x${string}`,
+      timestamp,
+      context,
+    });
+  }
 });
 
 onIndexerEvent("DopplerHookInitializer:ModifyLiquidity", async ({ event, context }) => {

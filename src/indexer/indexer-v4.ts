@@ -1,5 +1,5 @@
 import { onIndexerEvent } from "./entrypoint";
-import { getPoolId, getV4PoolData, isV4MigratorHook } from "@app/utils/v4-utils";
+import { getDHookMigratorForAsset, getPoolId, getV4PoolData, isRehypeMigrator, isV4MigratorHook } from "@app/utils/v4-utils";
 import { computeV4Price } from "@app/utils/v4-utils/computeV4Price";
 import { isPrecompileAddress } from "@app/utils/validation";
 import { insertTokenIfNotExists } from "./shared/entities/token";
@@ -23,7 +23,7 @@ import { updateFifteenMinuteBucketUsd } from "@app/utils/time-buckets";
 import { UniswapV4MulticurveInitializerABI } from "@app/abis/multicurve-abis/UniswapV4MulticurveInitializerABI";
 import { chainConfigs } from "@app/config/chains";
 import { insertMulticurvePoolV4Optimized } from "./shared/entities/multicurve/pool";
-import { pool, token } from "ponder:schema";
+import { asset, pool, token } from "ponder:schema";
 import { handleOptimizedSwap } from "./shared/swap-optimizer";
 import { StateViewABI } from "@app/abis";
 import { Address, zeroAddress } from "viem";
@@ -32,6 +32,52 @@ import { readContractWithZeroDataPadding } from "@app/utils/readContractWithZero
 import { updateCumulatedFees, handleCollect } from "./shared/cumulatedFees";
 import { computeReservesFromPositions } from "@app/utils/v4-utils/computeReservesFromPositions";
 import { upsertPositionLedger, getPositionsForPool } from "./shared/entities/positionLedger";
+import { updateFeeRecipientBeneficiary } from "./shared/entities/feeRecipient";
+import { refreshRehypeMigratorAirlockOwnerFees } from "./shared/rehypeAirlockOwnerFees";
+
+function isRehypeHook(hookAddress: Address, chainName: string): boolean {
+  const chainConfig = chainConfigs[chainName as keyof typeof chainConfigs];
+  if (!chainConfig) {
+    return false;
+  }
+
+  const rehypeHook = chainConfig.addresses.v4.RehypeHook;
+  const hookAddresses = Array.isArray(rehypeHook) ? rehypeHook : [rehypeHook];
+
+  return hookAddresses.some(
+    (address) =>
+      address.toLowerCase() !== zeroAddress.toLowerCase() &&
+      address.toLowerCase() === hookAddress.toLowerCase()
+  );
+}
+
+async function getRehypeMigratorForV4Pool({
+  v4Pool,
+  context,
+}: {
+  v4Pool: { asset: `0x${string}` | null };
+  context: Parameters<typeof refreshRehypeMigratorAirlockOwnerFees>[0]["context"];
+}): Promise<`0x${string}` | null> {
+  if (!v4Pool.asset) {
+    return null;
+  }
+
+  const assetEntity = await context.db.find(asset, {
+    address: v4Pool.asset,
+    chainId: context.chain.id,
+  });
+
+  if (!assetEntity) {
+    return null;
+  }
+
+  const migratorAddress = getDHookMigratorForAsset(assetEntity.liquidityMigrator, context.chain.name);
+  if (!migratorAddress || !isRehypeMigrator(migratorAddress, context.chain.name)) {
+    return null;
+  }
+
+  return migratorAddress.toLowerCase() as `0x${string}`;
+}
 
 onIndexerEvent("UniswapV4Initializer:Create", async ({ event, context }) => {
   const { poolOrHook, asset: assetId, numeraire } = event.args;
@@ -421,6 +467,21 @@ onIndexerEvent(
 );
 
 onIndexerEvent(
+  "UniswapV4MulticurveInitializer:UpdateBeneficiary",
+  async ({ event, context }) => {
+    const { poolId, oldBeneficiary, newBeneficiary } = event.args;
+
+    await updateFeeRecipientBeneficiary({
+      poolId: poolId as `0x${string}`,
+      chainId: context.chain.id,
+      oldBeneficiary: oldBeneficiary as `0x${string}`,
+      newBeneficiary: newBeneficiary as `0x${string}`,
+      context,
+    });
+  }
+);
+
+onIndexerEvent(
   "UniswapV4MulticurveInitializerHook:ModifyLiquidity",
   async ({ event, context }) => {
     const { key, params } = event.args;
@@ -798,6 +859,18 @@ onIndexerEvent("PoolManager:Swap", async ({ event, context }) => {
       },
     }),
   ]);
+
+  if (isRehypeHook(v4Pool.hooks, chain.name)) {
+    const migratorAddress = await getRehypeMigratorForV4Pool({ v4Pool, context });
+    if (migratorAddress) {
+      await refreshRehypeMigratorAirlockOwnerFees({
+        poolId: (poolId as string).toLowerCase() as `0x${string}`,
+        hookAddress: migratorAddress,
+        timestamp,
+        context,
+      });
+    }
+  }
 });
 
 onIndexerEvent("UniswapV4MigratorHook:ModifyLiquidity", async ({ event, context }) => {

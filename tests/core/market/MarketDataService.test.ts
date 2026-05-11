@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { MarketDataService } from '../MarketDataService';
+import { MarketDataService } from '../../../src/core/market/MarketDataService';
 
 const WAD = BigInt(10) ** BigInt(18);
 
@@ -463,7 +463,6 @@ describe('MarketDataService', () => {
       const ethPriceUSD = 2000n * BigInt(10 ** 8);
       const zoraPriceUSD = (zoraPriceInETH * ethPriceUSD) / BigInt(10 ** 8); // 18 decimals
       
-      const quoteDecimals = 18;
       const quotePriceDecimals = 18; // Calculated prices use 18 decimals
       
       const marketCap = MarketDataService.calculateMarketCap({

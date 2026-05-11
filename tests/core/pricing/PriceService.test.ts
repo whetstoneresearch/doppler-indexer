@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { PriceService } from '../PriceService';
+import { PriceService } from '../../../src/core/pricing/PriceService';
 
 const WAD = BigInt(10) ** BigInt(18);
 

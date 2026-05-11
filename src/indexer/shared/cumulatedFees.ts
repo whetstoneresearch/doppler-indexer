@@ -1,10 +1,13 @@
 import { Context } from "ponder:registry";
 import { cumulatedFees } from "ponder:schema";
 import { UniswapV4MulticurveInitializerABI } from "@app/abis/multicurve-abis/UniswapV4MulticurveInitializerABI";
-import { MarketDataService } from "@app/core";
 import { QuoteInfo } from "@app/utils/getQuoteInfo";
 import { getOrFetchBeneficiaries } from "./beneficiariesCache";
 import { getMulticallOptions } from "@app/core/utils/multicall";
+import { calculateClaimableFee } from "./feeRecipientMath";
+import { Address } from "viem";
+import { calculateTotalFeesUsd } from "./feeValue";
+export { calculateTotalFeesUsd } from "./feeValue";
 
 interface UpdateCumulatedFeesParams {
   poolId: `0x${string}`;
@@ -59,45 +62,49 @@ export async function updateCumulatedFees({
   const cumulatedFees0 = fees0Result.result;
   const cumulatedFees1 = fees1Result.result;
 
-  if (cumulatedFees0 === 0n && cumulatedFees1 === 0n) {
-    return;
-  }
+  const upsertPromises = beneficiaries.map(async (b) => {
+    const beneficiary = b.beneficiary.toLowerCase() as `0x${string}`;
+    const [lastFees0Result, lastFees1Result] = await client.multicall({
+      contracts: [
+        {
+          abi: UniswapV4MulticurveInitializerABI,
+          address: initializer,
+          functionName: "getLastCumulatedFees0",
+          args: [poolIdLower, beneficiary],
+        },
+        {
+          abi: UniswapV4MulticurveInitializerABI,
+          address: initializer,
+          functionName: "getLastCumulatedFees1",
+          args: [poolIdLower, beneficiary],
+        },
+      ],
+      ...multicallOptions,
+    });
 
-  const totalShares = beneficiaries.reduce((sum, b) => sum + b.shares, 0n);
-  if (totalShares === 0n) {
-    return;
-  }
-
-  const upsertPromises = beneficiaries.map((b) => {
-    const token0Fees = (cumulatedFees0 * b.shares) / totalShares;
-    const token1Fees = (cumulatedFees1 * b.shares) / totalShares;
-
-    // Calculate USD value of fees
-    // Determine which fees are quote (directly convertible) and which are base (multiply by price first)
-    let quoteFees: bigint;
-    let baseFees: bigint;
-    if (isToken0) {
-      // token0 = base, token1 = quote
-      baseFees = token0Fees;
-      quoteFees = token1Fees;
-    } else {
-      // token0 = quote, token1 = base
-      quoteFees = token0Fees;
-      baseFees = token1Fees;
+    if (lastFees0Result.status !== "success" || lastFees1Result.status !== "success") {
+      return;
     }
 
-    // Convert base fees to quote equivalent: baseFees * price / WAD
-    const WAD = 10n ** 18n;
-    const baseFeeInQuote = (baseFees * price) / WAD;
-    const totalQuoteEquivalent = quoteFees + baseFeeInQuote;
+    const lastFees0 = lastFees0Result.result;
+    const lastFees1 = lastFees1Result.result;
+    const token0Fees = calculateClaimableFee({
+      cumulatedFees: cumulatedFees0,
+      lastCumulatedFees: lastFees0,
+      shares: b.shares,
+    });
+    const token1Fees = calculateClaimableFee({
+      cumulatedFees: cumulatedFees1,
+      lastCumulatedFees: lastFees1,
+      shares: b.shares,
+    });
 
-    const totalFeesUsd = MarketDataService.calculateVolume({
-      amountIn: totalQuoteEquivalent,
-      amountOut: 0n,
-      quotePriceUSD: quoteInfo.quotePrice!,
-      isQuoteUSD: false,
-      quoteDecimals: quoteInfo.quoteDecimals,
-      decimals: quoteInfo.quotePriceDecimals,
+    const totalFeesUsd = calculateTotalFeesUsd({
+      token0Fees,
+      token1Fees,
+      isToken0,
+      price,
+      quoteInfo,
     });
 
     return db
@@ -105,7 +112,7 @@ export async function updateCumulatedFees({
       .values({
         poolId: poolIdLower,
         chainId,
-        beneficiary: b.beneficiary.toLowerCase() as `0x${string}`,
+        beneficiary,
         token0Fees,
         token1Fees,
         totalFeesUsd,
@@ -118,6 +125,42 @@ export async function updateCumulatedFees({
   });
 
   await Promise.all(upsertPromises);
+}
+
+interface UpsertAirlockOwnerFeesParams {
+  poolId: `0x${string}`;
+  chainId: number;
+  airlockOwner: Address;
+  token0Fees: bigint;
+  token1Fees: bigint;
+  totalFeesUsd: bigint;
+  context: Context;
+}
+
+export async function upsertAirlockOwnerFees({
+  poolId,
+  chainId,
+  airlockOwner,
+  token0Fees,
+  token1Fees,
+  totalFeesUsd,
+  context,
+}: UpsertAirlockOwnerFeesParams): Promise<void> {
+  await context.db
+    .insert(cumulatedFees)
+    .values({
+      poolId: poolId.toLowerCase() as `0x${string}`,
+      chainId,
+      beneficiary: airlockOwner.toLowerCase() as `0x${string}`,
+      token0Fees,
+      token1Fees,
+      totalFeesUsd,
+    })
+    .onConflictDoUpdate({
+      token0Fees,
+      token1Fees,
+      totalFeesUsd,
+    });
 }
 
 interface HandleCollectParams {
@@ -135,66 +178,17 @@ interface HandleCollectParams {
 export async function handleCollect({
   poolId,
   chainId,
-  beneficiary,
-  fees0,
-  fees1,
   isToken0,
   price,
   quoteInfo,
   context,
 }: HandleCollectParams): Promise<void> {
-  const { db } = context;
-  const poolIdLower = poolId.toLowerCase() as `0x${string}`;
-  const beneficiaryAddr = beneficiary.toLowerCase() as `0x${string}`;
-
-  // Find existing cumulated fees record
-  const existing = await db.find(cumulatedFees, {
-    poolId: poolIdLower,
+  await updateCumulatedFees({
+    poolId,
     chainId,
-    beneficiary: beneficiaryAddr,
+    isToken0,
+    price,
+    quoteInfo,
+    context,
   });
-
-  if (!existing) {
-    return;
-  }
-
-  // Subtract collected fees
-  const newToken0Fees = existing.token0Fees - fees0;
-  const newToken1Fees = existing.token1Fees - fees1;
-
-  // Recalculate USD value
-  let quoteFees: bigint;
-  let baseFees: bigint;
-  if (isToken0) {
-    baseFees = newToken0Fees > 0n ? newToken0Fees : 0n;
-    quoteFees = newToken1Fees > 0n ? newToken1Fees : 0n;
-  } else {
-    quoteFees = newToken0Fees > 0n ? newToken0Fees : 0n;
-    baseFees = newToken1Fees > 0n ? newToken1Fees : 0n;
-  }
-
-  const WAD = 10n ** 18n;
-  const baseFeeInQuote = (baseFees * price) / WAD;
-  const totalQuoteEquivalent = quoteFees + baseFeeInQuote;
-
-  const totalFeesUsd = MarketDataService.calculateVolume({
-    amountIn: totalQuoteEquivalent,
-    amountOut: 0n,
-    quotePriceUSD: quoteInfo.quotePrice!,
-    isQuoteUSD: false,
-    quoteDecimals: quoteInfo.quoteDecimals,
-    decimals: quoteInfo.quotePriceDecimals,
-  });
-
-  await db
-    .update(cumulatedFees, {
-      poolId: poolIdLower,
-      chainId,
-      beneficiary: beneficiaryAddr,
-    })
-    .set({
-      token0Fees: newToken0Fees > 0n ? newToken0Fees : 0n,
-      token1Fees: newToken1Fees > 0n ? newToken1Fees : 0n,
-      totalFeesUsd,
-    });
 }

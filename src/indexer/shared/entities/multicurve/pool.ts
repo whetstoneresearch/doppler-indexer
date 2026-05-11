@@ -13,6 +13,7 @@ import { UniswapV4MulticurveInitializerABI } from "@app/abis/multicurve-abis/Uni
 import { readContractWithZeroDataPadding } from "@app/utils/readContractWithZeroDataPadding";
 import { upsertTokenWithPool } from "../token-optimized";
 import { MarketDataService } from "@app/core";
+import { normalizeFeeRecipients, upsertFeeRecipients } from "../feeRecipient";
 
 function getActiveInitializers(addresses: Address | Address[], blockNumber: bigint): Address[] {
   const addrArray = Array.isArray(addresses) ? addresses : [addresses];
@@ -228,8 +229,10 @@ export const insertMulticurvePoolV4Optimized = async ({
 
   const isQuoteEth = quoteInfo.quoteToken === QuoteToken.Eth ? true : false;
   const hasValidQuote = isValidQuoteToken(quoteInfo.quoteToken);
+  const normalizedBeneficiaries = normalizeFeeRecipients(beneficiaries);
+
   // Insert new pool with all data at once
-  return await db.insert(pool).values({
+  const poolEntity = await db.insert(pool).values({
     address,
     tick,
     sqrtPrice: sqrtPriceX96,
@@ -267,9 +270,19 @@ export const insertMulticurvePoolV4Optimized = async ({
       hooks: poolKey.hooks.toLowerCase(),
     },
     tickLower: tick,
-    beneficiaries: beneficiaries
-      ? beneficiaries.map(b => ({ beneficiary: b.beneficiary.toLowerCase() as `0x${string}`, shares: b.shares.toString() }))
+    beneficiaries: normalizedBeneficiaries.length > 0
+      ? normalizedBeneficiaries.map(b => ({ beneficiary: b.beneficiary, shares: b.shares.toString() }))
       : null,
     initializer: resolvedInitializer.toLowerCase() as `0x${string}`,
   });
+
+  await upsertFeeRecipients({
+    poolId: address,
+    chainId,
+    initializer: resolvedInitializer,
+    recipients: beneficiaries,
+    context,
+  });
+
+  return poolEntity;
 };

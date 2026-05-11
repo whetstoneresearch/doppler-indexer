@@ -16,6 +16,7 @@ import {
   V4MigratorABI,
   DopplerHookInitializerABI,
   DopplerHookMigratorABI,
+  RehypeDopplerHookInitializerABI,
   RehypeDopplerHookMigratorABI,
 } from "./src/abis";
 import { BLOCK_INTERVALS } from "./src/config/chains/constants";
@@ -682,9 +683,38 @@ export default createConfig({
       chain: {
       },
     },
+    RehypeDopplerHookInitializer: {
+      abi: RehypeDopplerHookInitializerABI,
+      chain: {
+        base: {
+          startBlock: base.v4StartBlock,
+          address: base.addresses.v4.RehypeDopplerHookInitializer,
+        },
+        mainnet: {
+          startBlock: mainnet.v4StartBlock,
+          address: mainnet.addresses.v4.RehypeDopplerHookInitializer,
+        },
+        monad: {
+          startBlock: monad.startBlock,
+          address: monad.addresses.v4.RehypeDopplerHookInitializer,
+        },
+      },
+    },
     RehypeDopplerHookMigrator: {
       abi: RehypeDopplerHookMigratorABI,
       chain: {
+        base: {
+          startBlock: base.v4StartBlock,
+          address: base.addresses.v4.RehypeDopplerHookMigrator,
+        },
+        mainnet: {
+          startBlock: mainnet.v4StartBlock,
+          address: mainnet.addresses.v4.RehypeDopplerHookMigrator,
+        },
+        monad: {
+          startBlock: monad.startBlock,
+          address: monad.addresses.v4.RehypeDopplerHookMigrator,
+        },
       },
     },
   },

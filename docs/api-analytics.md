@@ -145,9 +145,93 @@ curl "http://localhost:42069/analytics/top-movers/8453?type=gainers&limit=10"
 ]
 ```
 
+### 5. Pool Fee Recipients
+Get normalized Multicurve fee recipients for a pool, including current claimable fees when available.
+
+Use this endpoint when displaying the complete fee-recipient list for a token. It returns every recipient's raw `shares` value for the pool, so the frontend can derive each percentage as `recipient.shares / sum(all recipient shares)`. The API does not return a separate percentage field.
+
+```
+GET /fees/recipients/:poolId?chain_id=:chainId
+```
+
+**Parameters:**
+- `poolId` (path) - V4 pool ID
+- `chain_id` (query) - Integer chain ID
+
+**Example:**
+```bash
+curl "http://localhost:42069/fees/recipients/0xabc...?chain_id=8453"
+```
+
+**Response:**
+```json
+[
+  {
+    "pool_id": "0x...",
+    "chain_id": 8453,
+    "beneficiary": "0x...",
+    "shares": "500000000000000000",
+    "initializer": "0x...",
+    "token0_fees": "1000000000000000000",
+    "token1_fees": "2500000",
+    "total_fees_usd": "123456"
+  }
+]
+```
+
+### 6. Wallet Claimable Fees
+Get all pools where a wallet is a normalized fee recipient or tracked Rehype airlock owner and currently has claimable fees.
+
+Use this endpoint for the token-page Claim Fees button and portfolio claimable-fees list. Row presence means the wallet has nonzero current claimable fees for that pool; no separate `can_claim` field is needed. Recipient percentages are not needed for claim UI state and are intentionally not included here. Rehype airlock-owner fee rows are included without fake fee-recipient rows; those rows return `shares` as `0` and may have a nullable `initializer`.
+
+```
+GET /fees/claimable/:beneficiary
+```
+
+**Parameters:**
+- `beneficiary` (path) - Wallet address
+- `pool_id` (query, optional) - Restrict to a single pool
+- `chain_ids` (query, optional) - Comma-separated PostgreSQL integer-range chain IDs
+- `limit` (query, optional) - Number of results to return (default: 100, maximum: 100)
+- `offset` (query, optional) - Number of results to skip (default: 0, maximum: 10000)
+
+**Example:**
+```bash
+curl "http://localhost:42069/fees/claimable/0x123...?chain_ids=8453,84532&limit=100&offset=0"
+```
+
+**Response:**
+```json
+[
+  {
+    "pool_id": "0x...",
+    "chain_id": 8453,
+    "beneficiary": "0x...",
+    "token0_fees": "1000000000000000000",
+    "token1_fees": "2500000",
+    "total_fees_usd": "123456",
+    "shares": "500000000000000000",
+    "initializer": "0x...",
+    "asset": "0x...",
+    "base_token": "0x...",
+    "quote_token": "0x...",
+    "pool_type": "multicurve",
+    "price": "1000000000000000000",
+    "market_cap_usd": "1000000000",
+    "name": "Example Token",
+    "symbol": "EXT",
+    "image": "https://..."
+  }
+]
+```
+
+Token metadata fields (`name`, `symbol`, `image`) may be `null` if claimable fee state is indexed before token metadata is available.
+
 ## GraphQL Queries
 
 The bucket data is also available through GraphQL queries:
+
+Fee recipient and current claimable-fee state is available through the `feeRecipient` and `cumulatedFees` tables. `cumulatedFees` stores current claimable amounts only; it is not a claim-history table.
 
 ### Query single bucket
 ```graphql

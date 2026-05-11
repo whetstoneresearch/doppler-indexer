@@ -16,6 +16,7 @@ import { AssetData } from "@app/types";
 import { Network } from "@app/types/config-types";
 import { eq, and } from "ponder";
 import { isPrecompileAddress } from "@app/utils/validation";
+import { normalizeFeeRecipients, upsertFeeRecipients } from "./feeRecipient";
 
 export const fetchExistingPool = async ({
   poolAddress,
@@ -554,7 +555,8 @@ export const insertPoolIfNotExistsDHook = async ({
   let migrationType = getMigrationType(assetData, chain.name);
   
   const isQuoteEth = quoteInfo.quoteToken === QuoteToken.Eth;
-  return await db.insert(pool).values({
+  const normalizedBeneficiaries = normalizeFeeRecipients(beneficiaries);
+  const poolEntity = await db.insert(pool).values({
     address,
     chainId: chain.id,
     tick: slot0Data.tick,
@@ -592,11 +594,24 @@ export const insertPoolIfNotExistsDHook = async ({
     hasValidQuote: isValidQuoteToken(quoteInfo.quoteToken),
     integrator: assetData.integrator,
     migrationType: migrationType,
-    beneficiaries: beneficiaries
-      ? beneficiaries.map(b => ({ beneficiary: b.beneficiary.toLowerCase() as `0x${string}`, shares: b.shares.toString() }))
+    beneficiaries: normalizedBeneficiaries.length > 0
+      ? normalizedBeneficiaries.map(b => ({ beneficiary: b.beneficiary, shares: b.shares.toString() }))
       : null,
     initializer: initializerAddress ? initializerAddress.toLowerCase() as `0x${string}` : null,
   });
+
+  const initializer = initializerAddress;
+  if (initializer) {
+    await upsertFeeRecipients({
+      poolId: address,
+      chainId: chain.id,
+      initializer,
+      recipients: beneficiaries,
+      context,
+    });
+  }
+
+  return poolEntity;
 };
 
 export const insertLockableV3PoolIfNotExists = async ({

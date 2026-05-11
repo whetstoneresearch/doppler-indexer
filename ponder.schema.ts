@@ -633,6 +633,22 @@ export const scheduledPools = onchainTable(
   })
 )
 
+export const feeRecipient = onchainTable(
+  "fee_recipient",
+  (t) => ({
+    poolId: t.hex().notNull(),
+    chainId: t.integer().notNull(),
+    beneficiary: t.hex().notNull(),
+    shares: t.bigint().notNull(),
+    initializer: t.hex().notNull(),
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.poolId, table.chainId, table.beneficiary] }),
+    poolIdx: index().on(table.poolId, table.chainId),
+    beneficiaryIdx: index().on(table.beneficiary),
+  })
+);
+
 export const cumulatedFees = onchainTable(
   "cumulated_fees",
   (t) => ({
@@ -645,6 +661,8 @@ export const cumulatedFees = onchainTable(
   }),
   (table) => ({
     pk: primaryKey({ columns: [table.poolId, table.chainId, table.beneficiary] }),
+    beneficiaryIdx: index().on(table.beneficiary),
+    beneficiaryChainIdx: index().on(table.beneficiary, table.chainId),
   })
 );
 

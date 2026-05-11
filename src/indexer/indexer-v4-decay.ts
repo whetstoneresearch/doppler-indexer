@@ -29,6 +29,7 @@ import { zeroAddress } from "viem";
 import { getQuoteInfo } from "@app/utils/getQuoteInfo";
 import { readContractWithZeroDataPadding } from "@app/utils/readContractWithZeroDataPadding";
 import { updateCumulatedFees, handleCollect } from "./shared/cumulatedFees";
+import { updateFeeRecipientBeneficiary } from "./shared/entities/feeRecipient";
 
 onIndexerEvent(
   "DecayMulticurveInitializer:Create",
@@ -151,6 +152,21 @@ onIndexerEvent(
       isToken0: poolEntity.isToken0,
       price,
       quoteInfo,
+      context,
+    });
+  }
+);
+
+onIndexerEvent(
+  "DecayMulticurveInitializer:UpdateBeneficiary",
+  async ({ event, context }) => {
+    const { poolId, oldBeneficiary, newBeneficiary } = event.args;
+
+    await updateFeeRecipientBeneficiary({
+      poolId: poolId as `0x${string}`,
+      chainId: context.chain.id,
+      oldBeneficiary: oldBeneficiary as `0x${string}`,
+      newBeneficiary: newBeneficiary as `0x${string}`,
       context,
     });
   }

@@ -1,5 +1,7 @@
 import { Context } from "ponder:registry";
-import { pool } from "ponder:schema";
+import { feeRecipient, pool } from "ponder:schema";
+import { and, eq } from "ponder";
+import { hasCompleteFeeRecipientShares } from "./feeRecipientMath";
 
 interface BeneficiaryData {
   beneficiary: `0x${string}`;
@@ -40,6 +42,10 @@ export function setBeneficiariesCache(chainId: number, poolAddress: string, data
   cache.set(key, data);
 }
 
+export function clearBeneficiariesCache(chainId: number, poolAddress: string): void {
+  cache.delete(getCacheKey(chainId, poolAddress));
+}
+
 export async function getOrFetchBeneficiaries(
   chainId: number,
   poolAddress: `0x${string}`,
@@ -51,8 +57,37 @@ export async function getOrFetchBeneficiaries(
     return cached;
   }
 
-  // DB fallback
   const { db } = context;
+  const normalizedRecipients = await db.sql
+    .select()
+    .from(feeRecipient)
+    .where(
+      and(
+        eq(feeRecipient.poolId, poolAddressLower),
+        eq(feeRecipient.chainId, chainId)
+      )
+    );
+
+  if (hasCompleteFeeRecipientShares(normalizedRecipients)) {
+    const initializer = normalizedRecipients[0]?.initializer;
+    if (!initializer) {
+      setBeneficiariesCache(chainId, poolAddressLower, null);
+      return null;
+    }
+
+    const result: CachedBeneficiaries = {
+      beneficiaries: normalizedRecipients.map((recipient) => ({
+        beneficiary: recipient.beneficiary.toLowerCase() as `0x${string}`,
+        shares: recipient.shares,
+      })),
+      initializer,
+    };
+
+    setBeneficiariesCache(chainId, poolAddressLower, result);
+    return result;
+  }
+
+  // DB fallback for rows created before fee_recipient existed or incomplete normalized rows.
   const poolEntity = await db.find(pool, {
     address: poolAddressLower,
     chainId,

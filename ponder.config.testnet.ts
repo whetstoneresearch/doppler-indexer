@@ -13,7 +13,6 @@ import {
   UniswapV2PairABI,
   ZoraFactoryABI,
   ZoraV4HookABI,
-  ZoraCoinABI,
   ZoraCreatorCoinABI,
   V4MigratorABI,
   DopplerHookMigratorABI,
@@ -333,7 +332,10 @@ export default createConfig({
         sepolia: {
           startBlock: sepolia.startBlock,
           address: factory({
-            address: sepolia.addresses.v4.v4ScheduledMulticurveInitializer,
+            address: [
+              sepolia.addresses.v4.v4ScheduledMulticurveInitializer,
+              sepolia.addresses.v4.DecayMulticurveInitializer,
+            ].flat(),
             event: getAbiItem({ abi: UniswapV4ScheduledMulticurveInitializerABI, name: "Create" }),
             parameter: "poolOrHook",
           }),
@@ -435,11 +437,11 @@ export default createConfig({
       },
     },
     DecayMulticurveInitializer: {
-      abi: UniswapV4MulticurveInitializerABI,
+      abi: UniswapV4ScheduledMulticurveInitializerABI,
       chain: {
         baseSepolia: {
           startBlock: baseSepolia.startBlock,
-          address: base.addresses.v4.DecayMulticurveInitializer,
+          address: baseSepolia.addresses.v4.DecayMulticurveInitializer,
         },
         sepolia: {
           startBlock: sepolia.startBlock,
@@ -448,15 +450,15 @@ export default createConfig({
       },
     },
     DecayMulticurveInitializerHook: {
-      abi: UniswapV4MulticurveInitializerHookABI,
+      abi: UniswapV4ScheduledMulticurveInitializerHookABI,
       chain: {
         baseSepolia: {
           startBlock: baseSepolia.startBlock,
-          address: base.addresses.v4.DecayMulticurveInitializerHook,
+          address: baseSepolia.addresses.v4.DecayMulticurveInitializerHook,
         },
         sepolia: {
           startBlock: sepolia.startBlock,
-          address: sepolia.addresses.v4.DecayMulticurveInitializer,
+          address: sepolia.addresses.v4.DecayMulticurveInitializerHook,
         },
       },
     },
@@ -513,7 +515,7 @@ export default createConfig({
         }
       }
     },
-    RehypeDopplerHookInitailizer: {
+    RehypeDopplerHookInitializer: {
       abi: RehypeDopplerHookInitializerABI,
       chain: {
         baseSepolia: {

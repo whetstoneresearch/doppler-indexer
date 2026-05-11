@@ -3,31 +3,29 @@
 ## Multicurve Quickstart
 
 - Prereqs: pnpm installed and Postgres reachable; copy `.env.local.example` to `.env.local` and set required RPC URLs and DB connection.
-- Dev run: `pnpm run dev --config ./ponder.config.multicurve.ts`
-- Prod run: `pnpm run start --config ./ponder.config.multicurve.ts`
+- Mainnet/multichain dev run: `pnpm run dev`
+- Mainnet/multichain prod run: `pnpm run start`
+- Testnet dev run: `pnpm run dev:testnet`
 
-This uses the `ponder.config.multicurve.ts` file to index the Multicurve setup. Logs will show chains and contracts being synced according to that config.
+The default Ponder config is `ponder.config.ts`. It indexes the production multichain setup, including the configured Multicurve, scheduled Multicurve, decay Multicurve, DHook, and Zora sources. `ponder.config.testnet.ts` is the corresponding testnet config.
 
-This package ships with multiple Ponder configs so you can index different networks or a Zora‑only subset. You can select a config at runtime via `--config` when using `ponder dev` or `ponder start`.
+Multicurve indexing stores fee recipients in the normalized `fee_recipient` table and keeps `cumulated_fees` as current claimable-fee state for frontend Claim Fees and portfolio views. Recipient percentages are derived by the frontend from the full pool recipient share list; claim UI state is inferred from nonzero claimable-fee rows.
+
+This package still contains older specialized Ponder configs, but the maintained target configs are `ponder.config.ts` and `ponder.config.testnet.ts`. Use another config with `--config` only when intentionally running one of those legacy or local subsets.
 
 ## Configs
 
-- `ponder.config.ts`: Multichain (Base, Unichain, Ink) + Zora listeners on Base.
-- `ponder.config.multichain.ts`: Multichain (same scope as above).
-- `ponder.config.multicurve.ts`: Multicurve indexing setup.
-- `ponder.config.zora.ts`: Zora-only on Base (limits chains/contracts to Zora needs).
+- `ponder.config.ts`: Default production multichain config. Covers Base, Mainnet, Monad, testnet compatibility chains used by handlers, Zora listeners on Base, and configured Multicurve sources.
+- `ponder.config.testnet.ts`: Testnet config for Base Sepolia and Sepolia coverage, including configured Multicurve sources.
+- `ponder.config.local.ts`: Git-ignored local testing config. Keep this machine-specific.
 
 ## Run
 
 From this package directory:
 
-- Dev (hot reload): `ponder dev --config ./ponder.config.ts`
-- Prod: `ponder start --config ./ponder.config.ts`
-
-Swap the config path to target a different setup, for example:
-
-- Multichain: `ponder dev --config ./ponder.config.multichain.ts`
-- Zora-only: `ponder dev --config ./ponder.config.zora.ts`
+- Dev (hot reload): `pnpm run dev`
+- Prod: `pnpm run start`
+- Testnet dev: `pnpm run dev:testnet`
 
 ## Local Base/Ethereum Frontend Testing
 
@@ -37,7 +35,7 @@ From this package directory:
 
 ```bash
 docker compose up -d
-pnpm run dev --config ./ponder.config.local.ts
+pnpm run dev:local
 ```
 
 The local config expects the usual local database and RPC environment variables:
@@ -50,7 +48,7 @@ If you need a clean local database, reset the Docker volume and let Ponder recre
 ```bash
 docker compose down -v
 docker compose up -d
-pnpm run dev --config ./ponder.config.local.ts
+pnpm run dev:local
 ```
 
 ### Config-Driven Handler Registration

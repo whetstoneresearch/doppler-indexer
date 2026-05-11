@@ -1,11 +1,11 @@
 import { onIndexerEvent } from "./entrypoint";
 import { ChainlinkOracleABI } from "@app/abis/ChainlinkOracleABI";
-import { ethPrice, zoraUsdcPrice, fxhWethPrice, noiceWethPrice, monadUsdcPrice, eurcUsdcPrice, bankrWethPrice, usdcPrice, usdtPrice } from "ponder.schema";
+import { ethPrice, zoraUsdcPrice, fxhWethPrice, noiceWethPrice, monadUsdcPrice, eurcUsdcPrice, bankrWethPrice } from "ponder.schema";
 import { UniswapV3PoolABI } from "@app/abis/v3-abis/UniswapV3PoolABI";
 import { StateViewABI } from "@app/abis/v4-abis/StateViewABI";
 import { PriceService } from "@app/core";
 import { chainConfigs } from "@app/config";
-import { parseUnits, zeroAddress, createPublicClient, http, numberToHex } from "viem";
+import { parseUnits, zeroAddress, createPublicClient, http } from "viem";
 
 onIndexerEvent("BaseChainlinkEthPriceFeed:block", async ({ event, context }) => {
   const { db, client, chain } = context;
