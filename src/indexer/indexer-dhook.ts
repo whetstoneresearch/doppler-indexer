@@ -1,4 +1,4 @@
-import { ponder } from "ponder:registry";
+import { onIndexerEvent } from "./entrypoint";
 import { getPoolId } from "@app/utils/v4-utils";
 import { insertTokenIfNotExists } from "./shared/entities/token";
 import { insertPoolIfNotExistsDHook, updatePool } from "./shared/entities/pool";
@@ -72,7 +72,7 @@ async function fetchPositions({
   return getPositionsForPool({ poolId, context });
 }
 
-ponder.on("DopplerHookInitializer:Create", async ({ event, context }) => {
+onIndexerEvent("DopplerHookInitializer:Create", async ({ event, context }) => {
   const { poolOrHook, asset: assetId, numeraire } = event.args;
   const { block, transaction } = event;
   const timestamp = block.timestamp;
@@ -188,7 +188,7 @@ ponder.on("DopplerHookInitializer:Create", async ({ event, context }) => {
   });
 });
 
-ponder.on("DopplerHookInitializer:Collect", async ({ event, context }) => {
+onIndexerEvent("DopplerHookInitializer:Collect", async ({ event, context }) => {
   const { poolId } = event.args;
   const timestamp = event.block.timestamp;
   const { db, chain } = context;
@@ -224,7 +224,7 @@ ponder.on("DopplerHookInitializer:Collect", async ({ event, context }) => {
   });
 });
 
-ponder.on("DopplerHookInitializer:Swap", async ({ event, context }) => {
+onIndexerEvent("DopplerHookInitializer:Swap", async ({ event, context }) => {
   const { sender, poolKey: poolKeyTuple, poolId, params, amount0, amount1 } = event.args;
   const timestamp = event.block.timestamp;
   const { chain, client, db } = context;
@@ -405,7 +405,7 @@ ponder.on("DopplerHookInitializer:Swap", async ({ event, context }) => {
   ]);
 });
 
-ponder.on("DopplerHookInitializer:ModifyLiquidity", async ({ event, context }) => {
+onIndexerEvent("DopplerHookInitializer:ModifyLiquidity", async ({ event, context }) => {
   const { key: poolKeyTuple } = event.args;
   const timestamp = event.block.timestamp;
   const { chain, client, db } = context;

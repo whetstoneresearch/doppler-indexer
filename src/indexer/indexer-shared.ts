@@ -1,4 +1,4 @@
-import { ponder } from "ponder:registry";
+import { onIndexerEvent } from "./entrypoint";
 import { pool, tokenVestingAllocation, tokenVestingRelease, tokenVestingSchedule } from "ponder:schema";
 import { insertV3MigrationPoolIfNotExists } from "./shared/entities/migrationPool";
 import { insertAssetIfNotExists, updateAsset } from "./shared/entities/asset";
@@ -14,7 +14,7 @@ import { getV4MigratorForAsset, getDHookMigratorForAsset } from "@app/utils/v4-u
 import { isPrecompileAddress } from "@app/utils/validation";
 import { readDN404TokenData } from "./shared/entities/dn404";
 
-ponder.on("DN404Factory:DN404Created", async ({ event, context }) => {
+onIndexerEvent("DN404Factory:DN404Created", async ({ event, context }) => {
   const { timestamp } = event.block;
   const tokenAddress = event.args.token.toLowerCase() as `0x${string}`;
   const mirrorAddress = event.args.collection.toLowerCase() as `0x${string}`;
@@ -36,7 +36,7 @@ ponder.on("DN404Factory:DN404Created", async ({ event, context }) => {
   });
 });
 
-ponder.on("Airlock:Migrate", async ({ event, context }) => {
+onIndexerEvent("Airlock:Migrate", async ({ event, context }) => {
   const { timestamp } = event.block;
   const assetId = event.args.asset.toLowerCase() as `0x${string}`;
   const migrationPoolAddress = event.args.pool.toLowerCase() as `0x${string}`;
@@ -207,7 +207,7 @@ ponder.on("Airlock:Migrate", async ({ event, context }) => {
   }
 });
 
-ponder.on("DERC20:Transfer", async ({ event, context }) => {
+onIndexerEvent("DERC20:Transfer", async ({ event, context }) => {
   const { address } = event.log;
   const { timestamp } = event.block;
   const { from, to, value } = event.args;
@@ -327,7 +327,7 @@ ponder.on("DERC20:Transfer", async ({ event, context }) => {
   await Promise.all(updatePromises);
 });
 
-ponder.on("DERC20:VestingScheduleCreated", async ({ event, context }) => {
+onIndexerEvent("DERC20:VestingScheduleCreated", async ({ event, context }) => {
   const tokenAddress = event.log.address.toLowerCase() as `0x${string}`;
   const { scheduleId, cliff, duration } = event.args;
 
@@ -347,7 +347,7 @@ ponder.on("DERC20:VestingScheduleCreated", async ({ event, context }) => {
     }));
 });
 
-ponder.on("DERC20:VestingAllocated", async ({ event, context }) => {
+onIndexerEvent("DERC20:VestingAllocated", async ({ event, context }) => {
   const tokenAddress = event.log.address.toLowerCase() as `0x${string}`;
   const beneficiary = event.args.beneficiary.toLowerCase() as `0x${string}`;
   const { scheduleId, amount } = event.args;
@@ -368,7 +368,7 @@ ponder.on("DERC20:VestingAllocated", async ({ event, context }) => {
     }));
 });
 
-ponder.on("DERC20:TokensReleased", async ({ event, context }) => {
+onIndexerEvent("DERC20:TokensReleased", async ({ event, context }) => {
   const tokenAddress = event.log.address.toLowerCase() as `0x${string}`;
   const beneficiary = event.args.beneficiary.toLowerCase() as `0x${string}`;
   const { scheduleId, amount } = event.args;
@@ -406,7 +406,7 @@ ponder.on("DERC20:TokensReleased", async ({ event, context }) => {
   ]);
 });
 
-ponder.on("DERC20:BalanceLimitDisabled", async ({ event, context }) => {
+onIndexerEvent("DERC20:BalanceLimitDisabled", async ({ event, context }) => {
   await updateToken({
     tokenAddress: event.log.address,
     context,

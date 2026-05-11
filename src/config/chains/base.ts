@@ -41,7 +41,7 @@ export const baseConfig: ChainConfig = {
         "0x53b4c21a6Cb61D64F636ABBfa6E8E90E6558e8ad"
       ] as Address[],
       stateView: "0xa3c0c9b65bad0b08107aa264b0f3db444b867a71" as Address,
-      dopplerLens: "0x094d926a969b3024ca46d2186bf13fd5cdba9ce2" as Address,
+      dopplerLens: "0x43d0D97EC9241A8F05A264f94B82A1d2E600f2B3" as Address,
       v4Migrator: [
         "0x166109c4ee7fe69164631caa937daa5f5cebfef0",
         "0xd3b4cf7fd24381e90a4f012fc6c5976b87b9b3ce"
@@ -75,11 +75,13 @@ export const baseConfig: ChainConfig = {
       RehypeDopplerHookMigrator: [
         "0xc3c9f4cfd1dc0a7837cc4b202b3455b4156a8005",
         "0x82d5e22911fbbcb8d3e45812d74ee6203c5824e0",
-        "0xd199e7836e91654c0475a90e0c1d0e402bb84372"
+        "0xd199e7836e91654c0475a90e0c1d0e402bb84372",
+        "0xea95DfdF69B90c65C827070852F7039D6aF6Dd7b"
       ] as Address[],
       RehypeDopplerHookInitializer: [
         "0xC918c6Edb8e0B62B5B73B3F812249a986ba8066d",
-        "0x6ab5ae3191c914de8437431091776fc90f314be4"
+        "0x6ab5ae3191c914de8437431091776fc90f314be4",
+        "0xBF4195ab0B03e1eB3345dd1e83BeD7650b1ed123"
       ] as Address[],
       DopplerHookMigrator: [
         "0x1e40b0875dda35f41e15cfb475403859b8c860c4",

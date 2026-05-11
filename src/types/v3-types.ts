@@ -5,7 +5,7 @@ import { Address } from "viem";
  */
 export interface V3Addresses {
   v3Initializer: Address;
-  lockableV3Initializer: Address;
+  lockableV3Initializer: Address | Address[];
   v3Migrator: Address;
   nimCustomV3Migrator: Address;
 }

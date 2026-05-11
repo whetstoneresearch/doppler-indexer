@@ -9,3 +9,4 @@ generated
 .env
 .env.local
 .pnpm-store
+ponder.config.local.ts

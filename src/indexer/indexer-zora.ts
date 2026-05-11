@@ -1,4 +1,4 @@
-import { ponder } from "ponder:registry";
+import { onIndexerEvent } from "./entrypoint";
 import { updateToken } from "./shared/entities/token";
 import { upsertTokenWithPool } from "./shared/entities/token-optimized";
 import {
@@ -127,7 +127,7 @@ import { computeReservesFromPositions } from "@app/utils/v4-utils";
 //   });
 // });
 
-ponder.on("ZoraFactory:CreatorCoinCreated", async ({ event, context }) => {
+onIndexerEvent("ZoraFactory:CreatorCoinCreated", async ({ event, context }) => {
   const { coin, currency, poolKey, poolKeyHash, caller } = event.args;
 
   if (isPrecompileAddress(coin) || isPrecompileAddress(currency)) {
@@ -207,7 +207,7 @@ ponder.on("ZoraFactory:CreatorCoinCreated", async ({ event, context }) => {
 //   );
 // });
 
-ponder.on("ZoraV4CreatorCoinHook:Swapped", async ({ event, context }) => {
+onIndexerEvent("ZoraV4CreatorCoinHook:Swapped", async ({ event, context }) => {
   const { db, chain } = context;
   const { poolKeyHash, swapSender, amount0, amount1, sqrtPriceX96, isCoinBuy, key } = event.args;
   const timestamp = event.block.timestamp;
@@ -264,7 +264,7 @@ ponder.on("ZoraV4CreatorCoinHook:Swapped", async ({ event, context }) => {
   );
 });
 
-ponder.on("ZoraCreatorCoinV4:LiquidityMigrated", async ({ event, context }) => {
+onIndexerEvent("ZoraCreatorCoinV4:LiquidityMigrated", async ({ event, context }) => {
   const { chain, db } = context;
   const { fromPoolKeyHash, toPoolKey, toPoolKeyHash } = event.args;
   const timestamp = event.block.timestamp;
@@ -342,7 +342,7 @@ ponder.on("ZoraCreatorCoinV4:LiquidityMigrated", async ({ event, context }) => {
   });
 });
 
-ponder.on("ZoraCreatorCoinV4:CoinTransfer", async ({ event, context }) => {
+onIndexerEvent("ZoraCreatorCoinV4:CoinTransfer", async ({ event, context }) => {
   const { address } = event.log;
   const { timestamp } = event.block;
   const { sender, recipient, senderBalance, recipientBalance } = event.args;

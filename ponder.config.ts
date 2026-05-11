@@ -505,16 +505,16 @@ export default createConfig({
         monad: {
           startBlock: monad.startBlock,
           address: factory({
-            address: monad.addresses.v4.v4ScheduledMulticurveInitializer,
-            event: getAbiItem({ abi: UniswapV4ScheduledMulticurveInitializerABI, name: "Create"}),
+            address: monad.addresses.v4.v4Initializer,
+            event: getAbiItem({ abi: UniswapV4InitializerABI, name: "Create"}),
             parameter: "poolOrHook"
           }),
         },
         mainnet: {
           startBlock: mainnet.v4StartBlock,
           address: factory({
-            address: mainnet.addresses.v4.v4ScheduledMulticurveInitializer,
-            event: getAbiItem({ abi: UniswapV4ScheduledMulticurveInitializerABI, name: "Create" }),
+            address: mainnet.addresses.v4.v4Initializer,
+            event: getAbiItem({ abi: UniswapV4InitializerABI, name: "Create" }),
             parameter: "poolOrHook",
           }),
         }
