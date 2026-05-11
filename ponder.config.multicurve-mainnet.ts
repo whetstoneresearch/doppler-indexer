@@ -6,6 +6,7 @@ import {
   UniswapV3PoolABI,
   AirlockABI,
   DERC20ABI,
+  DN404FactoryABI,
   DopplerABI,
   PoolManagerABI,
   UniswapV2PairABI,
@@ -83,6 +84,15 @@ export default createConfig({
     },
   },
   contracts: {
+    DN404Factory: {
+      abi: DN404FactoryABI,
+      chain: {
+        baseSepolia: {
+          startBlock: 41118945,
+          address: baseSepolia.addresses.shared.dn404Factory!,
+        },
+      },
+    },
     Airlock: {
       abi: AirlockABI,
       chain: {
@@ -225,4 +235,3 @@ export default createConfig({
     },
   },
 });
-

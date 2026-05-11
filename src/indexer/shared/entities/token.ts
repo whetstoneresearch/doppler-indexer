@@ -4,6 +4,7 @@ import { getMulticallOptions } from "@app/core/utils/multicall";
 import { token } from "ponder.schema";
 import { Context } from "ponder:registry";
 import { Address, zeroAddress } from "viem";
+import type { DN404TokenData } from "./dn404";
 
 export const appendTokenPool = async ({
   tokenAddress,
@@ -63,6 +64,7 @@ export const insertTokenIfNotExists = async ({
   context,
   isDerc20 = false,
   poolAddress,
+  dn404Data,
 }: {
   tokenAddress: Address;
   creatorAddress: Address;
@@ -72,6 +74,7 @@ export const insertTokenIfNotExists = async ({
   creatorCoin?: boolean;
   contentCoin?: boolean;
   poolAddress?: Address;
+  dn404Data?: DN404TokenData;
 }): Promise<typeof token.$inferSelect> => {
   const { db, chain } = context;
 
@@ -83,11 +86,20 @@ export const insertTokenIfNotExists = async ({
     chainId: chain.id,
   });
 
-  if (existingToken?.isDerc20 && !existingToken?.pool && poolAddress) {
-    await db.update(token, { address, chainId: chain.id }).set({
-      pool: poolAddress.toLowerCase() as `0x${string}`,
-    });
-  } else if (existingToken) {
+  if (existingToken) {
+    const update: Partial<typeof token.$inferInsert> = {};
+
+    if (existingToken.isDerc20 && !existingToken.pool && poolAddress) {
+      update.pool = poolAddress.toLowerCase() as `0x${string}`;
+    }
+    if (dn404Data) {
+      Object.assign(update, dn404Data);
+    }
+
+    if (Object.keys(update).length > 0) {
+      return await db.update(token, { address, chainId: chain.id }).set(update);
+    }
+
     return existingToken;
   }
 
@@ -311,9 +323,11 @@ export const insertTokenIfNotExists = async ({
         balanceLimitController,
         tokenUri: tokenURIResult?.result ?? "",
         image: image ?? "",
+        ...dn404Data,
       })
       .onConflictDoUpdate((row) => ({
         pool: row.pool,
+        ...(dn404Data ?? {}),
       }));
   }
 };
