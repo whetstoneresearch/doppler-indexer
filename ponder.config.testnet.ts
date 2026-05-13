@@ -439,7 +439,7 @@ export default createConfig({
       chain: {
         baseSepolia: {
           startBlock: baseSepolia.startBlock,
-          address: base.addresses.v4.DecayMulticurveInitializer,
+          address: baseSepolia.addresses.v4.DecayMulticurveInitializer,
         },
         sepolia: {
           startBlock: sepolia.startBlock,
@@ -452,7 +452,7 @@ export default createConfig({
       chain: {
         baseSepolia: {
           startBlock: baseSepolia.startBlock,
-          address: base.addresses.v4.DecayMulticurveInitializerHook,
+          address: baseSepolia.addresses.v4.DecayMulticurveInitializerHook,
         },
         sepolia: {
           startBlock: sepolia.startBlock,

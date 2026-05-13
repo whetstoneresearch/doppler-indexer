@@ -22,6 +22,7 @@ export interface V4Addresses {
   RehypeDopplerHookMigrator: Address | Address[];
   RehypeDopplerHookInitializer: Address | Address[];
   DopplerHookMigrator: Address | Address[];
+  NoOpMigrator: Address | Address[];
 }
 
 /**

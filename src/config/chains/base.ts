@@ -86,7 +86,8 @@ export const baseConfig: ChainConfig = {
       DopplerHookMigrator: [
         "0x1e40b0875dda35f41e15cfb475403859b8c860c4",
         "0x65b6737c7a897029afe54dbb61bc4a84b232e0c4"
-      ] as Address[]
+      ] as Address[],
+      NoOpMigrator: "0x6ddfED58D238Ca3195E49d8ac3d4cEa6386E5C33" as Address,
     },
     zora: {
       zoraFactory: "0x777777751622c0d3258f214F9DF38E35BF45baF3" as Address,
