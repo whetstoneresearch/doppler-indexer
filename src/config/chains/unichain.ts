@@ -46,7 +46,8 @@ export const unichainConfig: ChainConfig = {
       RehypeHook: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
       RehypeDopplerHookMigrator: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
       RehypeDopplerHookInitializer: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
-      DopplerHookMigrator: COMMON_ADDRESSES.ZERO_ADDRESS as Address
+      DopplerHookMigrator: COMMON_ADDRESSES.ZERO_ADDRESS as Address,
+      NoOpMigrator: "0x917da361072ce968acD810BbfC9B64079426ebf0" as Address,
     },
     shared: {
       airlock: "0x77EbfBAE15AD200758E9E2E61597c0B07d731254" as Address,

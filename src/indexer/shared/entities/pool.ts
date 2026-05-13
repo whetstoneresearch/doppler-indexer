@@ -734,6 +734,16 @@ function getMigrationType(assetData: AssetData, chainName: Network): string {
       return "rehype";
     }
 
+    const noopMigrator = chainConfigs[chainName].addresses.v4.NoOpMigrator;
+    const noopMigratorAddresses = Array.isArray(noopMigrator) ? noopMigrator : [noopMigrator];
+    if (noopMigratorAddresses.some(
+      (m) =>
+        m.toLowerCase() !== zeroAddress.toLowerCase() &&
+        m.toLowerCase() === assetData.liquidityMigrator.toLowerCase()
+    )) {
+      return "noop";
+    }
+
     return "unknown";
   }
 }

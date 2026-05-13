@@ -6,6 +6,7 @@
   "packageManager": "pnpm@10.17.1",
   "scripts": {
     "dev": "ponder dev",
+    "dev:local": "ponder --config ./ponder.config.local.ts dev",
     "start": "ponder start",
     "db": "ponder db",
     "db:local-compat": "docker compose exec -T doppler-indexer-database psql -U postgres -d default -v ON_ERROR_STOP=1 -f - < scripts/create-local-compat-views.sql",
