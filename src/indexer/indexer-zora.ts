@@ -148,7 +148,7 @@ onIndexerEvent("ZoraFactory:CreatorCoinCreated", async ({ event, context }) => {
   const [assetTokenEntity] = await Promise.all([
     upsertTokenWithPool({
       tokenAddress: coinAddress,
-      isDerc20: true,
+      isDerc20: false,
       isCreatorCoin: true,
       isContentCoin: false,
       poolAddress,
@@ -364,7 +364,7 @@ onIndexerEvent("ZoraCreatorCoinV4:CoinTransfer", async ({ event, context }) => {
   // Ensure token exists (upsert if needed)
   const finalTokenData = tokenData || await upsertTokenWithPool({
     tokenAddress,
-    isDerc20: true,
+    isDerc20: false,
     isCreatorCoin: true,
     isContentCoin: false,
     poolAddress: null,
