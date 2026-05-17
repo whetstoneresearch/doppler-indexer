@@ -16,6 +16,7 @@ import { AssetData } from "@app/types";
 import { Network } from "@app/types/config-types";
 import { eq, and } from "ponder";
 import { isPrecompileAddress } from "@app/utils/validation";
+import { addToDHookPoolCache } from "../dhookPoolCache";
 
 export const fetchExistingPool = async ({
   poolAddress,
@@ -554,7 +555,7 @@ export const insertPoolIfNotExistsDHook = async ({
   let migrationType = getMigrationType(assetData, chain.name);
   
   const isQuoteEth = quoteInfo.quoteToken === QuoteToken.Eth;
-  return await db.insert(pool).values({
+  const inserted = await db.insert(pool).values({
     address,
     chainId: chain.id,
     tick: slot0Data.tick,
@@ -597,6 +598,10 @@ export const insertPoolIfNotExistsDHook = async ({
       : null,
     initializer: initializerAddress ? initializerAddress.toLowerCase() as `0x${string}` : null,
   });
+
+  addToDHookPoolCache(chain.id, address);
+
+  return inserted;
 };
 
 export const insertLockableV3PoolIfNotExists = async ({
