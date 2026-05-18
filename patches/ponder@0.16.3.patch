@@ -39,6 +39,51 @@ index cd8df0b2352161ca01104b4b3e4882fe6ff25a03..6cc76d99b4219ce890b085121db9ba38
                          stream.abort();
                      }
                  }
+diff --git a/dist/esm/database/actions.js b/dist/esm/database/actions.js
+index 058794bde30e72c2a61ee1fe1af61d8d4cdb74fa..6fc08eb4c2b025de1a74e5280c54cd3e74d037ce 100644
+--- a/dist/esm/database/actions.js
++++ b/dist/esm/database/actions.js
+@@ -54,6 +54,14 @@ export const dropTriggers = async (qb, { tables, chainId }, context) => {
+     }, undefined, context);
+ };
+ export const createLiveQueryTriggers = async (qb, { namespaceBuild, tables, chainId, }, context) => {
++    // Gate: when PONDER_DISABLE_LIVE_QUERY=1, drop any pre-existing triggers
++    // instead of creating new ones. This avoids the per-row trigger overhead
++    // on onchain tables for projects that do not consume @ponder/client live
++    // queries.
++    if (process.env.PONDER_DISABLE_LIVE_QUERY === "1") {
++        await dropLiveQueryTriggers(qb, { namespaceBuild, tables, chainId }, context);
++        return;
++    }
+     await qb.transaction(async (tx) => {
+         const notifyProcedure = getLiveQueryNotifyProcedureName();
+         const notifyTrigger = getLiveQueryNotifyTriggerName();
+@@ -86,6 +94,11 @@ export const dropLiveQueryTriggers = async (qb, { namespaceBuild, tables, chainI
+     }, undefined, context);
+ };
+ export const createLiveQueryProcedures = async (qb, { namespaceBuild }, context) => {
++    // Gate: when PONDER_DISABLE_LIVE_QUERY=1, skip creating the unused procedures.
++    // The triggers that would call them are also skipped (see createLiveQueryTriggers).
++    if (process.env.PONDER_DISABLE_LIVE_QUERY === "1") {
++        return;
++    }
+     await qb.transaction(async (tx) => {
+         const schema = namespaceBuild.schema;
+         const procedure = getLiveQueryProcedureName();
+@@ -147,6 +160,13 @@ export const createViews = async (qb, { tables, views, namespaceBuild, }, contex
+         await tx.wrap((tx) => tx.execute(`DROP VIEW IF EXISTS "${namespaceBuild.viewsSchema}"."${PONDER_CHECKPOINT_TABLE_NAME}"`));
+         await tx.wrap((tx) => tx.execute(`CREATE VIEW "${namespaceBuild.viewsSchema}"."${PONDER_META_TABLE_NAME}" AS SELECT * FROM "${namespaceBuild.schema}"."${PONDER_META_TABLE_NAME}"`));
+         await tx.wrap((tx) => tx.execute(`CREATE VIEW "${namespaceBuild.viewsSchema}"."${PONDER_CHECKPOINT_TABLE_NAME}" AS SELECT * FROM "${namespaceBuild.schema}"."${PONDER_CHECKPOINT_TABLE_NAME}"`));
++        // Gate: when PONDER_DISABLE_LIVE_QUERY=1, also skip the views-schema notify
++        // trigger/procedure and drop any prior one so re-runs converge.
++        if (process.env.PONDER_DISABLE_LIVE_QUERY === "1") {
++            const trigger = getViewsLiveQueryNotifyTriggerName(namespaceBuild.viewsSchema);
++            await tx.wrap((tx) => tx.execute(`DROP TRIGGER IF EXISTS "${trigger}" ON "${namespaceBuild.schema}"."${PONDER_CHECKPOINT_TABLE_NAME}";`));
++            return;
++        }
+         const notifyProcedure = getLiveQueryNotifyProcedureName();
+         const channel = getLiveQueryChannelName(namespaceBuild.viewsSchema);
+         await tx.wrap((tx) => tx.execute(`
 diff --git a/dist/esm/database/queryBuilder.js b/dist/esm/database/queryBuilder.js
 index dddf085491df24a37bb1da1dcb43f76c31d0e0bb..8fefde11e9766cb645853733360bd582dba0f56c 100644
 --- a/dist/esm/database/queryBuilder.js
