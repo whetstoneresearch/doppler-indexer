@@ -17,6 +17,25 @@ import { getQuoteInfo, QuoteToken } from "@app/utils/getQuoteInfo";
 import { isPrecompileAddress } from "@app/utils/validation";
 import { computeReservesFromPositions } from "@app/utils/v4-utils";
 
+const READ_CACHE_TTL_MS = 5 * 60_000;
+
+function makeBlockCache() {
+  const cache = new Map<string, Promise<unknown>>();
+  return <T>(key: string, loader: () => Promise<T>): Promise<T> => {
+    const existing = cache.get(key) as Promise<T> | undefined;
+    if (existing) return existing;
+    const promise = loader();
+    cache.set(key, promise);
+    promise.catch(() => cache.delete(key));
+    const timer = setTimeout(() => cache.delete(key), READ_CACHE_TTL_MS);
+    timer.unref?.();
+    return promise;
+  };
+}
+
+const slot0Cache = makeBlockCache();
+const poolCoinCache = makeBlockCache();
+
 // ponder.on("ZoraFactory:CoinCreatedV4", async ({ event, context }) => {
 //   const { db, chain } = context;
 //   const { coin, currency, poolKey, poolKeyHash, caller } = event.args;
@@ -212,23 +231,28 @@ onIndexerEvent("ZoraV4CreatorCoinHook:Swapped", async ({ event, context }) => {
   const { poolKeyHash, swapSender, amount0, amount1, sqrtPriceX96, isCoinBuy, key } = event.args;
   const timestamp = event.block.timestamp;
   const poolAddress = poolKeyHash.toLowerCase() as `0x${string}`;
+  const cacheKey = `${context.chain.id}:${poolAddress}:${event.block.number}`;
 
   const zoraAddress = chainConfigs[context.chain.name].addresses.zora.zoraToken;
 
-  // Parallelize RPC calls, quote info lookup, and pool fetch.
+  // Parallelize RPC calls (cached per (pool, block) for 5m), quote info lookup, and pool fetch.
   const [slot0, poolCoin, quoteInfo, poolEntity] = await Promise.all([
-    context.client.readContract({
-      abi: StateViewABI,
-      address: chainConfigs[context.chain.name].addresses.v4.stateView,
-      functionName: "getSlot0",
-      args: [poolAddress],
-    }),
-    context.client.readContract({
-      abi: ZoraV4HookABI,
-      address: key.hooks,
-      functionName: "getPoolCoin",
-      args: [key],
-    }),
+    slot0Cache(cacheKey, () =>
+      context.client.readContract({
+        abi: StateViewABI,
+        address: chainConfigs[context.chain.name].addresses.v4.stateView,
+        functionName: "getSlot0",
+        args: [poolAddress],
+      }),
+    ),
+    poolCoinCache(cacheKey, () =>
+      context.client.readContract({
+        abi: ZoraV4HookABI,
+        address: key.hooks,
+        functionName: "getPoolCoin",
+        args: [key],
+      }),
+    ),
     getQuoteInfo(zoraAddress, timestamp, context),
     db.find(pool, { address: poolAddress, chainId: chain.id }),
   ]);
