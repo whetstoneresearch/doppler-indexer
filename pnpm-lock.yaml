@@ -6,7 +6,7 @@ settings:
 
 patchedDependencies:
   ponder@0.16.3:
-    hash: d0f71b7748a907b99cdc4f4d26566d82e41fb0f96498b6c26861a076f4540073
+    hash: d0466ab6209810f1d8154df88a60e5386ddac2584140ae259a79cb0f49142f9f
     path: patches/ponder@0.16.3.patch
 
 importers:
@@ -24,7 +24,7 @@ importers:
         version: 4.3.2
       ponder:
         specifier: 0.16.3
-        version: 0.16.3(patch_hash=d0f71b7748a907b99cdc4f4d26566d82e41fb0f96498b6c26861a076f4540073)(@opentelemetry/api@1.9.0)(@types/node@20.19.33)(hono@4.11.9)(typescript@5.9.3)(viem@2.30.1(typescript@5.9.3))
+        version: 0.16.3(patch_hash=d0466ab6209810f1d8154df88a60e5386ddac2584140ae259a79cb0f49142f9f)(@opentelemetry/api@1.9.0)(@types/node@20.19.33)(hono@4.11.9)(typescript@5.9.3)(viem@2.30.1(typescript@5.9.3))
       viem:
         specifier: 2.30.1
         version: 2.30.1(typescript@5.9.3)
@@ -2589,6 +2589,7 @@ packages:
 
   uuid@8.3.2:
     resolution: {integrity: sha512-+NYs2QeMWy+GWFOEm9xnn6HCDp0l7QBD7ml8zLUmJ+93Q5NF0NocErnwkTkXVFNiX3/fpC6afS8Dhb/gz7R7eg==}
+    deprecated: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
     hasBin: true
 
   viem@2.30.1:
@@ -4913,7 +4914,7 @@ snapshots:
       sonic-boom: 3.8.1
       thread-stream: 2.7.0
 
-  ponder@0.16.3(patch_hash=d0f71b7748a907b99cdc4f4d26566d82e41fb0f96498b6c26861a076f4540073)(@opentelemetry/api@1.9.0)(@types/node@20.19.33)(hono@4.11.9)(typescript@5.9.3)(viem@2.30.1(typescript@5.9.3)):
+  ponder@0.16.3(patch_hash=d0466ab6209810f1d8154df88a60e5386ddac2584140ae259a79cb0f49142f9f)(@opentelemetry/api@1.9.0)(@types/node@20.19.33)(hono@4.11.9)(typescript@5.9.3)(viem@2.30.1(typescript@5.9.3)):
     dependencies:
       '@babel/code-frame': 7.29.0
       '@commander-js/extra-typings': 12.1.0(commander@12.1.0)
