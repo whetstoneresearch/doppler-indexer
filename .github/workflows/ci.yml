@@ -6,7 +6,7 @@ on:
 
 jobs:
   ci:
-    timeout-minutes: 3
+    timeout-minutes: 8
     runs-on: blacksmith-2vcpu-ubuntu-2204
     steps:
       - uses: actions/checkout@v4
