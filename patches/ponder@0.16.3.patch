@@ -284,3 +284,89 @@ index 3e021c47fc1298e8f16b773cd437ca5f2cf4cba3..d8a82ca27db0a9e814614d1c56589937
              }
          }
      }
+diff --git a/dist/esm/database/actions.js b/dist/esm/database/actions.js
+index 058794bde30e72c2a61ee1fe1af61d8d4cdb74fa..812184a67b10aad39b89bb7a0d4f719f2871fdf6 100644
+--- a/dist/esm/database/actions.js
++++ b/dist/esm/database/actions.js
+@@ -6,13 +6,25 @@ import { and, eq, getTableColumns, getTableName, getViewName, lte, sql, } from "
+ import { getTableConfig } from "drizzle-orm/pg-core";
+ import { PONDER_CHECKPOINT_TABLE_NAME, PONDER_META_TABLE_NAME, getPonderCheckpointTable, } from "./index.js";
+ export const createIndexes = async (qb, { statements }, context) => {
+-    for (const statement of statements.indexes.sql) {
+-        await qb.transaction({ label: "create_indexes" }, async (tx) => {
+-            // 60 minutes
+-            await tx.wrap((tx) => tx.execute("SET statement_timeout = 3600000;"));
+-            await tx.wrap((tx) => tx.execute(statement));
+-        }, undefined, context);
+-    }
++    // Parallelize index creation. Postgres CREATE INDEX (without CONCURRENTLY)
++    // takes a ShareLock, which is compatible with itself, so multiple builds
++    // on the same table can run simultaneously from different sessions. The
++    // concurrency cap should leave headroom in the pool.
++    const CONCURRENCY = 8;
++    const queue = [...statements.indexes.sql];
++    const runWorker = async () => {
++        while (queue.length > 0) {
++            const statement = queue.shift();
++            if (statement === undefined) return;
++            await qb.transaction({ label: "create_indexes" }, async (tx) => {
++                // 60 minutes
++                await tx.wrap((tx) => tx.execute("SET statement_timeout = 3600000;"));
++                await tx.wrap((tx) => tx.execute(statement));
++            }, undefined, context);
++        }
++    };
++    const workerCount = Math.min(CONCURRENCY, queue.length);
++    await Promise.all(Array.from({ length: workerCount }, () => runWorker()));
+ };
+ export const createTriggers = async (qb, { tables, chainId }, context) => {
+     await qb.transaction(async (tx) => {
+diff --git a/dist/esm/runtime/multichain.js b/dist/esm/runtime/multichain.js
+index c5efbc3bf913959800f5e62c9bf98fdc76a3ba37..dd42305c3f7295fdd653eb908af00dc4b834f423 100644
+--- a/dist/esm/runtime/multichain.js
++++ b/dist/esm/runtime/multichain.js
+@@ -307,7 +307,10 @@ export const runMultichain = async ({ common, database, indexingBuild, schemaBui
+     const tables = Object.values(schemaBuild.schema).filter(isTable);
+     const views = Object.values(schemaBuild.schema).filter(isView);
+     let endClock = startClock();
+-    await createIndexes(database.adminQB, { statements: schemaBuild.statements });
++    // Use userQB instead of adminQB so parallel createIndexes workers get
++    // concurrent connections (adminQB pool is capped at 2). The user pool
++    // is idle here: backfill is done and live indexing hasn't started.
++    await createIndexes(database.userQB, { statements: schemaBuild.statements });
+     if (schemaBuild.statements.indexes.sql.length > 0) {
+         common.logger.info({
+             msg: "Created database indexes",
+diff --git a/dist/esm/runtime/omnichain.js b/dist/esm/runtime/omnichain.js
+index ff59bf37e048955f06311123a89af83d401ef3a0..c285b45b72059a58ce356c7946e24ec8b7ec1292 100644
+--- a/dist/esm/runtime/omnichain.js
++++ b/dist/esm/runtime/omnichain.js
+@@ -314,7 +314,10 @@ export const runOmnichain = async ({ common, database, indexingBuild, schemaBuil
+     const tables = Object.values(schemaBuild.schema).filter(isTable);
+     const views = Object.values(schemaBuild.schema).filter(isView);
+     let endClock = startClock();
+-    await createIndexes(database.adminQB, { statements: schemaBuild.statements });
++    // Use userQB instead of adminQB so parallel createIndexes workers get
++    // concurrent connections (adminQB pool is capped at 2). The user pool
++    // is idle here: backfill is done and live indexing hasn't started.
++    await createIndexes(database.userQB, { statements: schemaBuild.statements });
+     if (schemaBuild.statements.indexes.sql.length > 0) {
+         common.logger.info({
+             msg: "Created database indexes",
+diff --git a/dist/esm/bin/isolatedController.js b/dist/esm/bin/isolatedController.js
+index f41d078f919beda0a0ea64be48819e83b7fe9a02..4ec70b8d3f4115f800a7dedeaef9086185a070b2 100644
+--- a/dist/esm/bin/isolatedController.js
++++ b/dist/esm/bin/isolatedController.js
+@@ -42,7 +42,11 @@ export const runIsolated = async ({ common, database, indexingBuild, schemaBuild
+             });
+             clearInterval(etaInterval);
+             let endClock = startClock();
+-            await createIndexes(database.adminQB, {
++            // Use userQB instead of adminQB so parallel createIndexes workers
++            // get concurrent connections (adminQB pool is capped at 2). The
++            // user pool is idle here: backfill is done and live indexing
++            // hasn't started.
++            await createIndexes(database.userQB, {
+                 statements: schemaBuild.statements,
+             });
+             if (schemaBuild.statements.indexes.sql.length > 0) {
