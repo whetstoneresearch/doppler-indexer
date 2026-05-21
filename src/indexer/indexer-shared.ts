@@ -14,7 +14,7 @@ import { getV4MigratorForAsset, getDHookMigratorForAsset } from "@app/utils/v4-u
 import { isPrecompileAddress } from "@app/utils/validation";
 import { readDN404TokenData } from "./shared/entities/dn404";
 
-ponder.on("DN404Factory:DN404Created", async ({ event, context }) => {
+onIndexerEvent("DN404Factory:DN404Created", async ({ event, context }) => {
   const { timestamp } = event.block;
   const tokenAddress = event.args.token.toLowerCase() as `0x${string}`;
   const mirrorAddress = event.args.collection.toLowerCase() as `0x${string}`;
