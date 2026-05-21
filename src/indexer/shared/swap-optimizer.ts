@@ -1,10 +1,10 @@
 import { Context } from "ponder:registry";
 import { pool, token } from "ponder:schema";
 import { Address, zeroAddress } from "viem";
-import { SwapOrchestrator } from "@app/core";
 import { SwapService, MarketDataService, PriceService } from "@app/core";
 import { QuoteToken, QuoteInfo, getQuoteInfo } from "@app/utils/getQuoteInfo";
-import { updateAsset, updatePool, updatePoolDirect } from "./entities";
+import { updateAsset, updatePoolDirect } from "./entities";
+import { insertAssetIfNotExists } from "./entities/asset";
 import { chainConfigs } from "@app/config";
 import { updateFifteenMinuteBucketUsd } from "@app/utils/time-buckets";
 import { SwapType } from "@app/types";
@@ -182,83 +182,85 @@ export async function handleOptimizedSwap(
 
 
   
-  // Create swap data for orchestrator
-  const orchestratorSwapData = SwapOrchestrator.createSwapData({
-    poolAddress,
-    sender: params.transactionFrom,
-    transactionHash: params.transactionHash,
-    transactionFrom: params.transactionFrom,
-    blockNumber: params.blockNumber,
-    timestamp,
-    assetAddress: poolEntity.baseToken,
-    quoteAddress: poolEntity.quoteToken,
-    isToken0: poolEntity.isToken0,
-    amountIn: swapData.amountIn,
-    amountOut: swapData.amountOut,
-    price: swapData.price,
-    usdPrice: quoteInfo.quotePrice!,
-  });
+  const isQuoteEth = quoteInfo.quoteToken === QuoteToken.Eth;
 
-  // Create metrics
-  const metrics = {
+  // Merge the pool-level swap fields and the reserves/sqrtPrice into a single update.
+  // Previously this was two parallel writes to the same `pool` row (one via updatePool,
+  // which also did a redundant db.find, and one via updatePoolDirect); collapsing them
+  // saves one find + one update per swap.
+  const formattedPoolUpdate = SwapService.formatPoolUpdate({
+    price: swapData.price,
     liquidityUsd: swapData.dollarLiquidity,
     marketCapUsd,
-    swapValueUsd: swapData.swapValueUsd,
-  };
-  
-  // Define entity updaters
-  const entityUpdaters = {
-    updatePool,
-    updateFifteenMinuteBucketUsd,
-    updateAsset
+    timestamp,
+    tickLower: poolEntity.tickLower,
+    currentTick: params.tick,
+    graduationTick: poolEntity.graduationTick,
+    type: poolEntity.type,
+  });
+  const combinedPoolUpdate = {
+    ...formattedPoolUpdate,
+    reserves0: swapData.nextReserves0,
+    reserves1: swapData.nextReserves1,
+    sqrtPrice: params.sqrtPriceX96,
   };
 
-  const isQuoteEth = (quoteInfo.quoteToken === QuoteToken.Eth) ? true : false
-  // Execute all updates in parallel (including reserve update)
-  await Promise.all([
-    SwapOrchestrator.performSwapUpdates(
-      {
-        swapData: orchestratorSwapData,
-        swapType: swapData.swapType,
-        metrics,
-        poolData: {
-          parentPoolAddress: poolAddress,
-          price: swapData.price,
-          isQuoteEth,
-          quotePriceDecimals: quoteInfo.quotePriceDecimals,
-          tickLower: poolEntity.tickLower,
-          currentTick: params.tick,
-          graduationTick: poolEntity.graduationTick,
-          type: poolEntity.type,
-          baseToken: poolEntity.baseToken
-        },
-        chainId: chain.id,
+  const priceDivisor = quoteInfo.quotePriceDecimals !== undefined
+    ? BigInt(10) ** BigInt(quoteInfo.quotePriceDecimals)
+    : (isQuoteEth ? CHAINLINK_ETH_DECIMALS : WAD);
+
+  const assetUpdate: Record<string, unknown> = {
+    marketCapUsd,
+    liquidityUsd: swapData.dollarLiquidity,
+  };
+  if ("migrated" in formattedPoolUpdate) {
+    assetUpdate.migrated = formattedPoolUpdate.migrated;
+  }
+
+  const handleAssetUpdate = async () => {
+    try {
+      await updateAsset({
+        assetAddress: poolEntity.baseToken,
         context,
-      },
-      entityUpdaters
-    ),
+        update: assetUpdate,
+      });
+    } catch {
+      await insertAssetIfNotExists({
+        assetAddress: poolEntity.baseToken,
+        timestamp,
+        context,
+        marketCapUsd,
+        poolAddress,
+      });
+    }
+  };
+
+  await Promise.all([
+    updatePoolDirect({
+      poolAddress,
+      context,
+      update: combinedPoolUpdate,
+    }),
+    updateFifteenMinuteBucketUsd(context, {
+      poolAddress,
+      chainId: chain.id,
+      timestamp,
+      priceUsd: swapData.price * quoteInfo.quotePrice! / priceDivisor,
+      volumeUsd: swapData.swapValueUsd,
+    }),
+    handleAssetUpdate(),
     insertSwapIfNotExists({
       txHash: params.transactionHash,
       timestamp,
       context,
       pool: poolAddress,
       asset: poolEntity.baseToken,
-      chainId: context.chain.id,
+      chainId: chain.id,
       type: swapData.swapType,
       user: params.transactionFrom,
       amountIn: swapData.amountIn,
       amountOut: swapData.amountOut,
       swapValueUsd: swapData.swapValueUsd,
-    }),
-    // Update reserves directly (pool existence already verified)
-    updatePoolDirect({
-      poolAddress: poolAddress,
-      context,
-      update: {
-        reserves0: swapData.nextReserves0,
-        reserves1: swapData.nextReserves1,
-        sqrtPrice: params.sqrtPriceX96,
-      },
     }),
   ]);
 }

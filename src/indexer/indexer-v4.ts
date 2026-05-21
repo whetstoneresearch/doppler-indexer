@@ -17,6 +17,7 @@ import {
   isDHookPoolCacheInitialized,
   isKnownDHookPool,
 } from "./shared/dhookPoolCache";
+import { invalidatePoolCoinCache } from "./indexer-zora";
 
 import { insertV4ConfigIfNotExists } from "./shared/entities/v4Config";
 import { getReservesV4, getReservesMulticurve } from "@app/utils/v4-utils/getV4PoolData";
@@ -1010,6 +1011,10 @@ onIndexerEvent("PoolManager:ModifyLiquidity", async ({ event, context }) => {
   const { id, tickLower, tickUpper, liquidityDelta } = event.args;
   const { chain } = context;
   const poolId = (id as string).toLowerCase() as `0x${string}`;
+
+  // Any liquidity change on this pool invalidates the Zora hook's cached positions.
+  // No-op when the pool isn't a Zora creator-coin pool (cache miss is free).
+  invalidatePoolCoinCache(chain.id, poolId);
 
   if (!isDHookPoolCacheInitialized()) {
     await initializeDHookPoolCache(context);
