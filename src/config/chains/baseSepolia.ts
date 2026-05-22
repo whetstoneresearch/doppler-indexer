@@ -116,6 +116,7 @@ export const baseSepoliaConfig: ChainConfig = {
     shared: {
       airlock: "0x3411306ce66c9469bff1535ba955503c4bde1c6e" as Address,
       tokenFactory: "0xc69ba223c617f7d936b3cf2012aa644815dbe9ff" as Address,
+      dn404Factory: "0x98b0Aa2e0f134dbB3eb157b5646D387E6D55243a" as Address,
       universalRouter: "0x492e6456d9528771018deb9e87ef7750ef184104" as Address,
       governanceFactory:
         "0x9dbfaadc8c0cb2c34ba698dd9426555336992e20" as Address,
