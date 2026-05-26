@@ -62,6 +62,7 @@ export interface ZoraAddresses {
 export interface SharedAddresses {
   airlock: Address;
   tokenFactory: Address;
+  dn404Factory?: Address;
   universalRouter: Address;
   governanceFactory: Address;
   weth: Address;

@@ -1,15 +1,34 @@
-import eslint from '@eslint/js';
-import tseslint from 'typescript-eslint';
+import tsParser from '@typescript-eslint/parser';
+import tsPlugin from '@typescript-eslint/eslint-plugin';
 
-export default tseslint.config(
-  eslint.configs.recommended,
-  tseslint.configs.recommendedTypeChecked,
+export default [
   {
+    ignores: [
+      'node_modules/**',
+      '.ponder/**',
+      'dist/**',
+      'coverage/**',
+      'ponder-env.d.ts',
+      '**/*.test.ts',
+      '**/*.spec.ts',
+      'scripts/**/*.mjs',
+      'eslint.config.mjs',
+    ],
+  },
+  {
+    files: ['**/*.ts'],
     languageOptions: {
+      parser: tsParser,
       parserOptions: {
-        projectService: true,
+        project: true,
         tsconfigRootDir: import.meta.dirname,
       },
     },
+    plugins: {
+      '@typescript-eslint': tsPlugin,
+    },
+    rules: {
+      '@typescript-eslint/no-floating-promises': 'error',
+    },
   },
-);
+];

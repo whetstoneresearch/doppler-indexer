@@ -35,6 +35,12 @@ importers:
       '@types/node':
         specifier: ^20.19.17
         version: 20.19.33
+      '@typescript-eslint/eslint-plugin':
+        specifier: ^6.21.0
+        version: 6.21.0(@typescript-eslint/parser@6.21.0(eslint@8.57.1)(typescript@5.9.3))(eslint@8.57.1)(typescript@5.9.3)
+      '@typescript-eslint/parser':
+        specifier: ^6.21.0
+        version: 6.21.0(eslint@8.57.1)(typescript@5.9.3)
       '@vitest/ui':
         specifier: ^4.0.15
         version: 4.0.18(vitest@4.0.18)
