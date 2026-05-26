@@ -7,7 +7,7 @@ import {
 import { fetchEthPrice, fetchZoraPrice } from "./shared/oracle";
 import { batchUpsertUsersAndAssets, batchUpdateHolderCounts } from "./shared/entities/user-optimized";
 import { handleOptimizedSwap } from "./shared/swap-optimizer";
-import { StateViewABI, ZoraV4HookABI } from "@app/abis";
+import { ZoraV4HookABI } from "@app/abis";
 import { zeroAddress } from "viem";
 import { PriceService } from "@app/core";
 import { chainConfigs } from "@app/config";
@@ -16,6 +16,41 @@ import { insertZoraPoolV4Optimized } from "./shared/entities/zora/pool";
 import { getQuoteInfo, QuoteToken } from "@app/utils/getQuoteInfo";
 import { isPrecompileAddress } from "@app/utils/validation";
 import { computeReservesFromPositions } from "@app/utils/v4-utils";
+import { TickMath } from "@uniswap/v3-sdk";
+import JSBI from "jsbi";
+
+// Persistent cache for ZoraV4 hook getPoolCoin reads. Positions only change when
+// PoolManager:ModifyLiquidity fires (the hook has afterAdd/RemoveLiquidity perms) or
+// when ZoraCreatorCoinV4:LiquidityMigrated moves liquidity away. Those handlers call
+// invalidatePoolCoinCache; everything else can safely reuse the cached read across blocks.
+const POOL_COIN_CACHE_MAX_SIZE = 10_000;
+const poolCoinByPool = new Map<string, Promise<unknown>>();
+
+function poolCoinCacheKey(chainId: number, poolAddress: string): string {
+  return `${chainId}:${poolAddress.toLowerCase()}`;
+}
+
+function cachedGetPoolCoin<T>(key: string, loader: () => Promise<T>): Promise<T> {
+  const existing = poolCoinByPool.get(key) as Promise<T> | undefined;
+  if (existing) {
+    // LRU touch: move to most-recently-used position.
+    poolCoinByPool.delete(key);
+    poolCoinByPool.set(key, existing);
+    return existing;
+  }
+  if (poolCoinByPool.size >= POOL_COIN_CACHE_MAX_SIZE) {
+    const oldest = poolCoinByPool.keys().next().value;
+    if (oldest !== undefined) poolCoinByPool.delete(oldest);
+  }
+  const promise = loader();
+  poolCoinByPool.set(key, promise);
+  promise.catch(() => poolCoinByPool.delete(key));
+  return promise;
+}
+
+export function invalidatePoolCoinCache(chainId: number, poolAddress: string): void {
+  poolCoinByPool.delete(poolCoinCacheKey(chainId, poolAddress));
+}
 
 // ponder.on("ZoraFactory:CoinCreatedV4", async ({ event, context }) => {
 //   const { db, chain } = context;
@@ -148,7 +183,7 @@ onIndexerEvent("ZoraFactory:CreatorCoinCreated", async ({ event, context }) => {
   const [assetTokenEntity] = await Promise.all([
     upsertTokenWithPool({
       tokenAddress: coinAddress,
-      isDerc20: true,
+      isDerc20: false,
       isCreatorCoin: true,
       isContentCoin: false,
       poolAddress,
@@ -212,23 +247,25 @@ onIndexerEvent("ZoraV4CreatorCoinHook:Swapped", async ({ event, context }) => {
   const { poolKeyHash, swapSender, amount0, amount1, sqrtPriceX96, isCoinBuy, key } = event.args;
   const timestamp = event.block.timestamp;
   const poolAddress = poolKeyHash.toLowerCase() as `0x${string}`;
+  const poolCoinKey = poolCoinCacheKey(context.chain.id, poolAddress);
 
   const zoraAddress = chainConfigs[context.chain.name].addresses.zora.zoraToken;
 
-  // Parallelize RPC calls, quote info lookup, and pool fetch.
-  const [slot0, poolCoin, quoteInfo, poolEntity] = await Promise.all([
-    context.client.readContract({
-      abi: StateViewABI,
-      address: chainConfigs[context.chain.name].addresses.v4.stateView,
-      functionName: "getSlot0",
-      args: [poolAddress],
-    }),
-    context.client.readContract({
-      abi: ZoraV4HookABI,
-      address: key.hooks,
-      functionName: "getPoolCoin",
-      args: [key],
-    }),
+  // Derive tick from the event's sqrtPriceX96 — avoids a per-swap StateView.getSlot0 RPC read.
+  const tick = TickMath.getTickAtSqrtRatio(JSBI.BigInt(sqrtPriceX96.toString()));
+
+  // Parallelize the remaining RPC call (persistently cached per pool, invalidated by
+  // PoolManager:ModifyLiquidity / ZoraCreatorCoinV4:LiquidityMigrated), quote info lookup,
+  // and pool fetch.
+  const [poolCoin, quoteInfo, poolEntity] = await Promise.all([
+    cachedGetPoolCoin(poolCoinKey, () =>
+      context.client.readContract({
+        abi: ZoraV4HookABI,
+        address: key.hooks,
+        functionName: "getPoolCoin",
+        args: [key],
+      }),
+    ),
     getQuoteInfo(zoraAddress, timestamp, context),
     db.find(pool, { address: poolAddress, chainId: chain.id }),
   ]);
@@ -237,7 +274,6 @@ onIndexerEvent("ZoraV4CreatorCoinHook:Swapped", async ({ event, context }) => {
     return;
   }
 
-  const tick = slot0[1];
   const reserves = computeReservesFromPositions(poolCoin.positions, tick);
 
   await handleOptimizedSwap(
@@ -271,6 +307,9 @@ onIndexerEvent("ZoraCreatorCoinV4:LiquidityMigrated", async ({ event, context })
 
   const fromPoolAddress = fromPoolKeyHash.toLowerCase() as `0x${string}`;
   const toPoolAddress = toPoolKeyHash.toLowerCase() as `0x${string}`;
+
+  // Liquidity has moved off the source pool; drop any cached positions.
+  invalidatePoolCoinCache(chain.id, fromPoolAddress);
 
   const fromPoolEntity = await db.find(pool, {
     address: fromPoolAddress,
@@ -364,7 +403,7 @@ onIndexerEvent("ZoraCreatorCoinV4:CoinTransfer", async ({ event, context }) => {
   // Ensure token exists (upsert if needed)
   const finalTokenData = tokenData || await upsertTokenWithPool({
     tokenAddress,
-    isDerc20: true,
+    isDerc20: false,
     isCreatorCoin: true,
     isContentCoin: false,
     poolAddress: null,

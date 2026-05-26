@@ -255,7 +255,7 @@ onIndexerEvent("DopplerHookInitializer:Swap", async ({ event, context }) => {
   const { stateView } = chainConfigs[chain.name].addresses.v4;
   const initializerAddress = (poolEntity.initializer ?? event.log.address) as `0x${string}`;
 
-  const [slot0, onChainPositions] = await Promise.all([
+  const [slot0, onChainPositions, quoteInfo, tokenEntity] = await Promise.all([
     client.readContract({
       abi: StateViewABI,
       address: stateView,
@@ -269,11 +269,19 @@ onIndexerEvent("DopplerHookInitializer:Swap", async ({ event, context }) => {
       poolType: poolEntity.type,
       context,
     }),
+    getQuoteInfo(poolEntity.quoteToken, timestamp, context),
+    db.find(token, {
+      address: poolEntity.baseToken,
+      chainId: chain.id,
+    }),
   ]);
 
-  const [sqrtPriceX96, currentTick] = slot0;
+  if (!tokenEntity) {
+    console.warn(`Token not found for DHook swap: ${poolEntity.baseToken}`);
+    return;
+  }
 
-  const quoteInfo = await getQuoteInfo(poolEntity.quoteToken, timestamp, context);
+  const [sqrtPriceX96, currentTick] = slot0;
 
   const price = PriceService.computePriceFromSqrtPriceX96({
     sqrtPriceX96,
@@ -287,16 +295,6 @@ onIndexerEvent("DopplerHookInitializer:Swap", async ({ event, context }) => {
 
   const amountIn = amount0 > 0n ? BigInt(amount0) : BigInt(amount1);
   const amountOut = amount0 < 0n ? BigInt(-amount0) : BigInt(-amount1);
-
-  const tokenEntity = await db.find(token, {
-    address: poolEntity.baseToken,
-    chainId: chain.id,
-  });
-
-  if (!tokenEntity) {
-    console.warn(`Token not found for DHook swap: ${poolEntity.baseToken}`);
-    return;
-  }
 
   const marketCapUsd = MarketDataService.calculateMarketCap({
     price,
@@ -358,28 +356,27 @@ onIndexerEvent("DopplerHookInitializer:Swap", async ({ event, context }) => {
     updateAsset,
   };
 
-  await SwapOrchestrator.performSwapUpdates(
-    {
-      swapData,
-      swapType: type,
-      metrics: marketMetrics,
-      poolData: {
-        parentPoolAddress: poolAddress,
-        price,
-        quotePriceDecimals: quoteInfo.quotePriceDecimals,
-        tickLower: 0,
-        currentTick,
-        graduationTick: poolEntity.graduationTick ?? 0,
-        type: "dhook",
-        baseToken: poolEntity.baseToken,
-      },
-      chainId: chain.id,
-      context,
-    },
-    entityUpdaters
-  );
-
   await Promise.all([
+    SwapOrchestrator.performSwapUpdates(
+      {
+        swapData,
+        swapType: type,
+        metrics: marketMetrics,
+        poolData: {
+          parentPoolAddress: poolAddress,
+          price,
+          quotePriceDecimals: quoteInfo.quotePriceDecimals,
+          tickLower: 0,
+          currentTick,
+          graduationTick: poolEntity.graduationTick ?? 0,
+          type: "dhook",
+          baseToken: poolEntity.baseToken,
+        },
+        chainId: chain.id,
+        context,
+      },
+      entityUpdaters
+    ),
     updatePool({
       poolAddress,
       context,

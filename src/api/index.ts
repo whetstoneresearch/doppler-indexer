@@ -100,12 +100,12 @@ app.get("/search/:query", async (c) => {
        ohlc.percent_day_change
       FROM token t
       LEFT JOIN pool p ON p.address = t.pool
-      LEFT JOIN pool_day_agg_2 ohlc ohlc ON ohlc.pool = t.pool
+      LEFT JOIN mv_pool_day_agg_2 ohlc ON ohlc.pool = t.pool
       WHERE
         t.chain_id in (${chainIds.join(",")})
-      AND 
-        (t.name ILIKE ${`${normalizedQuery}%`} 
-        OR t.address ILIKE ${`${normalizedQuery}%`} 
+      AND
+        (t.name ILIKE ${`${normalizedQuery}%`}
+        OR t.address ILIKE ${`${normalizedQuery}%`}
         OR t.symbol ILIKE ${`${normalizedQuery}%`})
       `);
     return c.json(replaceBigInts(tokenResults, (v) => String(v)));
