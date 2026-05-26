@@ -55,7 +55,8 @@ export const monadConfig: ChainConfig = {
       DopplerHookMigrator: [
         "0x1e40b0875dda35f41e15cfb475403859b8c860c4",
         "0x65b6737c7a897029afe54dbb61bc4a84b232e0c4"
-      ] as Address[]
+      ] as Address[],
+      NoOpMigrator: "0x5F3bA43D44375286296Cb85F1EA2EBfa25dde731" as Address,
     },
     shared: {
       airlock: "0x660eaaedebc968f8f3694354fa8ec0b4c5ba8d12" as Address,

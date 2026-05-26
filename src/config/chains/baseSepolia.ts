@@ -111,7 +111,8 @@ export const baseSepoliaConfig: ChainConfig = {
         "0x65b6737c7a897029afe54dbb61bc4a84b232e0c4",
         "0xf848fea3329185529b50228bcb36f3b5a60960c4",
         "0x8bbbe586f9a902c15a759fc134a99a2d28bc20c4"
-      ] as Address[]
+      ] as Address[],
+      NoOpMigrator: "0xF11066abbd329ac4bBA39455340539322C222eb0" as Address,
     },
     shared: {
       airlock: "0x3411306ce66c9469bff1535ba955503c4bde1c6e" as Address,

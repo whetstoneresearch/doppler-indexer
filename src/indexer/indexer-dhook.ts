@@ -185,6 +185,7 @@ onIndexerEvent("DopplerHookInitializer:Create", async ({ event, context }) => {
     timestamp,
     context,
     marketCapUsd,
+    poolAddress,
   });
 });
 

@@ -69,7 +69,8 @@ export const sepoliaConfig: ChainConfig = {
       DopplerHookMigrator: [
         "0x1e40b0875dda35f41e15cfb475403859b8c860c4",
         "0x65b6737c7a897029afe54dbb61bc4a84b232e0c4"
-      ] as Address[]
+      ] as Address[],
+      NoOpMigrator: "0x233A71A7bB928b1357A1Ebf454298320989Ca5B5" as Address,
     },
     shared: {
       airlock: "0xde3599a2ec440b296373a983c85c365da55d9dfa" as Address,
