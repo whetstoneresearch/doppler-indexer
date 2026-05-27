@@ -1,4 +1,4 @@
-import { index, onchainTable, primaryKey, relations } from "ponder";
+import { index, onchainTable, primaryKey, relations, sql } from "ponder";
 
 /* TABLES */
 export const user = onchainTable(
@@ -65,6 +65,8 @@ export const token = onchainTable(
     chainIdIdx: index().on(table.chainId),
     poolIdx: index().on(table.pool),
     symbolIdx: index().on(table.symbol),
+    tokenChainFirstSeenIdx: index("token_chain_first_seen_idx").on(table.chainId, table.firstSeenAt.desc()),
+    tokenChainCreatorAddressIdx: index("token_chain_creator_address_idx").on(table.chainId, table.creatorAddress.desc()),
   })
 );
 
@@ -490,6 +492,7 @@ export const pool = onchainTable(
     pk: primaryKey({
       columns: [table.address, table.chainId],
     }),
+    assetIdx: index().on(table.asset),
     baseTokenIdx: index().on(table.baseToken),
     quoteTokenIdx: index().on(table.quoteToken),
     lastRefreshedIdx: index().on(table.lastRefreshed),
@@ -507,7 +510,13 @@ export const pool = onchainTable(
     chainQuoteLastSwapIdx: index().on(table.chainId, table.hasValidQuote, table.lastSwapTimestamp),
     chainQuoteMcapIdx: index().on(table.chainId, table.hasValidQuote, table.marketCapUsd),
     chainQuoteHoldersIdx: index().on(table.chainId, table.hasValidQuote, table.holderCount),
-    chainQuoteLiquidityIdx: index().on(table.chainId, table.hasValidQuote, table.dollarLiquidity)
+    chainQuoteLiquidityIdx: index().on(table.chainId, table.hasValidQuote, table.dollarLiquidity),
+    // Ordered index for paginated feed sorted by created_at DESC, address DESC
+    poolCreatedIdx: index("pool_created_idx").on(table.createdAt.desc(), table.address.desc()),
+    // Partial ordered index for paginated feed sorted by last_swap_timestamp DESC, created_at DESC
+    poolFeedIdx: index("pool_feed_idx")
+      .on(table.lastSwapTimestamp.desc(), table.createdAt.desc())
+      .where(sql`${table.lastSwapTimestamp} IS NOT NULL`),
   })
 );
 
