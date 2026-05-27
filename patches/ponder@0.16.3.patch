@@ -60,7 +60,7 @@ diff --git a/dist/esm/database/actions.js b/dist/esm/database/actions.js
 index 058794bde30e72c2a61ee1fe1af61d8d4cdb74fa..d1c03a848aed7d8755920590a1f095a8df078473 100644
 --- a/dist/esm/database/actions.js
 +++ b/dist/esm/database/actions.js
-@@ -6,13 +6,59 @@ import { and, eq, getTableColumns, getTableName, getViewName, lte, sql, } from "
+@@ -6,13 +6,82 @@ import { and, eq, getTableColumns, getTableName, getViewName, lte, sql, } from "
  import { getTableConfig } from "drizzle-orm/pg-core";
  import { PONDER_CHECKPOINT_TABLE_NAME, PONDER_META_TABLE_NAME, getPonderCheckpointTable, } from "./index.js";
  export const createIndexes = async (qb, { statements }, context) => {
@@ -74,19 +74,42 @@ index 058794bde30e72c2a61ee1fe1af61d8d4cdb74fa..d1c03a848aed7d8755920590a1f095a8
 +    // Parallelize index creation. On Postgres we use CREATE INDEX CONCURRENTLY
 +    // so the build does not block writes — this lets live indexing run
 +    // concurrently with the index build (see runtime/{multichain,omnichain}.js
-+    // where this is invoked without await). CONCURRENTLY cannot run inside a
-+    // transaction block, so each statement runs via qb.wrap. The statement
-+    // timeout is sent in the same simple-query batch so it applies to the
-+    // same backend session.
++    // where this is invoked without await).
 +    //
-+    // Concurrency cap is lower than the non-CONCURRENTLY path because the
-+    // user pool is shared with live indexing during the background build.
-+    const CONCURRENCY = 4;
++    // Postgres path is serialized (CONCURRENCY=1) because parallel
++    // CREATE INDEX CONCURRENTLY workers can form deadlock cycles waiting on
++    // each other's (and the live indexer's) virtual transactions. The build
++    // is already non-blocking, so the wall-clock win from parallelism is
++    // marginal compared to the risk of a deadlock killing a build mid-flight
++    // and leaving an INVALID index behind.
 +    const isPostgres = qb.$dialect === "postgres";
++    const CONCURRENCY = isPostgres ? 1 : 4;
 +    const queue = statements.indexes.sql.map((statement) => {
 +        if (!isPostgres) return statement;
 +        return statement.replace(/^\s*CREATE(\s+UNIQUE)?\s+INDEX\s+IF\s+NOT\s+EXISTS/i, (_m, unique) => `CREATE${unique ?? ""} INDEX CONCURRENTLY IF NOT EXISTS`);
 +    });
++    // Sweep any INVALID indexes left behind by a previously-killed
++    // CREATE INDEX CONCURRENTLY (e.g. from a deadlock or process crash).
++    // IF NOT EXISTS would otherwise skip recreating them, so they'd stay
++    // invalid forever and queries wouldn't use them.
++    if (isPostgres && queue.length > 0) {
++        const sweepClient = await qb.$client.connect();
++        try {
++            const { rows } = await sweepClient.query(`
++                SELECT n.nspname AS schema, c.relname AS index
++                FROM pg_index i
++                JOIN pg_class c ON c.oid = i.indexrelid
++                JOIN pg_namespace n ON n.oid = c.relnamespace
++                WHERE NOT i.indisvalid
++            `);
++            for (const row of rows) {
++                await sweepClient.query(`DROP INDEX IF EXISTS "${row.schema}"."${row.index}"`);
++            }
++        }
++        finally {
++            sweepClient.release();
++        }
++    }
 +    const runWorker = async () => {
 +        while (queue.length > 0) {
 +            const statement = queue.shift();
