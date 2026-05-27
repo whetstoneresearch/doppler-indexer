@@ -1,0 +1,75 @@
+services:
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml.tmpl:/etc/prometheus/prometheus.yml.tmpl:ro
+      - prometheus-data:/prometheus
+    environment:
+      DO_PG_USER: ${DO_PG_USER}
+      DO_PG_PASSWORD: ${DO_PG_PASSWORD}
+      DO_PG_HOST: ${DO_PG_HOST}
+      DO_PG_REPLICA_HOST: ${DO_PG_REPLICA_HOST}
+      PONDER_PROD_API_HOST: ${PONDER_PROD_API_HOST}
+      PONDER_PROD_INDEXER_HOST: ${PONDER_PROD_INDEXER_HOST}
+      PONDER_STAGING_HOST: ${PONDER_STAGING_HOST}
+      PONDER_TESTNET_API_HOST: ${PONDER_TESTNET_API_HOST}
+      PONDER_TESTNET_INDEXER_HOST: ${PONDER_TESTNET_INDEXER_HOST}
+      PONDER_BANKR_HOST: ${PONDER_BANKR_HOST}
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        set -e
+        sed -e "s|__DO_PG_USER__|$$DO_PG_USER|g" \
+            -e "s|__DO_PG_PASSWORD__|$$DO_PG_PASSWORD|g" \
+            -e "s|__DO_PG_HOST__|$$DO_PG_HOST|g" \
+            -e "s|__DO_PG_REPLICA_HOST__|$$DO_PG_REPLICA_HOST|g" \
+            -e "s|__PONDER_PROD_API_HOST__|$$PONDER_PROD_API_HOST|g" \
+            -e "s|__PONDER_PROD_INDEXER_HOST__|$$PONDER_PROD_INDEXER_HOST|g" \
+            -e "s|__PONDER_STAGING_HOST__|$$PONDER_STAGING_HOST|g" \
+            -e "s|__PONDER_TESTNET_API_HOST__|$$PONDER_TESTNET_API_HOST|g" \
+            -e "s|__PONDER_TESTNET_INDEXER_HOST__|$$PONDER_TESTNET_INDEXER_HOST|g" \
+            -e "s|__PONDER_BANKR_HOST__|$$PONDER_BANKR_HOST|g" \
+            /etc/prometheus/prometheus.yml.tmpl > /tmp/prometheus.yml
+        exec /bin/prometheus \
+          --config.file=/tmp/prometheus.yml \
+          --storage.tsdb.path=/prometheus \
+          --storage.tsdb.retention.time=14d \
+          --web.enable-lifecycle
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+  postgres-exporter:
+    image: quay.io/prometheuscommunity/postgres-exporter:latest
+    container_name: postgres-exporter
+    environment:
+      DATA_SOURCE_NAME: "${DATABASE_URL}"
+      PG_EXPORTER_AUTO_DISCOVER_DATABASES: "false"
+      PG_EXPORTER_EXCLUDE_DATABASES: "template0,template1"
+    ports:
+      - "9187:9187"
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: "${GRAFANA_ADMIN_USER:-admin}"
+      GF_SECURITY_ADMIN_PASSWORD: "${GRAFANA_ADMIN_PASSWORD:-admin}"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_INSTALL_PLUGINS: ""
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana-data:/var/lib/grafana
+    restart: unless-stopped
+
+volumes:
+  prometheus-data:
+  grafana-data:
