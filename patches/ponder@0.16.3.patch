@@ -60,7 +60,7 @@ diff --git a/dist/esm/database/actions.js b/dist/esm/database/actions.js
 index 058794bde30e72c2a61ee1fe1af61d8d4cdb74fa..d1c03a848aed7d8755920590a1f095a8df078473 100644
 --- a/dist/esm/database/actions.js
 +++ b/dist/esm/database/actions.js
-@@ -6,13 +6,41 @@ import { and, eq, getTableColumns, getTableName, getViewName, lte, sql, } from "
+@@ -6,13 +6,45 @@ import { and, eq, getTableColumns, getTableName, getViewName, lte, sql, } from "
  import { getTableConfig } from "drizzle-orm/pg-core";
  import { PONDER_CHECKPOINT_TABLE_NAME, PONDER_META_TABLE_NAME, getPonderCheckpointTable, } from "./index.js";
  export const createIndexes = async (qb, { statements }, context) => {
@@ -92,9 +92,13 @@ index 058794bde30e72c2a61ee1fe1af61d8d4cdb74fa..d1c03a848aed7d8755920590a1f095a8
 +            const statement = queue.shift();
 +            if (statement === undefined) return;
 +            if (isPostgres) {
-+                // Single simple-query batch keeps SET on the same backend session
-+                // as the CREATE INDEX CONCURRENTLY that follows it.
-+                await qb.wrap({ label: "create_indexes" }, (db) => db.execute(`SET statement_timeout = 3600000; ${statement}`), context);
++                // CREATE INDEX CONCURRENTLY cannot run inside a transaction
++                // block, and drizzle's db.execute() uses the pg extended query
++                // protocol which forces an implicit transaction. Go through
++                // the raw pg Pool (qb.$client.query(text)) so the simple query
++                // protocol is used: it auto-commits and allows the SET +
++                // CREATE INDEX CONCURRENTLY to ride in one message.
++                await qb.wrap({ label: "create_indexes" }, () => qb.$client.query(`SET statement_timeout = 3600000; ${statement}`), context);
 +            }
 +            else {
 +                await qb.transaction({ label: "create_indexes" }, async (tx) => {
