@@ -1,0 +1,257 @@
+{
+  "title": "Postgres (DB host)",
+  "uid": "db",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-1h", "to": "now" },
+  "timezone": "browser",
+  "tags": ["postgres", "infra", "primary"],
+  "templating": {
+    "list": [
+      {
+        "name": "datasource",
+        "type": "datasource",
+        "query": "prometheus",
+        "current": { "text": "Prometheus", "value": "Prometheus" }
+      },
+      {
+        "name": "schema",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "${datasource}" },
+        "query": "label_values(postgresql_pg_statio_user_tables_cache_hit_ratio{role=\"primary\"}, schema_name)",
+        "includeAll": true,
+        "multi": true,
+        "current": { "text": "All", "value": "$__all" },
+        "refresh": 2
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1, "type": "row", "title": "Disk IO",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 }
+    },
+    {
+      "id": 2, "type": "timeseries", "title": "Avg disk queue depth (avgqu-sz) — vda5 / dm-5",
+      "description": "Mean number of I/Os in flight, averaged over the rate window. The real saturation signal for parallel devices — virtio/NVMe/device-mapper handle many requests at once, so the Linux util% pins at 100% with plenty of headroom left. Healthy: <2. Working hard: 2–8. Bottlenecked: >8 sustained. Derived from diskio_weighted_io_time (ms-of-queue-time per second ÷ 1000 = unitless mean concurrency).",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 1 },
+      "targets": [{
+        "expr": "rate(diskio_weighted_io_time{role=\"primary\",name=~\"vda5|dm-5\"}[1m]) / 1000",
+        "legendFormat": "{{name}}",
+        "refId": "A"
+      }],
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0, "thresholds": { "mode": "absolute", "steps": [
+        { "color": "green", "value": null }, { "color": "yellow", "value": 2 }, { "color": "orange", "value": 4 }, { "color": "red", "value": 8 }
+      ]}}}
+    },
+    {
+      "id": 3, "type": "timeseries", "title": "IO await (ms) — read vs write",
+      "description": "Average wait + service time per I/O. The primary latency signal — what Postgres backends actually feel when reading from / fsyncing to disk. Healthy: <25ms. Concerning: >50ms sustained (start checking checkpoint pressure, autovacuum, and DO volume IOPS cap). Read/write split derived from diskio_{read,write}_time ÷ diskio_{reads,writes}; dm-5 combined comes from the precomputed diskio_io_await.",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 1 },
+      "targets": [
+        { "expr": "rate(diskio_read_time{role=\"primary\",name=\"vda5\"}[1m]) / rate(diskio_reads{role=\"primary\",name=\"vda5\"}[1m])", "legendFormat": "vda5 read", "refId": "A" },
+        { "expr": "rate(diskio_write_time{role=\"primary\",name=\"vda5\"}[1m]) / rate(diskio_writes{role=\"primary\",name=\"vda5\"}[1m])", "legendFormat": "vda5 write", "refId": "B" },
+        { "expr": "diskio_io_await{role=\"primary\",name=\"dm-5\"}", "legendFormat": "dm-5 combined", "refId": "C" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "ms", "min": 0, "thresholds": { "mode": "absolute", "steps": [
+        { "color": "green", "value": null }, { "color": "yellow", "value": 25 }, { "color": "red", "value": 50 }
+      ]}}}
+    },
+    {
+      "id": 4, "type": "timeseries", "title": "IOPS (reads + writes / s) — data disk",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 9 },
+      "targets": [
+        { "expr": "rate(diskio_reads{role=\"primary\",name=\"vda5\"}[1m])", "legendFormat": "reads", "refId": "A" },
+        { "expr": "rate(diskio_writes{role=\"primary\",name=\"vda5\"}[1m])", "legendFormat": "writes", "refId": "B" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "iops" } }
+    },
+    {
+      "id": 5, "type": "timeseries", "title": "Throughput (B/s) — data disk",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 9 },
+      "targets": [
+        { "expr": "rate(diskio_read_bytes{role=\"primary\",name=\"vda5\"}[1m])", "legendFormat": "read", "refId": "A" },
+        { "expr": "rate(diskio_write_bytes{role=\"primary\",name=\"vda5\"}[1m])", "legendFormat": "write", "refId": "B" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "Bps" } }
+    },
+    {
+      "id": 6, "type": "row", "title": "CPU / memory",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 16 }
+    },
+    {
+      "id": 7, "type": "timeseries", "title": "CPU usage (cpu-total)",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 7, "w": 8, "x": 0, "y": 17 },
+      "targets": [
+        { "expr": "cpu_usage_user{role=\"primary\",cpu=\"cpu-total\"}", "legendFormat": "user", "refId": "A" },
+        { "expr": "cpu_usage_system{role=\"primary\",cpu=\"cpu-total\"}", "legendFormat": "system", "refId": "B" },
+        { "expr": "cpu_usage_iowait{role=\"primary\",cpu=\"cpu-total\"}", "legendFormat": "iowait", "refId": "C" },
+        { "expr": "100 - cpu_usage_idle{role=\"primary\",cpu=\"cpu-total\"}", "legendFormat": "used (100-idle)", "refId": "D" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "percent", "max": 100, "min": 0 } }
+    },
+    {
+      "id": 8, "type": "timeseries", "title": "Max per-CPU usage (find a pegged core)",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 7, "w": 8, "x": 8, "y": 17 },
+      "targets": [{
+        "expr": "max by (host) (100 - cpu_usage_idle{role=\"primary\",cpu!=\"cpu-total\"})",
+        "legendFormat": "max core %",
+        "refId": "A"
+      }],
+      "fieldConfig": { "defaults": { "unit": "percent", "max": 100, "min": 0 } }
+    },
+    {
+      "id": 9, "type": "timeseries", "title": "System load (1/5/15) vs n_cpus",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 7, "w": 8, "x": 16, "y": 17 },
+      "targets": [
+        { "expr": "system_load1{role=\"primary\"}", "legendFormat": "load1", "refId": "A" },
+        { "expr": "system_load5{role=\"primary\"}", "legendFormat": "load5", "refId": "B" },
+        { "expr": "system_load15{role=\"primary\"}", "legendFormat": "load15", "refId": "C" },
+        { "expr": "system_n_cpus{role=\"primary\"}", "legendFormat": "n_cpus", "refId": "D" }
+      ]
+    },
+    {
+      "id": 10, "type": "timeseries", "title": "Memory used / available / cached",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 24 },
+      "targets": [
+        { "expr": "mem_used{role=\"primary\"}", "legendFormat": "used", "refId": "A" },
+        { "expr": "mem_available{role=\"primary\"}", "legendFormat": "available", "refId": "B" },
+        { "expr": "mem_cached{role=\"primary\"}", "legendFormat": "cached", "refId": "C" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "bytes" } }
+    },
+    {
+      "id": 11, "type": "timeseries", "title": "Swap activity (rate)",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 24 },
+      "targets": [
+        { "expr": "rate(swap_in{role=\"primary\"}[5m])", "legendFormat": "swap in B/s", "refId": "A" },
+        { "expr": "rate(swap_out{role=\"primary\"}[5m])", "legendFormat": "swap out B/s", "refId": "B" },
+        { "expr": "swap_used{role=\"primary\"}", "legendFormat": "swap used (current)", "refId": "C" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "Bps" } }
+    },
+    {
+      "id": 12, "type": "row", "title": "Postgres internals",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 31 }
+    },
+    {
+      "id": 13, "type": "timeseries", "title": "Connections by state",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 7, "w": 8, "x": 0, "y": 32 },
+      "targets": [
+        { "expr": "postgresql_pg_stat_activity_conn_count{role=\"primary\"}", "legendFormat": "total", "refId": "A" },
+        { "expr": "postgresql_pg_stat_activity_active_conn_count{role=\"primary\"}", "legendFormat": "active", "refId": "B" },
+        { "expr": "postgresql_pg_stat_activity_idle_conn_count{role=\"primary\"}", "legendFormat": "idle", "refId": "C" }
+      ]
+    },
+    {
+      "id": 14, "type": "timeseries", "title": "Cache hit ratio (db-wide)",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 7, "w": 8, "x": 8, "y": 32 },
+      "targets": [{
+        "expr": "rate(postgresql_pg_stat_database_blks_hit{role=\"primary\",datname=\"defaultdb\"}[5m]) / (rate(postgresql_pg_stat_database_blks_hit{role=\"primary\",datname=\"defaultdb\"}[5m]) + rate(postgresql_pg_stat_database_blks_read{role=\"primary\",datname=\"defaultdb\"}[5m]))",
+        "legendFormat": "hit ratio",
+        "refId": "A"
+      }],
+      "fieldConfig": { "defaults": { "unit": "percentunit", "max": 1, "min": 0 } }
+    },
+    {
+      "id": 15, "type": "timeseries", "title": "TPS (commits + rollbacks)",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 7, "w": 8, "x": 16, "y": 32 },
+      "targets": [
+        { "expr": "rate(postgresql_pg_stat_database_xact_commit{role=\"primary\",datname=\"defaultdb\"}[1m])", "legendFormat": "commits/s", "refId": "A" },
+        { "expr": "rate(postgresql_pg_stat_database_xact_rollback{role=\"primary\",datname=\"defaultdb\"}[1m])", "legendFormat": "rollbacks/s", "refId": "B" }
+      ]
+    },
+    {
+      "id": 16, "type": "timeseries", "title": "Checkpoints (timed vs forced) per minute",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 7, "w": 8, "x": 0, "y": 39 },
+      "targets": [
+        { "expr": "rate(postgresql_pg_stat_bgwriter_checkpoints_timed{role=\"primary\"}[5m]) * 60", "legendFormat": "timed/min", "refId": "A" },
+        { "expr": "rate(postgresql_pg_stat_bgwriter_checkpoints_req{role=\"primary\"}[5m]) * 60", "legendFormat": "forced/min", "refId": "B" }
+      ]
+    },
+    {
+      "id": 17, "type": "timeseries", "title": "Bgwriter buffers / s",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 7, "w": 8, "x": 8, "y": 39 },
+      "targets": [
+        { "expr": "rate(postgresql_pg_stat_bgwriter_buffers_checkpoint{role=\"primary\"}[1m])", "legendFormat": "checkpoint", "refId": "A" },
+        { "expr": "rate(postgresql_pg_stat_bgwriter_buffers_clean{role=\"primary\"}[1m])", "legendFormat": "clean", "refId": "B" },
+        { "expr": "rate(postgresql_pg_stat_bgwriter_buffers_backend{role=\"primary\"}[1m])", "legendFormat": "backend", "refId": "C" }
+      ]
+    },
+    {
+      "id": 18, "type": "timeseries", "title": "Temp file bytes / s + replica flush lag",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 7, "w": 8, "x": 16, "y": 39 },
+      "targets": [
+        { "expr": "rate(postgresql_pg_stat_database_temp_bytes{role=\"primary\",datname=\"defaultdb\"}[1m])", "legendFormat": "temp bytes/s", "refId": "A" },
+        { "expr": "postgresql_pg_stat_replication_replication_flush_lag_bytes{role=\"primary\"}", "legendFormat": "replica flush lag bytes", "refId": "B" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "Bps" } }
+    },
+    {
+      "id": 19, "type": "row", "title": "Per-table hotspots",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 46 }
+    },
+    {
+      "id": 20, "type": "bargauge", "title": "Worst cache hit ratio (by schema/table)",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 10, "w": 12, "x": 0, "y": 47 },
+      "options": { "orientation": "horizontal", "displayMode": "gradient" },
+      "targets": [{
+        "expr": "bottomk(15, postgresql_pg_statio_user_tables_cache_hit_ratio{role=\"primary\",schema_name=~\"$schema\"})",
+        "legendFormat": "{{schema_name}}.{{table_name}}",
+        "refId": "A",
+        "instant": true
+      }],
+      "fieldConfig": { "defaults": { "unit": "percentunit", "max": 1, "min": 0 } }
+    },
+    {
+      "id": 21, "type": "bargauge", "title": "Largest tables (current size)",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 10, "w": 12, "x": 12, "y": 47 },
+      "options": { "orientation": "horizontal", "displayMode": "gradient" },
+      "targets": [{
+        "expr": "topk(15, postgresql_pg_class_table_size{role=\"primary\"})",
+        "legendFormat": "{{table_name}}",
+        "refId": "A",
+        "instant": true
+      }],
+      "fieldConfig": { "defaults": { "unit": "bytes" } }
+    },
+    {
+      "id": 22, "type": "timeseries", "title": "Dead tuples",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 57 },
+      "targets": [{
+        "expr": "postgresql_pg_stat_user_tables_n_dead_tup{role=\"primary\"}",
+        "legendFormat": "dead tuples",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 23, "type": "timeseries", "title": "Max table XID age (wraparound risk)",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 57 },
+      "targets": [{
+        "expr": "max by (table_name) (postgresql_pg_class_xid_age{role=\"primary\"})",
+        "legendFormat": "{{table_name}}",
+        "refId": "A"
+      }]
+    }
+  ]
+}

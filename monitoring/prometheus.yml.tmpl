@@ -1,0 +1,81 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: postgres
+    static_configs:
+      - targets:
+          - postgres-exporter:9187
+        labels:
+          role: primary
+
+  - job_name: ponder
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - __PONDER_PROD_API_HOST__
+        labels:
+          indexer: prod-api
+      - targets:
+          - __PONDER_PROD_INDEXER_HOST__
+        labels:
+          indexer: prod-indexer
+      - targets:
+          - __PONDER_STAGING_HOST__
+        labels:
+          indexer: staging
+      - targets:
+          - __PONDER_TESTNET_API_HOST__
+        labels:
+          indexer: testnet-api
+      - targets:
+          - __PONDER_TESTNET_INDEXER_HOST__
+        labels:
+          indexer: testnet-indexer
+  - job_name: ponder-bankr
+    scheme: https
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - __PONDER_BANKR_HOST__
+        labels:
+          indexer: bankr
+
+  # DigitalOcean managed Postgres telegraf-style metrics endpoint.
+  # Replace the URL/auth with whatever DO gave you (usually exposed per-database
+  # under "Metrics" → "Prometheus integration"). Drop the high-cardinality labels
+  # we don't need to keep the time series count down.
+  - job_name: do-postgres
+    scheme: https
+    metrics_path: /metrics
+    basic_auth:
+      username: "__DO_PG_USER__"
+      password: "__DO_PG_PASSWORD__"
+    tls_config:
+      insecure_skip_verify: true
+    static_configs:
+      - targets:
+          - __DO_PG_HOST__
+        labels:
+          role: primary
+    metric_relabel_configs:
+      - action: labeldrop
+        regex: (cloud|project|service|service_type)
+
+  - job_name: do-postgres-replica
+    scheme: https
+    metrics_path: /metrics
+    basic_auth:
+      username: "__DO_PG_USER__"
+      password: "__DO_PG_PASSWORD__"
+    tls_config:
+      insecure_skip_verify: true
+    static_configs:
+      - targets:
+          - __DO_PG_REPLICA_HOST__
+        labels:
+          role: replica
+    metric_relabel_configs:
+      - action: labeldrop
+        regex: (cloud|project|service|service_type)

@@ -1,0 +1,212 @@
+{
+  "title": "Indexer — prod",
+  "uid": "indexer-prod",
+  "schemaVersion": 39,
+  "version": 2,
+  "refresh": "30s",
+  "time": { "from": "now-1h", "to": "now" },
+  "timezone": "browser",
+  "tags": ["ponder", "indexer", "prod"],
+  "templating": {
+    "list": [
+      {
+        "name": "datasource",
+        "type": "datasource",
+        "query": "prometheus",
+        "current": { "text": "Prometheus", "value": "Prometheus" }
+      },
+      {
+        "name": "chain",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "${datasource}" },
+        "query": "label_values(ponder_sync_block_timestamp{indexer=\"prod-indexer\"}, chain)",
+        "includeAll": true,
+        "multi": true,
+        "current": { "text": "All", "value": "$__all" },
+        "refresh": 2
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1, "type": "row", "title": "Lag",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 }
+    },
+    {
+      "id": 2, "type": "timeseries", "title": "Lag per chain (sync_block - indexing) seconds",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 1 },
+      "targets": [{
+        "expr": "ponder_sync_block_timestamp{indexer=\"prod-indexer\",chain=~\"$chain\"} - ponder_indexing_timestamp{indexer=\"prod-indexer\",chain=~\"$chain\"}",
+        "legendFormat": "{{chain}}",
+        "refId": "A"
+      }],
+      "fieldConfig": { "defaults": { "unit": "s", "thresholds": { "mode": "absolute", "steps": [
+        { "color": "green", "value": null }, { "color": "yellow", "value": 30 }, { "color": "red", "value": 120 }
+      ]}}}
+    },
+    {
+      "id": 3, "type": "timeseries", "title": "Realtime mode (1=live, 0=historical)",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 1 },
+      "targets": [{
+        "expr": "ponder_sync_is_realtime{indexer=\"prod-indexer\",chain=~\"$chain\"}",
+        "legendFormat": "{{chain}}",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 4, "type": "row", "title": "HTTP / API (read-API droplet)",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 9 }
+    },
+    {
+      "id": 5, "type": "timeseries", "title": "Request rate by endpoint",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 10 },
+      "targets": [{
+        "expr": "sum by (path) (rate(ponder_http_server_request_duration_ms_count{indexer=\"prod-api\"}[1m]))",
+        "legendFormat": "{{path}}",
+        "refId": "A"
+      }],
+      "fieldConfig": { "defaults": { "unit": "reqps" } }
+    },
+    {
+      "id": 6, "type": "timeseries", "title": "Request p95 by endpoint",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 10 },
+      "targets": [{
+        "expr": "histogram_quantile(0.95, sum by (path, le) (rate(ponder_http_server_request_duration_ms_bucket{indexer=\"prod-api\"}[5m])))",
+        "legendFormat": "{{path}}",
+        "refId": "A"
+      }],
+      "fieldConfig": { "defaults": { "unit": "ms" } }
+    },
+    {
+      "id": 18, "type": "timeseries", "title": "/sql/* latency percentiles by status",
+      "description": "Ponder collapses every /sql query under path=/sql/*, so we can't break down by SQL text. Status splits timeouts (5XX) from slow successes (2XX). For per-query investigation use pg_stat_statements on the prod_readonly droplet.",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 17 },
+      "targets": [
+        { "expr": "histogram_quantile(0.50, sum by (status, le) (rate(ponder_http_server_request_duration_ms_bucket{indexer=\"prod-api\",path=\"/sql/*\"}[5m])))", "legendFormat": "p50 {{status}}", "refId": "A" },
+        { "expr": "histogram_quantile(0.95, sum by (status, le) (rate(ponder_http_server_request_duration_ms_bucket{indexer=\"prod-api\",path=\"/sql/*\"}[5m])))", "legendFormat": "p95 {{status}}", "refId": "B" },
+        { "expr": "histogram_quantile(0.99, sum by (status, le) (rate(ponder_http_server_request_duration_ms_bucket{indexer=\"prod-api\",path=\"/sql/*\"}[5m])))", "legendFormat": "p99 {{status}}", "refId": "C" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "ms" } }
+    },
+    {
+      "id": 19, "type": "heatmap", "title": "/sql/* latency distribution",
+      "description": "Heatmap of request rate per latency bucket. Bright cells near the top (>= the 500000 ms top bucket) are requests overflowing the histogram cap — those are truly stuck/timed-out.",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 17 },
+      "targets": [{
+        "expr": "sum by (le) (rate(ponder_http_server_request_duration_ms_bucket{indexer=\"prod-api\",path=\"/sql/*\"}[1m]))",
+        "format": "heatmap",
+        "legendFormat": "{{le}}",
+        "refId": "A"
+      }],
+      "options": {
+        "calculate": false,
+        "cellGap": 1,
+        "color": { "scheme": "Spectral", "mode": "scheme", "exponent": 0.5, "steps": 64 },
+        "yAxis": { "unit": "ms", "decimals": 0 },
+        "tooltip": { "show": true, "yHistogram": true }
+      }
+    },
+    {
+      "id": 7, "type": "row", "title": "Database calls (from indexer process)",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 24 }
+    },
+    {
+      "id": 8, "type": "timeseries", "title": "select_checkpoints avg latency (DB contention proxy)",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 7, "w": 8, "x": 0, "y": 25 },
+      "targets": [{
+        "expr": "rate(ponder_database_method_duration_sum{indexer=\"prod-indexer\",method=\"select_checkpoints\"}[5m]) / rate(ponder_database_method_duration_count{indexer=\"prod-indexer\",method=\"select_checkpoints\"}[5m])",
+        "legendFormat": "avg ms",
+        "refId": "A"
+      }],
+      "fieldConfig": { "defaults": { "unit": "ms" } }
+    },
+    {
+      "id": 9, "type": "timeseries", "title": "DB method avg latency (top 8 by traffic)",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 7, "w": 8, "x": 8, "y": 25 },
+      "targets": [{
+        "expr": "topk(8, rate(ponder_database_method_duration_sum{indexer=\"prod-indexer\"}[5m]) / rate(ponder_database_method_duration_count{indexer=\"prod-indexer\"}[5m]))",
+        "legendFormat": "{{method}}",
+        "refId": "A"
+      }],
+      "fieldConfig": { "defaults": { "unit": "ms" } }
+    },
+    {
+      "id": 10, "type": "timeseries", "title": "DB method error rate",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 7, "w": 8, "x": 16, "y": 25 },
+      "targets": [{
+        "expr": "rate(ponder_database_method_error_total{indexer=\"prod-indexer\"}[5m])",
+        "legendFormat": "{{method}}",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 11, "type": "row", "title": "Indexing + RPC",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 32 }
+    },
+    {
+      "id": 12, "type": "timeseries", "title": "Indexing event rate (top 10)",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 7, "w": 8, "x": 0, "y": 33 },
+      "targets": [{
+        "expr": "topk(10, rate(ponder_indexing_function_duration_count{indexer=\"prod-indexer\"}[1m]))",
+        "legendFormat": "{{event}}",
+        "refId": "A"
+      }],
+      "fieldConfig": { "defaults": { "unit": "ops" } }
+    },
+    {
+      "id": 13, "type": "timeseries", "title": "Indexing function avg ms (top 10)",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 7, "w": 8, "x": 8, "y": 33 },
+      "targets": [{
+        "expr": "topk(10, 1000 * rate(ponder_indexing_function_duration_sum{indexer=\"prod-indexer\"}[5m]) / rate(ponder_indexing_function_duration_count{indexer=\"prod-indexer\"}[5m]))",
+        "legendFormat": "{{event}}",
+        "refId": "A"
+      }],
+      "fieldConfig": { "defaults": { "unit": "ms" } }
+    },
+    {
+      "id": 14, "type": "timeseries", "title": "RPC error rate (per chain/method)",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 7, "w": 8, "x": 16, "y": 33 },
+      "targets": [{
+        "expr": "rate(ponder_rpc_request_error_total{indexer=\"prod-indexer\",chain=~\"$chain\"}[5m])",
+        "legendFormat": "{{chain}} {{method}}",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 15, "type": "row", "title": "Process health (indexer + api)",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 40 }
+    },
+    {
+      "id": 16, "type": "timeseries", "title": "Event-loop lag (p99, max)",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 41 },
+      "targets": [
+        { "expr": "nodejs_eventloop_lag_p99_seconds{indexer=~\"prod-(api|indexer)\"}", "legendFormat": "{{indexer}} p99", "refId": "A" },
+        { "expr": "nodejs_eventloop_lag_max_seconds{indexer=~\"prod-(api|indexer)\"}", "legendFormat": "{{indexer}} max", "refId": "B" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s" } }
+    },
+    {
+      "id": 17, "type": "timeseries", "title": "Process memory (RSS, heap)",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 41 },
+      "targets": [
+        { "expr": "process_resident_memory_bytes{indexer=~\"prod-(api|indexer)\"}", "legendFormat": "{{indexer}} rss", "refId": "A" },
+        { "expr": "process_heap_bytes{indexer=~\"prod-(api|indexer)\"}", "legendFormat": "{{indexer}} heap", "refId": "B" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "bytes" } }
+    }
+  ]
+}
