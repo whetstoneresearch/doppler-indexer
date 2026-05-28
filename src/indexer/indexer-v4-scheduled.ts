@@ -29,6 +29,7 @@ import { zeroAddress } from "viem";
 import { getQuoteInfo } from "@app/utils/getQuoteInfo";
 import { readContractWithZeroDataPadding } from "@app/utils/readContractWithZeroDataPadding";
 import { updateCumulatedFees, handleCollect } from "./shared/cumulatedFees";
+import { transferPoolBeneficiary } from "./shared/entities/multicurve/poolBeneficiary";
 
 onIndexerEvent(
   "UniswapV4ScheduledMulticurveInitializer:Create",
@@ -153,6 +154,22 @@ onIndexerEvent(
       context,
     });
   }
+);
+
+onIndexerEvent(
+  "UniswapV4ScheduledMulticurveInitializer:UpdateBeneficiary",
+  async ({ event, context }) => {
+    const { poolId, oldBeneficiary, newBeneficiary } = event.args;
+    const poolAddress = (poolId as string).toLowerCase() as `0x${string}`;
+
+    await transferPoolBeneficiary({
+      poolId: poolAddress,
+      oldBeneficiary,
+      newBeneficiary,
+      timestamp: event.block.timestamp,
+      context,
+    });
+  },
 );
 
 onIndexerEvent(

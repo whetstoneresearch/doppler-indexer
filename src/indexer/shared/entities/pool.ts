@@ -6,17 +6,17 @@ import { getV3PoolData, getSlot0Data, getV3PoolReserves } from "@app/utils/v3-ut
 import { computeGraduationPercentage } from "@app/utils/v4-utils";
 import { getReservesV4 } from "@app/utils/v4-utils/getV4PoolData";
 import { Context } from "ponder:registry";
-import { pool, token } from "ponder:schema";
+import { pool } from "ponder:schema";
 import { Address, zeroAddress } from "viem";
-import { fetchMonadPrice, fetchZoraPrice } from "../oracle";
 import { getQuoteInfo, QuoteToken, QuoteInfo, isValidQuoteToken } from "@app/utils/getQuoteInfo";
 import { getLockableV3PoolData } from "@app/utils/v3-utils/getV3PoolData";
 import { chainConfigs } from "@app/config";
 import { AssetData } from "@app/types";
 import { Network } from "@app/types/config-types";
-import { eq, and } from "ponder";
 import { isPrecompileAddress } from "@app/utils/validation";
 import { addToDHookPoolCache } from "../dhookPoolCache";
+import { replacePoolBeneficiaries } from "./multicurve/poolBeneficiary";
+import { normalizePoolBeneficiaries } from "./multicurve/poolBeneficiaryUtils";
 
 export const fetchExistingPool = async ({
   poolAddress,
@@ -370,7 +370,6 @@ export const insertPoolIfNotExistsV4 = async ({
   poolAddress,
   timestamp,
   poolData,
-  ethPrice,
   context,
 }: {
   poolAddress: Address;
@@ -486,7 +485,6 @@ export const insertPoolIfNotExistsDHook = async ({
   poolAddress,
   timestamp,
   poolData,
-  ethPrice,
   context,
   beneficiaries,
   initializerAddress,
@@ -506,10 +504,6 @@ export const insertPoolIfNotExistsDHook = async ({
     chainId: chain.id,
   });
 
-  if (existingPool) {
-    return existingPool;
-  }
-
   const { poolKey, slot0Data, liquidity, price, poolConfig } = poolData;
   const { fee } = poolKey;
 
@@ -517,6 +511,21 @@ export const insertPoolIfNotExistsDHook = async ({
   const numeraireAddr = (poolConfig.isToken0
     ? poolKey.currency1
     : poolKey.currency0).toLowerCase() as `0x${string}`;
+
+  if (existingPool) {
+    if (beneficiaries && initializerAddress) {
+      await replacePoolBeneficiaries({
+        poolId: address,
+        assetId: assetAddr,
+        initializer: initializerAddress,
+        beneficiaries,
+        timestamp,
+        context,
+      });
+    }
+
+    return existingPool;
+  }
 
   const [totalSupply, assetData, quoteInfo] = await Promise.all([
     client.readContract({
@@ -555,6 +564,10 @@ export const insertPoolIfNotExistsDHook = async ({
   let migrationType = getMigrationType(assetData, chain.name);
   
   const isQuoteEth = quoteInfo.quoteToken === QuoteToken.Eth;
+  const normalizedBeneficiaries = beneficiaries === undefined || beneficiaries === null
+    ? null
+    : normalizePoolBeneficiaries(beneficiaries);
+
   const inserted = await db.insert(pool).values({
     address,
     chainId: chain.id,
@@ -593,11 +606,20 @@ export const insertPoolIfNotExistsDHook = async ({
     hasValidQuote: isValidQuoteToken(quoteInfo.quoteToken),
     integrator: assetData.integrator,
     migrationType: migrationType,
-    beneficiaries: beneficiaries
-      ? beneficiaries.map(b => ({ beneficiary: b.beneficiary.toLowerCase() as `0x${string}`, shares: b.shares.toString() }))
-      : null,
+    beneficiaries: normalizedBeneficiaries,
     initializer: initializerAddress ? initializerAddress.toLowerCase() as `0x${string}` : null,
   });
+
+  if (beneficiaries !== undefined && beneficiaries !== null && initializerAddress) {
+    await replacePoolBeneficiaries({
+      poolId: address,
+      assetId: assetAddr,
+      initializer: initializerAddress,
+      beneficiaries,
+      timestamp,
+      context,
+    });
+  }
 
   addToDHookPoolCache(chain.id, address);
 

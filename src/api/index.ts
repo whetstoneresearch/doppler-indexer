@@ -9,6 +9,15 @@ app.use("/graphql", graphql({ db, schema }));
 app.use("/", graphql({ db, schema }));
 app.use("/sql/*", client({ db, schema }));
 
+function parseChainIds(value: string | undefined): number[] | null {
+  if (value === undefined) {
+    return [];
+  }
+
+  const chainIds = value.split(",").map((id) => Number(id));
+  return chainIds.some((id) => !Number.isInteger(id) || id <= 0) ? null : chainIds;
+}
+
 // Debug endpoint to view current database locks and blocking queries
 app.get("/debug/locks", async (c) => {
   try {
@@ -76,20 +85,21 @@ app.get("/debug/activity", async (c) => {
 app.get("/search/:query", async (c) => {
   try {
     const query = c.req.param("query");
+    const chainIds = parseChainIds(c.req.query("chain_ids"));
 
-    const chainIds = c.req
-      .query("chain_ids")
-      ?.split(",")
-      .map((id) => Number(id));
+    if (chainIds === null) {
+      return c.json({ error: "Invalid chain_ids" }, 400);
+    }
 
-    // Normalize address queries to lowercase for case-insensitive matching
+    if (chainIds.length === 0) {
+      return c.json([]);
+    }
+
     const normalizedQuery =
       query.startsWith("0x") && query.length === 42
         ? query.toLowerCase()
         : query;
 
-    if (!chainIds) return c.json([]);
-    // First search tokens directly
     const tokenResults = await db.execute(sql`
       SELECT
        t.address,
@@ -102,7 +112,7 @@ app.get("/search/:query", async (c) => {
       LEFT JOIN pool p ON p.address = t.pool
       LEFT JOIN mv_pool_day_agg_2 ohlc ON ohlc.pool = t.pool
       WHERE
-        t.chain_id in (${chainIds.join(",")})
+        t.chain_id in (${sql.join(chainIds.map((id) => sql`${id}`), sql`,`)})
       AND
         (t.name ILIKE ${`${normalizedQuery}%`}
         OR t.address ILIKE ${`${normalizedQuery}%`}

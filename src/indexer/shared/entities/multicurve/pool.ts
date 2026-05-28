@@ -13,6 +13,8 @@ import { UniswapV4MulticurveInitializerABI } from "@app/abis/multicurve-abis/Uni
 import { readContractWithZeroDataPadding } from "@app/utils/readContractWithZeroDataPadding";
 import { upsertTokenWithPool } from "../token-optimized";
 import { MarketDataService } from "@app/core";
+import { replacePoolBeneficiaries } from "./poolBeneficiary";
+import { normalizePoolBeneficiaries } from "./poolBeneficiaryUtils";
 
 function getActiveInitializers(addresses: Address | Address[], blockNumber: bigint): Address[] {
   const addrArray = Array.isArray(addresses) ? addresses : [addresses];
@@ -178,7 +180,7 @@ export const insertMulticurvePoolV4Optimized = async ({
       address: resolvedInitializer,
       functionName: "getBeneficiaries",
       args: [baseToken],
-    }).catch(() => null),
+    }),
   ]);
 
   const isToken0 = baseToken.toLowerCase() < quoteToken.toLowerCase();
@@ -228,8 +230,10 @@ export const insertMulticurvePoolV4Optimized = async ({
 
   const isQuoteEth = quoteInfo.quoteToken === QuoteToken.Eth ? true : false;
   const hasValidQuote = isValidQuoteToken(quoteInfo.quoteToken);
+  const normalizedBeneficiaries = normalizePoolBeneficiaries(beneficiaries);
+
   // Insert new pool with all data at once
-  return await db.insert(pool).values({
+  const poolEntity = await db.insert(pool).values({
     address,
     tick,
     sqrtPrice: sqrtPriceX96,
@@ -267,9 +271,18 @@ export const insertMulticurvePoolV4Optimized = async ({
       hooks: poolKey.hooks.toLowerCase(),
     },
     tickLower: tick,
-    beneficiaries: beneficiaries
-      ? beneficiaries.map(b => ({ beneficiary: b.beneficiary.toLowerCase() as `0x${string}`, shares: b.shares.toString() }))
-      : null,
+    beneficiaries: normalizedBeneficiaries,
     initializer: resolvedInitializer.toLowerCase() as `0x${string}`,
   });
+
+  await replacePoolBeneficiaries({
+    poolId: address,
+    assetId: baseToken,
+    initializer: resolvedInitializer,
+    beneficiaries,
+    timestamp,
+    context,
+  });
+
+  return poolEntity;
 };

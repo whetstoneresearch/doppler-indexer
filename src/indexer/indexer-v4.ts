@@ -38,6 +38,7 @@ import { readContractWithZeroDataPadding } from "@app/utils/readContractWithZero
 import { updateCumulatedFees, handleCollect } from "./shared/cumulatedFees";
 import { computeReservesFromPositions } from "@app/utils/v4-utils/computeReservesFromPositions";
 import { upsertPositionLedger, getPositionsForPool } from "./shared/entities/positionLedger";
+import { transferPoolBeneficiary } from "./shared/entities/multicurve/poolBeneficiary";
 
 onIndexerEvent("UniswapV4Initializer:Create", async ({ event, context }) => {
   const { poolOrHook, asset: assetId, numeraire } = event.args;
@@ -424,6 +425,22 @@ onIndexerEvent(
       context,
     });
   }
+);
+
+onIndexerEvent(
+  "UniswapV4MulticurveInitializer:UpdateBeneficiary",
+  async ({ event, context }) => {
+    const { poolId, oldBeneficiary, newBeneficiary } = event.args;
+    const poolAddress = (poolId as string).toLowerCase() as `0x${string}`;
+
+    await transferPoolBeneficiary({
+      poolId: poolAddress,
+      oldBeneficiary,
+      newBeneficiary,
+      timestamp: event.block.timestamp,
+      context,
+    });
+  },
 );
 
 onIndexerEvent(
