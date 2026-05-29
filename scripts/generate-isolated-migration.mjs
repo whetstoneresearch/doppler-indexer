@@ -905,6 +905,17 @@ function emitIndexPhase(args, intro) {
   );
   out.push(`-- table size.`);
   out.push(``);
+  out.push(
+    `-- Each CREATE INDEX is preceded by DROP INDEX IF EXISTS so the phase`,
+  );
+  out.push(
+    `-- is idempotent: re-running after a partial failure (or after the`,
+  );
+  out.push(
+    `-- table-rebuild flow which leaves some indexes behind on detached`,
+  );
+  out.push(`-- partitions) does not error on name collision.`);
+  out.push(``);
 
   const targetsInOrder = [...user, ...reorg];
   for (const table of targetsInOrder) {
@@ -922,6 +933,7 @@ function emitIndexPhase(args, intro) {
         continue;
       }
       const rewritten = rewriteIndexDef(idx.indexdef, source, target, table);
+      out.push(`DROP INDEX IF EXISTS ${qi(target)}.${qi(idx.name)};`);
       out.push(`${rewritten};`);
     }
     out.push(``);
