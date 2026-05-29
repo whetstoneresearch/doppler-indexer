@@ -109,10 +109,18 @@ function parseArgs(argv) {
         break;
       case "--phase":
         if (
-          !["schema", "data", "indexes", "pk", "reorg", "all"].includes(next)
+          ![
+            "schema",
+            "data",
+            "indexes",
+            "pk",
+            "reorg",
+            "functions",
+            "all",
+          ].includes(next)
         ) {
           throw new Error(
-            `--phase must be schema|data|indexes|pk|reorg|all, got ${next}`,
+            `--phase must be schema|data|indexes|pk|reorg|functions|all, got ${next}`,
           );
         }
         args.phase = next;
@@ -169,7 +177,7 @@ function printHelp() {
   process.stderr.write(
     `Usage: node scripts/generate-isolated-migration.mjs \\\n` +
       `  --source <schema> --target <schema> \\\n` +
-      `  [--chains 1,143,8453] [--phase schema|data|indexes|pk|reorg|all] \\\n` +
+      `  [--chains 1,143,8453] [--phase schema|data|indexes|pk|reorg|functions|all] \\\n` +
       `  [--chain N] [--meta-only] [--database-url postgres://...]\n`,
   );
 }
@@ -280,6 +288,26 @@ function getReorgExtraColumnDefs(databaseUrl, source, reorgTable) {
     where n.nspname = ${literal(source)}
       and c.relname = ${literal(reorgTable)}
       and a.attname in ('operation', 'operation_id', 'checkpoint')
+  `;
+  return psqlJson(databaseUrl, sql);
+}
+
+function getLiveQueryFunctionDefs(databaseUrl, source) {
+  // Fetch the live_query / live_query_notify PL/pgSQL function bodies as
+  // textual CREATE statements. Ponder creates these once on first-time
+  // schema creation (or dev reset); the resume path skips them, so a
+  // manual snapshot copy never gets them. We mirror whatever Ponder wrote
+  // into source rather than hardcoding a template, so we automatically
+  // pick up any version-specific differences in the function body.
+  const sql = `
+    select coalesce(json_agg(json_build_object(
+      'name', p.proname,
+      'def', pg_get_functiondef(p.oid)
+    ) order by p.proname), '[]'::json)
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = ${literal(source)}
+      and p.proname in ('live_query', 'live_query_notify')
   `;
   return psqlJson(databaseUrl, sql);
 }
@@ -530,6 +558,74 @@ function emitReorgTableDdl({ databaseUrl, source, target, userTable, reorgTable 
       `ON ${qi(target)}.${qi(reorgTable)} (checkpoint);`,
   );
   return lines;
+}
+
+// ── Functions phase (live_query / live_query_notify) ──
+
+function emitFunctionsPhase(args, intro) {
+  const { databaseUrl, source, target } = args;
+  const funcs = getLiveQueryFunctionDefs(databaseUrl, source);
+
+  if (funcs.length === 0) {
+    throw new Error(
+      `No live_query / live_query_notify functions found in source schema "${source}". ` +
+        `These are created by Ponder on first-time schema initialization; ` +
+        `if they are absent from source, the source itself is in an unusual state.`,
+    );
+  }
+
+  const out = [];
+  out.push(intro);
+  out.push(`-- === functions phase ===`);
+  out.push(``);
+  out.push(
+    `-- Creates the live_query and live_query_notify PL/pgSQL functions in`,
+  );
+  out.push(
+    `-- the target schema. Ponder calls createLiveQueryProcedures only on`,
+  );
+  out.push(
+    `-- first-time schema initialization (or dev reset), not on a resume,`,
+  );
+  out.push(
+    `-- so a snapshot copy that takes the resume path lacks them — and`,
+  );
+  out.push(
+    `-- createLiveQueryTriggers fails when each chain enters live mode.`,
+  );
+  out.push(``);
+  out.push(
+    `-- The function bodies (including the schema-scoped pg_notify channel`,
+  );
+  out.push(
+    `-- name) are mirrored from source via pg_get_functiondef with the`,
+  );
+  out.push(
+    `-- source schema name rewritten to the target schema. CREATE OR`,
+  );
+  out.push(
+    `-- REPLACE makes this idempotent.`,
+  );
+  out.push(``);
+
+  for (const fn of funcs) {
+    // pg_get_functiondef returns the full CREATE FUNCTION statement with
+    // schema-qualified names. We rewrite any occurrence of the source
+    // schema name — including inside the pg_notify channel string literal,
+    // which Ponder builds as "live_query_<schema>" so subscribers can scope
+    // by schema. Match both quoted ("source".) and bare (source.) forms,
+    // plus the bare literal in single quotes ('live_query_<source>').
+    const rewritten = fn.def
+      .replaceAll(`"${source}".`, `${qi(target)}.`)
+      .replaceAll(`${source}.`, `${qi(target)}.`)
+      .replaceAll(`'live_query_${source}'`, `'live_query_${target}'`);
+    out.push(`-- ${fn.name}`);
+    // pg_get_functiondef does not append a terminating semicolon
+    out.push(`${rewritten};`);
+    out.push(``);
+  }
+
+  return out.join("\n");
 }
 
 // ── Reorg-only phase (remediation when target _reorg__ schema is wrong) ──
@@ -873,6 +969,10 @@ function main() {
     }
     if (args.phase === "reorg") {
       process.stdout.write(emitReorgPhase(args, intro));
+      process.stdout.write("\n");
+    }
+    if (args.phase === "functions" || args.phase === "all") {
+      process.stdout.write(emitFunctionsPhase(args, intro));
       process.stdout.write("\n");
     }
   } catch (err) {
