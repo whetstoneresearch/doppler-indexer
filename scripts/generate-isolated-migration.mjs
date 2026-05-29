@@ -24,6 +24,9 @@
 //            _reorg__ tables, with the ON clause rewritten to the target
 //            schema. Run last so each index is built in one batched sort
 //            instead of per-row maintenance during the data load.
+//   pk       ALTER TABLE ... ADD PRIMARY KEY (...) for every user table.
+//            Standalone remediation for targets created before the schema
+//            phase emitted PKs. Bounded by total row count per table.
 //   all      schema, then data (no --chain), then indexes.
 //
 // Data-phase scopes (pick one when running --phase data):
@@ -99,9 +102,9 @@ function parseArgs(argv) {
         i += 1;
         break;
       case "--phase":
-        if (!["schema", "data", "indexes", "all"].includes(next)) {
+        if (!["schema", "data", "indexes", "pk", "all"].includes(next)) {
           throw new Error(
-            `--phase must be schema|data|indexes|all, got ${next}`,
+            `--phase must be schema|data|indexes|pk|all, got ${next}`,
           );
         }
         args.phase = next;
@@ -158,7 +161,7 @@ function printHelp() {
   process.stderr.write(
     `Usage: node scripts/generate-isolated-migration.mjs \\\n` +
       `  --source <schema> --target <schema> \\\n` +
-      `  [--chains 1,143,8453] [--phase schema|data|indexes|all] \\\n` +
+      `  [--chains 1,143,8453] [--phase schema|data|indexes|pk|all] \\\n` +
       `  [--chain N] [--meta-only] [--database-url postgres://...]\n`,
   );
 }
@@ -321,16 +324,17 @@ function reorgUserTableName(reorgTable) {
 
 // ── Schema phase ──
 
-function emitSchemaPhase(args, intro) {
-  const { databaseUrl, source, target, chains } = args;
-  const tables = listTables(databaseUrl, source);
-  if (tables.length === 0) {
-    throw new Error(`No tables found in source schema "${source}"`);
-  }
-  const { reorg, meta, user } = classify(tables);
-
+function collectUserPks(databaseUrl, source, userTables) {
+  // Introspect PK column order for every user table and bail out if any
+  // table is not isolation-ready. The PK is needed in two places: the
+  // sanity-check on chain_id membership, and the ALTER TABLE ADD PRIMARY
+  // KEY we emit after each CREATE TABLE — `LIKE ... INCLUDING CONSTRAINTS`
+  // does not copy PRIMARY KEY (only CHECK/NOT NULL), so we have to put it
+  // back explicitly or `ON CONFLICT (pk_cols)` writes during crashRecovery
+  // and live indexing have no matching unique constraint to target.
+  const pks = new Map();
   const violations = [];
-  for (const table of user) {
+  for (const table of userTables) {
     const pk = getPrimaryKey(databaseUrl, source, table);
     if (pk.length === 0) {
       violations.push(`${table}: no primary key`);
@@ -338,13 +342,26 @@ function emitSchemaPhase(args, intro) {
     }
     if (!pk.includes("chain_id")) {
       violations.push(`${table}: PK is (${pk.join(", ")}) — missing chain_id`);
+      continue;
     }
+    pks.set(table, pk);
   }
   if (violations.length > 0) {
     throw new Error(
       `Cannot proceed; the following tables are not isolation-ready:\n  - ${violations.join("\n  - ")}`,
     );
   }
+  return pks;
+}
+
+function emitSchemaPhase(args, intro) {
+  const { databaseUrl, source, target, chains } = args;
+  const tables = listTables(databaseUrl, source);
+  if (tables.length === 0) {
+    throw new Error(`No tables found in source schema "${source}"`);
+  }
+  const { reorg, meta, user } = classify(tables);
+  const pks = collectUserPks(databaseUrl, source, user);
 
   const out = [];
   out.push(intro);
@@ -369,15 +386,19 @@ function emitSchemaPhase(args, intro) {
   }
   if (meta.length > 0) out.push(``);
 
-  // User tables — partitioned parent + child per chain. PK comes through
-  // INCLUDING CONSTRAINTS. Secondary indexes are deferred to the indexes
-  // phase so the data load isn't paying per-row index maintenance.
+  // User tables — partitioned parent + child per chain. The primary key is
+  // added with ALTER TABLE since LIKE INCLUDING CONSTRAINTS does not copy
+  // it. Secondary indexes are still deferred to the indexes phase.
   for (const table of user) {
     out.push(`-- ${table}`);
     out.push(
       `CREATE TABLE ${qi(target)}.${qi(table)} ` +
         `(LIKE ${qi(source)}.${qi(table)} INCLUDING DEFAULTS INCLUDING CONSTRAINTS) ` +
         `PARTITION BY LIST (chain_id);`,
+    );
+    const pkCols = pks.get(table).map(qi).join(", ");
+    out.push(
+      `ALTER TABLE ${qi(target)}.${qi(table)} ADD PRIMARY KEY (${pkCols});`,
     );
     for (const chainId of chains) {
       const partition = `${table}_${chainId}`;
@@ -399,6 +420,41 @@ function emitSchemaPhase(args, intro) {
     );
   }
   if (reorg.length > 0) out.push(``);
+
+  return out.join("\n");
+}
+
+// ── PK-only phase (remediation for schemas built before PKs were emitted) ──
+
+function emitPkPhase(args, intro) {
+  const { databaseUrl, source, target } = args;
+  const tables = listTables(databaseUrl, source);
+  const { user } = classify(tables);
+  const pks = collectUserPks(databaseUrl, source, user);
+
+  const out = [];
+  out.push(intro);
+  out.push(`-- === pk phase ===`);
+  out.push(``);
+  out.push(
+    `-- Adds the missing PRIMARY KEY to each partitioned parent in the`,
+  );
+  out.push(
+    `-- target schema. Each ALTER scans every partition once to build the`,
+  );
+  out.push(
+    `-- unique index, so this is bounded by total row count. Each is its`,
+  );
+  out.push(`-- own implicit transaction.`);
+  out.push(``);
+
+  for (const table of user) {
+    const pkCols = pks.get(table).map(qi).join(", ");
+    out.push(
+      `ALTER TABLE ${qi(target)}.${qi(table)} ADD PRIMARY KEY (${pkCols});`,
+    );
+  }
+  out.push(``);
 
   return out.join("\n");
 }
@@ -634,6 +690,10 @@ function main() {
     }
     if (args.phase === "indexes" || args.phase === "all") {
       process.stdout.write(emitIndexPhase(args, intro));
+      process.stdout.write("\n");
+    }
+    if (args.phase === "pk") {
+      process.stdout.write(emitPkPhase(args, intro));
       process.stdout.write("\n");
     }
   } catch (err) {
