@@ -69,7 +69,7 @@ export const baseConfig: ChainConfig = {
         "0xBDF938149ac6a781F94FAa0ed45E6A0e984c6544"
       ] as Address[],
       RehypeHook: [
-        "0x97cad5684fb7cc2bed9a9b5ebfba67138f4f2503bb",
+        "0x97cad5684fb7cc2bed9a9b5ebfba67138f4f2503",
         "0x3ec4798a9b11e8243a8db99687f7a23597b96623"
       ] as Address[],
       RehypeDopplerHookMigrator: [

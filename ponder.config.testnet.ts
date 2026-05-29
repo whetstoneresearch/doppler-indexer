@@ -14,7 +14,6 @@ import {
   UniswapV2PairABI,
   ZoraFactoryABI,
   ZoraV4HookABI,
-  ZoraCoinABI,
   ZoraCreatorCoinABI,
   V4MigratorABI,
   DopplerHookMigratorABI,
@@ -523,7 +522,7 @@ export default createConfig({
         }
       }
     },
-    RehypeDopplerHookInitailizer: {
+    RehypeDopplerHookInitializer: {
       abi: RehypeDopplerHookInitializerABI,
       chain: {
         baseSepolia: {
