@@ -464,16 +464,49 @@ function emitSchemaPhase(args, intro) {
   return out.join("\n");
 }
 
+function extractSequencesFromDefault(defaultExpr) {
+  // Pull the bare (unqualified) sequence names out of any nextval('…'::regclass)
+  // calls in a default expression. Source may use the shared `operation_id`
+  // sequence OR per-table sequences (e.g. when a column was originally
+  // declared BIGSERIAL); either way, we want to know what to CREATE in
+  // target before referencing the rewritten default.
+  const seqs = new Set();
+  const pattern = /nextval\(\s*'([^']+)'(?:::regclass)?\s*\)/gi;
+  let match;
+  while ((match = pattern.exec(defaultExpr)) !== null) {
+    const fullName = match[1];
+    const dotIdx = fullName.lastIndexOf(".");
+    seqs.add(dotIdx >= 0 ? fullName.slice(dotIdx + 1) : fullName);
+  }
+  return [...seqs];
+}
+
 function emitReorgTableDdl({ databaseUrl, source, target, userTable, reorgTable }) {
   // Mirror the user table's column set, then add the three Ponder-specific
   // columns (operation, operation_id, checkpoint) by introspecting the
-  // source _reorg__ to preserve exact type/default/nullability. The
-  // operation_id default references the source's operation_id sequence —
-  // we rewrite that to the target's. The checkpoint index is created
-  // inline so callers (schema phase, reorg-fix phase) get a complete,
-  // ready-to-use reorg shadow without depending on the indexes phase.
+  // source _reorg__ to preserve exact type/default/nullability. Any
+  // sequence the default references is created in target up front so the
+  // ALTER doesn't blow up on a "relation does not exist" lookup. The
+  // checkpoint index is created inline so callers (schema phase,
+  // reorg-fix phase) get a complete, ready-to-use reorg shadow without
+  // depending on the indexes phase.
   const extras = getReorgExtraColumnDefs(databaseUrl, source, reorgTable);
   const lines = [];
+
+  const referencedSeqs = new Set();
+  for (const col of extras) {
+    if (col.default !== null) {
+      for (const seq of extractSequencesFromDefault(col.default)) {
+        referencedSeqs.add(seq);
+      }
+    }
+  }
+  for (const seq of referencedSeqs) {
+    lines.push(
+      `CREATE SEQUENCE IF NOT EXISTS ${qi(target)}.${qi(seq)};`,
+    );
+  }
+
   lines.push(
     `CREATE TABLE ${qi(target)}.${qi(reorgTable)} ` +
       `(LIKE ${qi(target)}.${qi(userTable)} INCLUDING DEFAULTS);`,
