@@ -215,10 +215,19 @@ function rewriteIndexDef(indexdef, sourceSchema, targetSchema, table) {
   // pg_get_indexdef emits: CREATE [UNIQUE] INDEX <name> ON <schema>.<table> ...
   // We rewrite the ON clause to point at the target schema. The index name
   // itself can stay (different schema namespace, no collision).
-  const escapedSchema = sourceSchema.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const escapedTable = table.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  //
+  // Identifiers can be quoted or bare depending on whether quote_identifier
+  // decided they needed escaping (reserved words like "user", "position",
+  // "module" come back quoted). The alternation here matches the full
+  // quoted form OR a bare form with a non-word lookahead — we must not use
+  // an optional `"?...?"` because the trailing optional quote can backtrack
+  // to zero, eating only the opening quote and leaving the closing one
+  // dangling next to the replacement, which corrupts the next statement.
+  const escSchema = sourceSchema.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const escTable = table.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const ident = (name) => `(?:"${name}"|${name}(?![\\w$]))`;
   const pattern = new RegExp(
-    `\\bON\\s+(?:"?${escapedSchema}"?\\.)?"?${escapedTable}"?\\b`,
+    String.raw`\bON\s+(?:${ident(escSchema)}\.)?${ident(escTable)}`,
     "i",
   );
   return indexdef.replace(pattern, `ON ${qi(targetSchema)}.${qi(table)}`);
