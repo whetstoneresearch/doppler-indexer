@@ -5,30 +5,57 @@
 // without re-indexing from scratch.
 //
 // Reads structure from the SOURCE schema in a live Postgres and emits DDL
-// (+ optional data-copy) for a new TARGET schema where every user table is
-// PARTITION BY LIST (chain_id) with one child partition per configured chain.
-//
-// Usage:
-//   DATABASE_URL=postgres://... node scripts/generate-isolated-migration.mjs \
-//     --source prod --target prod_isolated --chains 1,143,8453 \
-//     --phase schema > migrate-schema.sql
-//
-//   DATABASE_URL=postgres://... node scripts/generate-isolated-migration.mjs \
-//     --source prod --target prod_isolated --phase data > migrate-data.sql
+// (+ optional data-copy + post-load index creation) for a new TARGET schema
+// where every user table is PARTITION BY LIST (chain_id) with one child
+// partition per configured chain.
 //
 // Phases:
-//   schema  emit CREATE SCHEMA / CREATE TABLE / partitions / indexes /
-//           reorg shadows / _ponder_meta / _ponder_checkpoint / operation_id
-//   data    emit INSERT SELECT statements to copy rows from source -> target
-//   all     both phases, schema first
+//   schema   CREATE SCHEMA / partitioned parents / per-chain partitions /
+//            _ponder_meta / _ponder_checkpoint / _reorg__ shadows / sequence.
+//            Secondary indexes are intentionally NOT created here — building
+//            them after data load is dramatically faster on millions of rows.
+//   data     INSERT statements that copy rows from source -> target. Writes
+//            directly to each child partition (one INSERT per (table, chain))
+//            so multiple chains can be loaded in parallel from separate psql
+//            sessions. _reorg__ shadows and _ponder_meta + _ponder_checkpoint
+//            are handled separately so they can be ordered around the chain
+//            loads.
+//   indexes  CREATE INDEX statements for every secondary index on user and
+//            _reorg__ tables, with the ON clause rewritten to the target
+//            schema. Run last so each index is built in one batched sort
+//            instead of per-row maintenance during the data load.
+//   all      schema, then data (no --chain), then indexes.
 //
-// What you still need to do manually after running both phases:
+// Data-phase scopes (pick one when running --phase data):
+//   default       all chains' partition INSERTs + reorg shadows + meta tables
+//   --chain N     only chain N's partition INSERTs and chain N's reorg rows
+//                 (use to fan out parallel per-chain loaders)
+//   --meta-only   only _ponder_meta + _ponder_checkpoint + sequence setval
+//                 (run LAST, after every chain's data is in place — see below)
+//
+// Live-indexer interference (running the data phase while the source-schema
+// Ponder indexer keeps writing):
+//   * Source-side locks are ACCESS SHARE only, so source-table writers are
+//     not blocked.
+//   * Each (table, chain) INSERT is emitted as its own implicit transaction,
+//     so individual snapshots are short. Long single transactions inhibit
+//     VACUUM on the source — splitting per chain limits the duration.
+//   * Buffer cache and I/O are shared with the live indexer. Run during a
+//     low-traffic window if possible, or sequentially rather than parallel.
+//   * Meta MUST be copied LAST. Once _ponder_checkpoint is in target, the
+//     new indexer (pointed at target) will resume from that checkpoint and
+//     trust that all data <= checkpoint is already present. If you copy meta
+//     before data finishes, the new indexer will skip blocks whose rows you
+//     hadn't yet copied.
+//
+// What you still need to do manually after running all phases:
 //   1. Patch _ponder_meta.value->>'build_id' in the target schema to match
 //      what `ponder start` computes for the new isolated config, OR
 //      start once with PONDER_EXPERIMENTAL_DB=platform to bypass the check.
-//   2. Drop the `reorg` and `live_query` triggers from the source-schema
-//      tables before pointing the new indexer at the target. Ponder will
-//      recreate them on each partition when the chain transitions to live.
+//   2. The `reorg` and `live_query` triggers on the source-schema tables
+//      can stay in place while you verify the new schema — they only fire
+//      on writes to the source tables and do not touch the target. Drop
+//      them at promotion time if you wish.
 
 import { execFileSync } from "node:child_process";
 import process from "node:process";
@@ -43,6 +70,8 @@ function parseArgs(argv) {
     target: null,
     chains: DEFAULT_CHAINS,
     phase: "schema",
+    chain: null,
+    metaOnly: false,
     databaseUrl: process.env.DATABASE_URL ?? null,
   };
   for (let i = 0; i < argv.length; i += 1) {
@@ -70,11 +99,25 @@ function parseArgs(argv) {
         i += 1;
         break;
       case "--phase":
-        if (!["schema", "data", "all"].includes(next)) {
-          throw new Error(`--phase must be schema|data|all, got ${next}`);
+        if (!["schema", "data", "indexes", "all"].includes(next)) {
+          throw new Error(
+            `--phase must be schema|data|indexes|all, got ${next}`,
+          );
         }
         args.phase = next;
         i += 1;
+        break;
+      case "--chain": {
+        const n = Number(next);
+        if (!Number.isInteger(n)) {
+          throw new Error(`--chain must be an integer, got ${next}`);
+        }
+        args.chain = n;
+        i += 1;
+        break;
+      }
+      case "--meta-only":
+        args.metaOnly = true;
         break;
       case "--database-url":
         args.databaseUrl = next;
@@ -97,6 +140,17 @@ function parseArgs(argv) {
   if (args.source === args.target) {
     throw new Error("--source and --target must differ");
   }
+  if (args.chain !== null && args.metaOnly) {
+    throw new Error("--chain and --meta-only are mutually exclusive");
+  }
+  if ((args.chain !== null || args.metaOnly) && args.phase !== "data") {
+    throw new Error("--chain and --meta-only are only valid with --phase data");
+  }
+  if (args.chain !== null && !args.chains.includes(args.chain)) {
+    throw new Error(
+      `--chain ${args.chain} is not in --chains (${args.chains.join(", ")})`,
+    );
+  }
   return args;
 }
 
@@ -104,13 +158,17 @@ function printHelp() {
   process.stderr.write(
     `Usage: node scripts/generate-isolated-migration.mjs \\\n` +
       `  --source <schema> --target <schema> \\\n` +
-      `  [--chains 1,143,8453] [--phase schema|data|all] \\\n` +
-      `  [--database-url postgres://...]\n`,
+      `  [--chains 1,143,8453] [--phase schema|data|indexes|all] \\\n` +
+      `  [--chain N] [--meta-only] [--database-url postgres://...]\n`,
   );
 }
 
 function qi(identifier) {
   return `"${String(identifier).replaceAll('"', '""')}"`;
+}
+
+function literal(value) {
+  return `'${String(value).replaceAll("'", "''")}'`;
 }
 
 function psqlJson(databaseUrl, sql) {
@@ -181,6 +239,17 @@ function getNonPrimaryIndexDefs(databaseUrl, schema, table) {
   return psqlJson(databaseUrl, sql);
 }
 
+function hasColumn(databaseUrl, schema, table, column) {
+  const sql = `
+    select coalesce(json_agg(column_name), '[]'::json)
+    from information_schema.columns
+    where table_schema = ${literal(schema)}
+      and table_name = ${literal(table)}
+      and column_name = ${literal(column)}
+  `;
+  return psqlJson(databaseUrl, sql).length > 0;
+}
+
 function sequenceExists(databaseUrl, schema, name) {
   const sql = `
     select coalesce(json_agg(c.relname), '[]'::json)
@@ -193,11 +262,7 @@ function sequenceExists(databaseUrl, schema, name) {
   return psqlJson(databaseUrl, sql).length > 0;
 }
 
-function literal(value) {
-  return `'${String(value).replaceAll("'", "''")}'`;
-}
-
-// ── DDL emission ──
+// ── DDL emission helpers ──
 
 function classify(tables) {
   const reorg = [];
@@ -239,7 +304,9 @@ function emitHeader(args) {
     `-- Source schema: ${args.source}`,
     `-- Target schema: ${args.target}`,
     `-- Chains: ${args.chains.join(", ")}`,
-    `-- Phase: ${args.phase}`,
+    `-- Phase: ${args.phase}` +
+      (args.chain !== null ? ` (chain=${args.chain})` : "") +
+      (args.metaOnly ? " (meta-only)" : ""),
     `-- Generated at: ${new Date().toISOString()}`,
     ``,
     `\\set ON_ERROR_STOP on`,
@@ -247,6 +314,12 @@ function emitHeader(args) {
   ];
   return lines.join("\n");
 }
+
+function reorgUserTableName(reorgTable) {
+  return reorgTable.replace(/^_reorg__/, "");
+}
+
+// ── Schema phase ──
 
 function emitSchemaPhase(args, intro) {
   const { databaseUrl, source, target, chains } = args;
@@ -256,9 +329,6 @@ function emitSchemaPhase(args, intro) {
   }
   const { reorg, meta, user } = classify(tables);
 
-  // Sanity-check every user table has chain_id in its PK before we emit
-  // anything. If this fails, the schema is not viable for isolated mode
-  // without DDL surgery beyond the scope of this generator.
   const violations = [];
   for (const table of user) {
     const pk = getPrimaryKey(databaseUrl, source, table);
@@ -283,9 +353,6 @@ function emitSchemaPhase(args, intro) {
   out.push(`CREATE SCHEMA IF NOT EXISTS ${qi(target)};`);
   out.push(``);
 
-  // Sequence for reorg operation ids. Ponder creates this implicitly on
-  // boot, but creating it up front means data-copy phase can carry the
-  // current value across so trigger-fired rows continue monotonically.
   if (sequenceExists(databaseUrl, source, OPERATION_ID_SEQUENCE)) {
     out.push(
       `CREATE SEQUENCE IF NOT EXISTS ${qi(target)}.${qi(OPERATION_ID_SEQUENCE)};`,
@@ -293,7 +360,8 @@ function emitSchemaPhase(args, intro) {
     out.push(``);
   }
 
-  // Meta tables — plain LIKE-ALL copy (no partitioning, no chain key).
+  // Meta tables — plain LIKE-ALL copy. These are tiny, so we keep their
+  // (single) PK index up front rather than deferring.
   for (const table of meta) {
     out.push(
       `CREATE TABLE ${qi(target)}.${qi(table)} (LIKE ${qi(source)}.${qi(table)} INCLUDING ALL);`,
@@ -301,7 +369,9 @@ function emitSchemaPhase(args, intro) {
   }
   if (meta.length > 0) out.push(``);
 
-  // User tables — partitioned parent + child per chain + secondary indexes.
+  // User tables — partitioned parent + child per chain. PK comes through
+  // INCLUDING CONSTRAINTS. Secondary indexes are deferred to the indexes
+  // phase so the data load isn't paying per-row index maintenance.
   for (const table of user) {
     out.push(`-- ${table}`);
     out.push(
@@ -317,18 +387,15 @@ function emitSchemaPhase(args, intro) {
           `FOR VALUES IN (${chainId});`,
       );
     }
-    const indexes = getNonPrimaryIndexDefs(databaseUrl, source, table);
-    for (const idx of indexes) {
-      const rewritten = rewriteIndexDef(idx.indexdef, source, target, table);
-      out.push(`${rewritten};`);
-    }
     out.push(``);
   }
 
-  // Reorg shadow tables — plain LIKE-ALL copy, not partitioned.
+  // Reorg shadow tables — plain non-partitioned, defaults + constraints
+  // only (the checkpoint index is recreated in the indexes phase).
   for (const table of reorg) {
     out.push(
-      `CREATE TABLE ${qi(target)}.${qi(table)} (LIKE ${qi(source)}.${qi(table)} INCLUDING ALL);`,
+      `CREATE TABLE ${qi(target)}.${qi(table)} ` +
+        `(LIKE ${qi(source)}.${qi(table)} INCLUDING DEFAULTS INCLUDING CONSTRAINTS);`,
     );
   }
   if (reorg.length > 0) out.push(``);
@@ -336,81 +403,202 @@ function emitSchemaPhase(args, intro) {
   return out.join("\n");
 }
 
+// ── Data phase ──
+
+function emitChainPartitionInsert({
+  source,
+  target,
+  table,
+  chainId,
+  columns,
+}) {
+  const partition = `${table}_${chainId}`;
+  const colList = columns.map(qi).join(", ");
+  return (
+    `INSERT INTO ${qi(target)}.${qi(partition)} (${colList}) ` +
+    `SELECT ${colList} FROM ${qi(source)}.${qi(table)} ` +
+    `WHERE chain_id = ${chainId};`
+  );
+}
+
+function emitReorgChainInsert({
+  source,
+  target,
+  table,
+  chainId,
+  columns,
+  filterByChain,
+}) {
+  const colList = columns.map(qi).join(", ");
+  const whereClause = filterByChain ? ` WHERE chain_id = ${chainId}` : "";
+  return (
+    `INSERT INTO ${qi(target)}.${qi(table)} (${colList}) ` +
+    `SELECT ${colList} FROM ${qi(source)}.${qi(table)}${whereClause};`
+  );
+}
+
+function emitMetaInserts({ databaseUrl, source, target, meta }) {
+  const lines = [];
+  for (const table of meta) {
+    const cols = getColumns(databaseUrl, source, table).map((c) => c.name);
+    if (cols.length === 0) {
+      throw new Error(`No columns found for ${source}.${table}`);
+    }
+    const colList = cols.map(qi).join(", ");
+    lines.push(
+      `INSERT INTO ${qi(target)}.${qi(table)} (${colList}) ` +
+        `SELECT ${colList} FROM ${qi(source)}.${qi(table)};`,
+    );
+  }
+  return lines;
+}
+
+function emitSequenceSync({ databaseUrl, source, target }) {
+  if (!sequenceExists(databaseUrl, source, OPERATION_ID_SEQUENCE)) return [];
+  return [
+    `SELECT setval(${literal(`${target}.${OPERATION_ID_SEQUENCE}`)}, ` +
+      `(SELECT last_value FROM ${qi(source)}.${qi(OPERATION_ID_SEQUENCE)}));`,
+  ];
+}
+
 function emitDataPhase(args, intro) {
-  const { databaseUrl, source, target } = args;
+  const { databaseUrl, source, target, chains, chain, metaOnly } = args;
   const tables = listTables(databaseUrl, source);
   const { reorg, meta, user } = classify(tables);
 
   const out = [];
   out.push(intro);
-  out.push(`-- === data phase ===`);
-  out.push(``);
-  out.push(
-    `-- WARNING: run with the source-schema indexer stopped (or otherwise`,
-  );
-  out.push(
-    `-- frozen) so the target schema is a consistent point-in-time snapshot.`,
-  );
-  out.push(``);
-  out.push(`BEGIN;`);
-  out.push(``);
 
-  // Meta first so checkpoints exist before any user-row INSERTs would
-  // matter, then user tables, then reorg shadows. Order does not strictly
-  // matter for correctness (no FKs), but keeps logical grouping.
-  for (const table of meta) {
-    out.push(
-      `INSERT INTO ${qi(target)}.${qi(table)} SELECT * FROM ${qi(source)}.${qi(table)};`,
-    );
+  if (metaOnly) {
+    out.push(`-- === data phase: meta only ===`);
+    out.push(``);
+    out.push(`-- Run AFTER every chain's data INSERTs have committed.`);
+    out.push(`-- Copies _ponder_meta + _ponder_checkpoint and syncs the`);
+    out.push(`-- operation_id sequence. Wrapped in one transaction since`);
+    out.push(`-- these tables are tiny and the writes need to land together.`);
+    out.push(``);
+    out.push(`BEGIN;`);
+    for (const line of emitMetaInserts({ databaseUrl, source, target, meta })) {
+      out.push(line);
+    }
+    for (const line of emitSequenceSync({ databaseUrl, source, target })) {
+      out.push(line);
+    }
+    out.push(`COMMIT;`);
+    out.push(``);
+    return out.join("\n");
   }
-  if (meta.length > 0) out.push(``);
+
+  const targetChains = chain !== null ? [chain] : chains;
+  const scopeLabel =
+    chain !== null ? `chain ${chain}` : `chains ${chains.join(", ")}`;
+
+  out.push(`-- === data phase: ${scopeLabel} ===`);
+  out.push(``);
+  out.push(`-- Each INSERT runs as its own implicit transaction so a single`);
+  out.push(`-- table/chain failure rolls back small and can be retried.`);
+  out.push(
+    `-- Inserts target the per-chain child partition directly to skip`,
+  );
+  out.push(`-- partition routing and to enable parallelism across chains.`);
+  if (chain === null) {
+    out.push(``);
+    out.push(`-- Meta tables (_ponder_meta, _ponder_checkpoint) are NOT`);
+    out.push(`-- emitted here. Run with --meta-only AFTER all chain data has`);
+    out.push(`-- landed, so the new indexer's resume checkpoint is consistent.`);
+  }
+  out.push(``);
+  out.push(
+    `-- Speed knob (optional, per session running this script):`,
+  );
+  out.push(`--   SET synchronous_commit = off;`);
+  out.push(``);
 
   for (const table of user) {
-    // Each INSERT routes rows into the correct partition by chain_id.
-    // Columns are listed explicitly so adds/removes between snapshots don't
-    // produce silently-wrong copies.
-    const columns = getColumns(databaseUrl, source, table).map((c) => c.name);
-    if (columns.length === 0) {
+    const cols = getColumns(databaseUrl, source, table).map((c) => c.name);
+    if (cols.length === 0) {
       throw new Error(`No columns found for ${source}.${table}`);
     }
-    const colList = columns.map(qi).join(", ");
-    out.push(
-      `INSERT INTO ${qi(target)}.${qi(table)} (${colList}) ` +
-        `SELECT ${colList} FROM ${qi(source)}.${qi(table)};`,
-    );
+    for (const chainId of targetChains) {
+      out.push(
+        emitChainPartitionInsert({
+          source,
+          target,
+          table,
+          chainId,
+          columns: cols,
+        }),
+      );
+    }
   }
   if (user.length > 0) out.push(``);
 
   for (const table of reorg) {
-    out.push(
-      `INSERT INTO ${qi(target)}.${qi(table)} SELECT * FROM ${qi(source)}.${qi(table)};`,
-    );
+    const cols = getColumns(databaseUrl, source, table).map((c) => c.name);
+    if (cols.length === 0) {
+      throw new Error(`No columns found for ${source}.${table}`);
+    }
+    // Reorg tables are not partitioned, but each row has a chain_id, so we
+    // filter by chain when running in chain-scoped mode. When the user
+    // table's chain_id column exists (always true here), the reorg shadow
+    // mirrors it.
+    const filterByChain =
+      chain !== null && hasColumn(databaseUrl, source, table, "chain_id");
+    for (const chainId of targetChains) {
+      out.push(
+        emitReorgChainInsert({
+          source,
+          target,
+          table,
+          chainId,
+          columns: cols,
+          filterByChain,
+        }),
+      );
+      // In whole-table mode (no --chain) we only emit one INSERT per reorg
+      // table — break after the first iteration.
+      if (chain === null) break;
+    }
   }
   if (reorg.length > 0) out.push(``);
 
-  if (sequenceExists(databaseUrl, source, OPERATION_ID_SEQUENCE)) {
-    out.push(
-      `SELECT setval(${literal(`${target}.${OPERATION_ID_SEQUENCE}`)}, ` +
-        `(SELECT last_value FROM ${qi(source)}.${qi(OPERATION_ID_SEQUENCE)}));`,
-    );
+  return out.join("\n");
+}
+
+// ── Index phase ──
+
+function emitIndexPhase(args, intro) {
+  const { databaseUrl, source, target } = args;
+  const tables = listTables(databaseUrl, source);
+  const { reorg, user } = classify(tables);
+
+  const out = [];
+  out.push(intro);
+  out.push(`-- === indexes phase ===`);
+  out.push(``);
+  out.push(
+    `-- CREATE INDEX on a partitioned parent automatically builds the`,
+  );
+  out.push(
+    `-- matching partitioned index on each child. Each statement is its own`,
+  );
+  out.push(
+    `-- implicit transaction; expect each to take time proportional to the`,
+  );
+  out.push(`-- table size.`);
+  out.push(``);
+
+  const targetsInOrder = [...user, ...reorg];
+  for (const table of targetsInOrder) {
+    const indexes = getNonPrimaryIndexDefs(databaseUrl, source, table);
+    if (indexes.length === 0) continue;
+    out.push(`-- ${table}`);
+    for (const idx of indexes) {
+      const rewritten = rewriteIndexDef(idx.indexdef, source, target, table);
+      out.push(`${rewritten};`);
+    }
     out.push(``);
   }
-
-  out.push(`COMMIT;`);
-  out.push(``);
-  out.push(`-- Post-copy reminders:`);
-  out.push(
-    `--   * Patch _ponder_meta.value->>'build_id' in ${target} to match the`,
-  );
-  out.push(
-    `--     new isolated build_id, or first-boot with PONDER_EXPERIMENTAL_DB=platform.`,
-  );
-  out.push(
-    `--   * Drop \`reorg\` and \`live_query\` triggers on ${source} tables before`,
-  );
-  out.push(
-    `--     starting the new indexer (Ponder will recreate them on partitions).`,
-  );
 
   return out.join("\n");
 }
@@ -436,6 +624,16 @@ function main() {
     }
     if (args.phase === "data" || args.phase === "all") {
       process.stdout.write(emitDataPhase(args, intro));
+      process.stdout.write("\n");
+      if (args.phase === "all") {
+        // In all-mode we still need the meta inserts after the chain loads.
+        const metaArgs = { ...args, metaOnly: true };
+        process.stdout.write(emitDataPhase(metaArgs, emitHeader(metaArgs)));
+        process.stdout.write("\n");
+      }
+    }
+    if (args.phase === "indexes" || args.phase === "all") {
+      process.stdout.write(emitIndexPhase(args, intro));
       process.stdout.write("\n");
     }
   } catch (err) {
