@@ -27,6 +27,12 @@
 //   pk       ALTER TABLE ... ADD PRIMARY KEY (...) for every user table.
 //            Standalone remediation for targets created before the schema
 //            phase emitted PKs. Bounded by total row count per table.
+//   reorg    Drops and recreates every target _reorg__ table from the
+//            matching user table's column set (rather than mirroring the
+//            source _reorg__, which can have drifted behind its user
+//            table). Self-contained: also recreates the checkpoint index
+//            on each. Discards existing target _reorg__ rows; safe because
+//            an empty reorg + UPSERT-on-resume converges to the same state.
 //   all      schema, then data (no --chain), then indexes.
 //
 // Data-phase scopes (pick one when running --phase data):
@@ -102,9 +108,11 @@ function parseArgs(argv) {
         i += 1;
         break;
       case "--phase":
-        if (!["schema", "data", "indexes", "pk", "all"].includes(next)) {
+        if (
+          !["schema", "data", "indexes", "pk", "reorg", "all"].includes(next)
+        ) {
           throw new Error(
-            `--phase must be schema|data|indexes|pk|all, got ${next}`,
+            `--phase must be schema|data|indexes|pk|reorg|all, got ${next}`,
           );
         }
         args.phase = next;
@@ -161,7 +169,7 @@ function printHelp() {
   process.stderr.write(
     `Usage: node scripts/generate-isolated-migration.mjs \\\n` +
       `  --source <schema> --target <schema> \\\n` +
-      `  [--chains 1,143,8453] [--phase schema|data|indexes|pk|all] \\\n` +
+      `  [--chains 1,143,8453] [--phase schema|data|indexes|pk|reorg|all] \\\n` +
       `  [--chain N] [--meta-only] [--database-url postgres://...]\n`,
   );
 }
@@ -251,6 +259,29 @@ function hasColumn(databaseUrl, schema, table, column) {
       and column_name = ${literal(column)}
   `;
   return psqlJson(databaseUrl, sql).length > 0;
+}
+
+function getReorgExtraColumnDefs(databaseUrl, source, reorgTable) {
+  // Pull the three Ponder-added columns (operation, operation_id, checkpoint)
+  // from a source _reorg__ table so we can recreate them on a target reorg
+  // table with the right type/default/nullability without hardcoding
+  // Ponder's choices.
+  const sql = `
+    select coalesce(json_agg(json_build_object(
+      'name', a.attname,
+      'type', format_type(a.atttypid, a.atttypmod),
+      'not_null', a.attnotnull,
+      'default', pg_get_expr(ad.adbin, ad.adrelid)
+    ) order by a.attnum), '[]'::json)
+    from pg_class c
+    join pg_namespace n on n.oid = c.relnamespace
+    join pg_attribute a on a.attrelid = c.oid and a.attnum > 0 and not a.attisdropped
+    left join pg_attrdef ad on ad.adrelid = a.attrelid and ad.adnum = a.attnum
+    where n.nspname = ${literal(source)}
+      and c.relname = ${literal(reorgTable)}
+      and a.attname in ('operation', 'operation_id', 'checkpoint')
+  `;
+  return psqlJson(databaseUrl, sql);
 }
 
 function sequenceExists(databaseUrl, schema, name) {
@@ -411,15 +442,117 @@ function emitSchemaPhase(args, intro) {
     out.push(``);
   }
 
-  // Reorg shadow tables — plain non-partitioned, defaults + constraints
-  // only (the checkpoint index is recreated in the indexes phase).
-  for (const table of reorg) {
-    out.push(
-      `CREATE TABLE ${qi(target)}.${qi(table)} ` +
-        `(LIKE ${qi(source)}.${qi(table)} INCLUDING DEFAULTS INCLUDING CONSTRAINTS);`,
-    );
+  // Reorg shadow tables — derived from the TARGET user table, not the
+  // source reorg shadow. Source _reorg__ tables can drift behind their
+  // user tables when columns are added after the reorg shadow's initial
+  // creation; building from the user table guarantees the column set
+  // matches what Ponder's revert CTE expects to reference.
+  for (const userTable of user) {
+    const reorgTable = `_reorg__${userTable}`;
+    for (const line of emitReorgTableDdl({
+      databaseUrl,
+      source,
+      target,
+      userTable,
+      reorgTable,
+    })) {
+      out.push(line);
+    }
   }
-  if (reorg.length > 0) out.push(``);
+  if (user.length > 0) out.push(``);
+
+  return out.join("\n");
+}
+
+function emitReorgTableDdl({ databaseUrl, source, target, userTable, reorgTable }) {
+  // Mirror the user table's column set, then add the three Ponder-specific
+  // columns (operation, operation_id, checkpoint) by introspecting the
+  // source _reorg__ to preserve exact type/default/nullability. The
+  // operation_id default references the source's operation_id sequence —
+  // we rewrite that to the target's. The checkpoint index is created
+  // inline so callers (schema phase, reorg-fix phase) get a complete,
+  // ready-to-use reorg shadow without depending on the indexes phase.
+  const extras = getReorgExtraColumnDefs(databaseUrl, source, reorgTable);
+  const lines = [];
+  lines.push(
+    `CREATE TABLE ${qi(target)}.${qi(reorgTable)} ` +
+      `(LIKE ${qi(target)}.${qi(userTable)} INCLUDING DEFAULTS);`,
+  );
+  for (const col of extras) {
+    let alter = `ALTER TABLE ${qi(target)}.${qi(reorgTable)} ADD COLUMN ${qi(col.name)} ${col.type}`;
+    if (col.default !== null) {
+      const rewrittenDefault = col.default.replaceAll(
+        `${source}.`,
+        `${target}.`,
+      );
+      alter += ` DEFAULT ${rewrittenDefault}`;
+    }
+    if (col.not_null) {
+      alter += ` NOT NULL`;
+    }
+    lines.push(`${alter};`);
+  }
+  lines.push(
+    `CREATE INDEX ${qi(`${reorgTable}_checkpoint_index`)} ` +
+      `ON ${qi(target)}.${qi(reorgTable)} (checkpoint);`,
+  );
+  return lines;
+}
+
+// ── Reorg-only phase (remediation when target _reorg__ schema is wrong) ──
+
+function emitReorgPhase(args, intro) {
+  const { databaseUrl, source, target } = args;
+  const tables = listTables(databaseUrl, source);
+  const { user } = classify(tables);
+
+  const out = [];
+  out.push(intro);
+  out.push(`-- === reorg phase ===`);
+  out.push(``);
+  out.push(
+    `-- Drops and recreates every target _reorg__ table from the matching`,
+  );
+  out.push(
+    `-- target user table's column set (instead of mirroring the source`,
+  );
+  out.push(
+    `-- _reorg__, which can have drifted behind its user table). Existing`,
+  );
+  out.push(
+    `-- rows in target _reorg__ tables are discarded; that is safe because`,
+  );
+  out.push(
+    `-- crashRecovery's revert filter selects zero rows from an empty table,`,
+  );
+  out.push(
+    `-- and any above-safe user-table rows that don't get reverted will be`,
+  );
+  out.push(
+    `-- overwritten when Ponder re-indexes from safe_checkpoint forward.`,
+  );
+  out.push(``);
+  out.push(
+    `-- The _reorg__<t>_checkpoint_index is recreated here too, since`,
+  );
+  out.push(`-- DROP TABLE cascades over indexes.`);
+  out.push(``);
+
+  for (const userTable of user) {
+    const reorgTable = `_reorg__${userTable}`;
+    out.push(`-- ${reorgTable}`);
+    out.push(`DROP TABLE IF EXISTS ${qi(target)}.${qi(reorgTable)};`);
+    for (const line of emitReorgTableDdl({
+      databaseUrl,
+      source,
+      target,
+      userTable,
+      reorgTable,
+    })) {
+      out.push(line);
+    }
+    out.push(``);
+  }
 
   return out.join("\n");
 }
@@ -650,6 +783,15 @@ function emitIndexPhase(args, intro) {
     if (indexes.length === 0) continue;
     out.push(`-- ${table}`);
     for (const idx of indexes) {
+      // The reorg checkpoint index is created by --phase reorg / by the
+      // schema phase's reorg DDL path, so skip it here to avoid trying
+      // to create a same-named index twice in the target schema.
+      if (
+        table.startsWith("_reorg__") &&
+        idx.name === `${table}_checkpoint_index`
+      ) {
+        continue;
+      }
       const rewritten = rewriteIndexDef(idx.indexdef, source, target, table);
       out.push(`${rewritten};`);
     }
@@ -694,6 +836,10 @@ function main() {
     }
     if (args.phase === "pk") {
       process.stdout.write(emitPkPhase(args, intro));
+      process.stdout.write("\n");
+    }
+    if (args.phase === "reorg") {
+      process.stdout.write(emitReorgPhase(args, intro));
       process.stdout.write("\n");
     }
   } catch (err) {
