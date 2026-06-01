@@ -212,9 +212,11 @@ export const getV3PoolData = async ({
 export const getLockableV3PoolData = async ({
   address,
   context,
+  initializer,
 }: {
   address: Address;
   context: Context;
+  initializer?: Address;
 }): Promise<LockableV3PoolData | null> => {
   const { slot0Data, liquidity, token0, token1, fee } = await getSlot0Data({
     address,
@@ -231,6 +233,7 @@ export const getLockableV3PoolData = async ({
     token0,
     token1,
     context,
+    initializer,
   });
 
   const { reserve0, reserve1 } = await getV3PoolReserves({
@@ -358,18 +361,28 @@ const getLockablePoolState = async ({
   token0,
   token1,
   context,
+  initializer,
 }: {
   poolAddress: Address;
   token0: Address;
   token1: Address;
   context: Context;
+  initializer?: Address;
 }) => {
   const { client } = context;
   const lockableV3Initializer =
     chainConfigs[context.chain.name].addresses.v3.lockableV3Initializer;
-  const initializerAddresses = Array.isArray(lockableV3Initializer)
+  const configuredInitializers = Array.isArray(lockableV3Initializer)
     ? lockableV3Initializer
     : [lockableV3Initializer];
+
+  // When the owning initializer is known (passed through from the Create
+  // event), only query that one. Probing every configured initializer makes
+  // `getState` return 0x on the ones that didn't create this pool, and ponder
+  // retries those with exponential backoff (~32s), stalling the backfill.
+  const initializerAddresses = initializer
+    ? [initializer]
+    : configuredInitializers;
 
   const results = await Promise.all(
     initializerAddresses.map((initializerAddress) =>

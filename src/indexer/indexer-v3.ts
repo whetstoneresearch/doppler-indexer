@@ -99,7 +99,8 @@ onIndexerEvent("LockableUniswapV3Initializer:Create", async ({ event, context })
   const result = await insertLockableV3PoolIfNotExists({
     poolAddress: poolOrHookId,
     context,
-    timestamp,  
+    timestamp,
+    initializer: event.log.address.toLowerCase() as `0x${string}`,
   });
 
   if (!result) {
