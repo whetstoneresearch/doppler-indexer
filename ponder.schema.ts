@@ -788,7 +788,7 @@ export const swapRelations = relations(swap, ({ one }) => ({
 // pools have many positions
 export const poolRelations = relations(pool, ({ one, many }) => ({
   positions: many(position),
-  beneficiaries: many(poolBeneficiary),
+  beneficiariesRows: many(poolBeneficiary),
   baseToken: one(token, {
     fields: [pool.baseToken, pool.chainId],
     references: [token.address, token.chainId],
