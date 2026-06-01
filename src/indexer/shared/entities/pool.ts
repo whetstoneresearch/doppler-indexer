@@ -607,11 +607,13 @@ export const insertPoolIfNotExistsDHook = async ({
 export const insertLockableV3PoolIfNotExists = async ({
   poolAddress,
   timestamp,
-  context,  
+  context,
+  initializer,
 }: {
   poolAddress: Address;
   timestamp: bigint;
-  context: Context;  
+  context: Context;
+  initializer?: Address;
 }): Promise<[typeof pool.$inferSelect, QuoteInfo] | null> => {
   const { db, chain, client } = context;
   const address = poolAddress.toLowerCase() as `0x${string}`;
@@ -621,9 +623,24 @@ export const insertLockableV3PoolIfNotExists = async ({
     chainId: chain.id,
   });
 
+  // Fast path: the pool is already indexed, so we don't need to re-derive its
+  // state from RPC. Reading pool state would probe the lockable initializers
+  // via `getState`, and the one that didn't create this pool returns 0x, which
+  // ponder retries with exponential backoff (~32s) and stalls the backfill.
+  // The stored quote token is all we need to rebuild `quoteInfo`.
+  if (existingPool) {
+    const quoteInfo = await getQuoteInfo(
+      existingPool.quoteToken as `0x${string}`,
+      timestamp,
+      context,
+    );
+    return [existingPool, quoteInfo];
+  }
+
   const poolData = await getLockableV3PoolData({
     address,
     context,
+    initializer,
   });
 
   if (!poolData) {
@@ -656,13 +673,6 @@ export const insertLockableV3PoolIfNotExists = async ({
       decimals: quoteInfo.quotePriceDecimals
     }
   )
-  
-  if (existingPool) {
-    return [
-      existingPool,
-      quoteInfo,
-    ];
-  }
 
   const isQuoteEth = quoteInfo.quoteToken === QuoteToken.Eth;
   return [await db.insert(pool).values({
@@ -694,6 +704,9 @@ export const insertLockableV3PoolIfNotExists = async ({
     isQuoteEth,
     hasValidQuote: isValidQuoteToken(quoteInfo.quoteToken),
     integrator: assetData.integrator,
+    initializer: initializer
+      ? (initializer.toLowerCase() as `0x${string}`)
+      : null,
   }),
     quoteInfo
   ];
