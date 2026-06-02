@@ -6,19 +6,17 @@ import { insertAssetIfNotExists, updateAsset } from "./shared/entities/asset";
 import { SwapOrchestrator, PriceService, MarketDataService } from "@app/core";
 import { updateFifteenMinuteBucketUsd } from "@app/utils/time-buckets";
 import { chainConfigs } from "@app/config/chains";
-import { pool, token, asset } from "ponder:schema";
-import { Address } from "viem";
+import { pool, token } from "ponder:schema";
 import { getQuoteInfo } from "@app/utils/getQuoteInfo";
 import { computeReservesFromPositions } from "@app/utils/v4-utils/computeReservesFromPositions";
 import { getPositionsForPool } from "./shared/entities/positionLedger";
 import { PoolKey } from "@app/types/v4-types";
 import { getDHookPoolData } from "@app/utils/dhook-utils";
-import { StateViewABI, DopplerHookInitializerABI, DopplerHookMigratorABI, RehypeDopplerHookInitializerABI } from "@app/abis";
+import { StateViewABI, DopplerHookInitializerABI, RehypeDopplerHookInitializerABI } from "@app/abis";
 import { isPrecompileAddress } from "@app/utils/validation";
 import { updateCumulatedFees } from "./shared/cumulatedFees";
-import { fetchV4MigrationPool, updateV4Pool } from "./shared/entities/v4pools";
-import { v4pools } from "ponder:schema";
 import { Context } from "ponder:registry";
+import { transferPoolBeneficiary } from "./shared/entities/multicurve/poolBeneficiary";
 
 type PositionEntry = { tickLower: number; tickUpper: number; liquidity: bigint };
 
@@ -26,13 +24,11 @@ async function fetchPositions({
   initializerAddress,
   assetAddress,
   poolId,
-  poolType,
   context,
 }: {
   initializerAddress: `0x${string}`;
   assetAddress: `0x${string}`;
   poolId: `0x${string}`;
-  poolType?: string;
   context: Context;
 }): Promise<readonly PositionEntry[]> {
   // Try getPositions (public on older initializer deployments, internal on newer)
@@ -73,7 +69,7 @@ async function fetchPositions({
 }
 
 onIndexerEvent("DopplerHookInitializer:Create", async ({ event, context }) => {
-  const { poolOrHook, asset: assetId, numeraire } = event.args;
+  const { asset: assetId, numeraire } = event.args;
   const { block, transaction } = event;
   const timestamp = block.timestamp;
 
@@ -151,7 +147,6 @@ onIndexerEvent("DopplerHookInitializer:Create", async ({ event, context }) => {
     initializerAddress: initializerAddress as `0x${string}`,
     assetAddress,
     poolId: poolAddress,
-    poolType: poolEntity.type,
     context,
   });
 
@@ -225,8 +220,21 @@ onIndexerEvent("DopplerHookInitializer:Collect", async ({ event, context }) => {
   });
 });
 
+onIndexerEvent("DopplerHookInitializer:UpdateBeneficiary", async ({ event, context }) => {
+  const { poolId, oldBeneficiary, newBeneficiary } = event.args;
+  const poolAddress = (poolId as string).toLowerCase() as `0x${string}`;
+
+  await transferPoolBeneficiary({
+    poolId: poolAddress,
+    oldBeneficiary,
+    newBeneficiary,
+    timestamp: event.block.timestamp,
+    context,
+  });
+});
+
 onIndexerEvent("DopplerHookInitializer:Swap", async ({ event, context }) => {
-  const { sender, poolKey: poolKeyTuple, poolId, params, amount0, amount1 } = event.args;
+  const { sender, poolId, amount0, amount1 } = event.args;
   const timestamp = event.block.timestamp;
   const { chain, client, db } = context;
 
@@ -266,7 +274,6 @@ onIndexerEvent("DopplerHookInitializer:Swap", async ({ event, context }) => {
       initializerAddress,
       assetAddress: poolEntity.baseToken,
       poolId: poolAddress,
-      poolType: poolEntity.type,
       context,
     }),
     getQuoteInfo(poolEntity.quoteToken, timestamp, context),
@@ -330,7 +337,7 @@ onIndexerEvent("DopplerHookInitializer:Swap", async ({ event, context }) => {
 
   const swapData = SwapOrchestrator.createSwapData({
     poolAddress,
-    sender: sender,
+    sender,
     transactionHash: event.transaction.hash,
     transactionFrom: event.transaction.from,
     blockNumber: event.block.number,
@@ -456,7 +463,6 @@ onIndexerEvent("DopplerHookInitializer:ModifyLiquidity", async ({ event, context
       initializerAddress: event.log.address as `0x${string}`,
       assetAddress: poolEntity.baseToken,
       poolId: poolAddress,
-      poolType: poolEntity.type,
       context,
     }),
   ]);

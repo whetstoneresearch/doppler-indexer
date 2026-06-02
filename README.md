@@ -3,19 +3,19 @@
 ## Multicurve Quickstart
 
 - Prereqs: pnpm installed and Postgres reachable; copy `.env.local.example` to `.env.local` and set required RPC URLs and DB connection.
-- Dev run: `pnpm run dev --config ./ponder.config.multicurve.ts`
-- Prod run: `pnpm run start --config ./ponder.config.multicurve.ts`
+- Dev run: `pnpm run dev --config ./ponder.config.local.ts`
+- Prod run: `pnpm run start --config ./ponder.config.ts`
 
-This uses the `ponder.config.multicurve.ts` file to index the Multicurve setup. Logs will show chains and contracts being synced according to that config.
+This uses the Ponder config to index the configured Doppler sources. Logs will show chains and contracts being synced according to that config.
 
-This package ships with multiple Ponder configs so you can index different networks or a Zora‑only subset. You can select a config at runtime via `--config` when using `ponder dev` or `ponder start`.
+You can select a config at runtime via `--config` when using `ponder dev` or `ponder start`.
 
 ## Configs
 
-- `ponder.config.ts`: Multichain (Base, Unichain, Ink) + Zora listeners on Base.
-- `ponder.config.multichain.ts`: Multichain (same scope as above).
-- `ponder.config.multicurve.ts`: Multicurve indexing setup.
-- `ponder.config.zora.ts`: Zora-only on Base (limits chains/contracts to Zora needs).
+- `ponder.config.ts`: Main indexer config.
+- `ponder.config.testnet.ts`: Testnet indexer config
+- `ponder.config.bankr.ts`: Bankr indexer config
+- `ponder.config.local.ts`: Local frontend testing config. This file is intentionally ignored by git; copy `ponder.config.local.ts.example` as a reference point.
 
 ## Run
 
@@ -23,11 +23,6 @@ From this package directory:
 
 - Dev (hot reload): `ponder dev --config ./ponder.config.ts`
 - Prod: `ponder start --config ./ponder.config.ts`
-
-Swap the config path to target a different setup, for example:
-
-- Multichain: `ponder dev --config ./ponder.config.multichain.ts`
-- Zora-only: `ponder dev --config ./ponder.config.zora.ts`
 
 ## Local Base/Ethereum Frontend Testing
 
@@ -74,6 +69,24 @@ pnpm run db:local-compat
 This applies `scripts/create-local-compat-views.sql` to the Docker Compose Postgres service and creates or replaces `public.mv_pool_day_agg_2` as a normal Postgres view. The view exposes the frontend-required columns `pool`, `volume`, `percent_day_change`, `open`, and `close` using local indexed data.
 
 Run `pnpm run db:local-compat` again any time you reset the local database with `docker compose down -v`. You do not need to rerun it for every indexer restart unless the database volume was recreated or the view was dropped.
+
+### Pool Beneficiary Backfill
+
+Deploying the `pool_beneficiary` table into a database that already contains indexed pools requires either a full Ponder replay into a fresh schema or a one-time backfill from current on-chain beneficiary state.
+
+Use the dry-run first:
+
+```bash
+node scripts/backfill-pool-beneficiaries.mjs --schema public
+```
+
+Then apply after reviewing the selected pool and row counts:
+
+```bash
+node scripts/backfill-pool-beneficiaries.mjs --schema public --apply
+```
+
+The script pins one snapshot block per selected chain, reads `getBeneficiaries()` at those blocks for multicurve, scheduled multicurve, decay multicurve, dhook, and rehype pools, then replaces active rows in `pool_beneficiary` for those pools. Use `--chain-id` only to limit the run to one chain.
 
 ## Notes
 

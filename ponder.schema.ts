@@ -663,6 +663,30 @@ export const cumulatedFees = onchainTable(
   })
 );
 
+export const poolBeneficiary = onchainTable(
+  "pool_beneficiary",
+  (t) => ({
+    poolId: t.hex().notNull(),
+    chainId: t.integer().notNull(),
+    beneficiary: t.hex().notNull(),
+    assetId: t.hex().notNull(),
+    shares: t.bigint().notNull(),
+    initializer: t.hex().notNull(),
+    discoveredAt: t.bigint().notNull(),
+    updatedAt: t.bigint().notNull(),
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.poolId, table.chainId, table.beneficiary] }),
+    beneficiaryIdx: index().on(table.beneficiary),
+    assetIdx: index().on(table.assetId),
+    chainIdIdx: index().on(table.chainId),
+    beneficiaryAssetIdx: index().on(table.beneficiary, table.assetId, table.chainId),
+    beneficiaryUpdatedIdx: index().on(table.beneficiary, table.updatedAt, table.chainId, table.assetId),
+    beneficiaryAssetUpdatedIdx: index().on(table.beneficiary, table.assetId, table.chainId, table.updatedAt),
+    assetUpdatedIdx: index().on(table.assetId, table.updatedAt, table.chainId, table.beneficiary),
+  })
+);
+
 export const userAsset = onchainTable(
   "user_asset",
   (t) => ({
@@ -773,6 +797,7 @@ export const swapRelations = relations(swap, ({ one }) => ({
 // pools have many positions
 export const poolRelations = relations(pool, ({ one, many }) => ({
   positions: many(position),
+  beneficiariesRows: many(poolBeneficiary),
   baseToken: one(token, {
     fields: [pool.baseToken, pool.chainId],
     references: [token.address, token.chainId],
@@ -859,6 +884,22 @@ export const tokenVestingReleaseRelations = relations(tokenVestingRelease, ({ on
 // users have many assets and positions
 export const userRelations = relations(user, ({ many }) => ({
   userAssets: many(userAsset),
+  poolBeneficiaries: many(poolBeneficiary),
+}));
+
+export const poolBeneficiaryRelations = relations(poolBeneficiary, ({ one }) => ({
+  pool: one(pool, {
+    fields: [poolBeneficiary.poolId, poolBeneficiary.chainId],
+    references: [pool.address, pool.chainId],
+  }),
+  beneficiary: one(user, {
+    fields: [poolBeneficiary.beneficiary, poolBeneficiary.chainId],
+    references: [user.address, user.chainId],
+  }),
+  token: one(token, {
+    fields: [poolBeneficiary.assetId, poolBeneficiary.chainId],
+    references: [token.address, token.chainId],
+  }),
 }));
 
 // userAsset has one user and one asset
@@ -895,7 +936,7 @@ export const fifteenMinuteBucketUsdRelations = relations(
 );
 
 // v4pools relations
-export const v4poolsRelations = relations(v4pools, ({ one, many }) => ({
+export const v4poolsRelations = relations(v4pools, ({ one }) => ({
   baseToken: one(token, {
     fields: [v4pools.baseToken],
     references: [token.address],
