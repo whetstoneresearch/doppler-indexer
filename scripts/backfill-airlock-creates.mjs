@@ -54,6 +54,7 @@ function parseArgs(argv) {
     batchSize: 1000,
     rpcConcurrency: 4,
     pondersyncSchema: "ponder_sync",
+    schema: "prod_1",
   };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -76,6 +77,7 @@ function parseArgs(argv) {
       else if (key === "batch-size") args.batchSize = Number(v);
       else if (key === "rpc-concurrency") args.rpcConcurrency = Number(v);
       else if (key === "ponder-sync-schema") args.pondersyncSchema = v;
+      else if (key === "schema") args.schema = v;
       else throw new Error(`Unknown argument ${a}`);
     } else throw new Error(`Unknown argument ${a}`);
   }
@@ -108,7 +110,17 @@ Options:
   --batch-size <n>           Rows per DB INSERT batch. Default 1000.
   --rpc-concurrency <n>      Window fetches in flight. Default 4.
   --ponder-sync-schema <s>   Sync schema name. Default ponder_sync.
+  --schema <name>            Materialized schema, used to detect gaps when
+                             --start-block is omitted. Default prod_1.
   --apply                    Actually write. Default is dry-run.
+
+Default --start-block:
+  Picks min(b.number) from ponder_sync.blocks for any DERC20 token in
+  <schema>.token whose address is missing from <ponder-sync-schema>.
+  factory_addresses for the chosen --factory-id (i.e. the earliest known
+  gap). Falls back to max(block_number) + 1 of factory_addresses when no
+  gaps are detected. Override with --start-block to force a specific
+  starting block.
 `);
 }
 
@@ -267,8 +279,30 @@ returning 1;
   return psqlReturning1(databaseUrl, sql);
 }
 
-function findHighestKnownBlock(databaseUrl, schema, factoryId, chainId) {
-  const sql = `select coalesce(max(block_number), 0)::text from ${schema}.factory_addresses where factory_id = ${Number(factoryId)} and chain_id = ${Number(chainId)};`;
+function findHighestKnownBlock(databaseUrl, pondersyncSchema, factoryId, chainId) {
+  const sql = `select coalesce(max(block_number), 0)::text from ${pondersyncSchema}.factory_addresses where factory_id = ${Number(factoryId)} and chain_id = ${Number(chainId)};`;
+  const out = execFileSync(
+    "psql",
+    [databaseUrl, "-X", "-A", "-t", "-v", "ON_ERROR_STOP=1", "-c", sql],
+    { encoding: "utf8" },
+  ).trim();
+  return BigInt(out || "0");
+}
+
+function findEarliestMissingBlock(databaseUrl, pondersyncSchema, schema, factoryId, chainId) {
+  const sql = `
+select coalesce(min(b.number), 0)::text
+from ${schema}.token t
+join ${pondersyncSchema}.blocks b
+  on b.chain_id = t.chain_id and b.timestamp::bigint = t.first_seen_at::bigint
+left join ${pondersyncSchema}.factory_addresses fa
+  on fa.factory_id = ${Number(factoryId)}
+ and fa.chain_id = t.chain_id
+ and lower(fa.address) = lower(t.address)
+where t.chain_id = ${Number(chainId)}
+  and t.is_derc20 = true
+  and fa.address is null;
+`;
   const out = execFileSync(
     "psql",
     [databaseUrl, "-X", "-A", "-t", "-v", "ON_ERROR_STOP=1", "-c", sql],
@@ -295,14 +329,28 @@ async function main() {
 
   const head = args.endBlock ?? (await client.getBlockNumber());
   let startBlock = args.startBlock;
+  let startReason = "explicit --start-block";
   if (startBlock === undefined) {
-    const highest = findHighestKnownBlock(
+    const earliestGap = findEarliestMissingBlock(
       args.databaseUrl,
       args.pondersyncSchema,
+      args.schema,
       factoryId,
       args.chainId,
     );
-    startBlock = highest + 1n;
+    if (earliestGap > 0n) {
+      startBlock = earliestGap;
+      startReason = `earliest gap (DERC20 token in ${args.schema}.token missing from factory ${factoryId})`;
+    } else {
+      const highest = findHighestKnownBlock(
+        args.databaseUrl,
+        args.pondersyncSchema,
+        factoryId,
+        args.chainId,
+      );
+      startBlock = highest + 1n;
+      startReason = `max(factory_addresses.block_number) + 1 (no gaps detected)`;
+    }
   }
 
   if (startBlock > head) {
@@ -313,7 +361,7 @@ async function main() {
   console.log(
     `Backfilling Airlock(${airlock}) Create logs on chain ${args.chainId}`,
   );
-  console.log(`  range: blocks [${startBlock}, ${head}]`);
+  console.log(`  range: blocks [${startBlock}, ${head}]  (start: ${startReason})`);
   console.log(
     `  factory_id=${factoryId}  apply=${args.apply}  rpc_concurrency=${args.rpcConcurrency}  window=${args.windowSize}`,
   );
