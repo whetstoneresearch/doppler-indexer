@@ -223,8 +223,13 @@ function buildLogRowsValues(rows) {
 function psqlReturning1(databaseUrl, sql) {
   const stdout = execFileSync(
     "psql",
-    [databaseUrl, "-X", "-A", "-t", "-v", "ON_ERROR_STOP=1", "-c", sql],
-    { encoding: "utf8", maxBuffer: 1024 * 1024 * 512 },
+    [databaseUrl, "-X", "-A", "-t", "-v", "ON_ERROR_STOP=1"],
+    {
+      input: sql,
+      encoding: "utf8",
+      maxBuffer: 1024 * 1024 * 512,
+      stdio: ["pipe", "pipe", "inherit"],
+    },
   );
   return stdout.split("\n").filter((line) => line.trim() === "1").length;
 }
