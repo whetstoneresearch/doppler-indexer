@@ -212,7 +212,7 @@ select coalesce(json_agg(q), '[]'::json) from (
 
 function selectTransfersSql(schema, chainId, token) {
   return `
-select coalesce(json_agg(q order by (q->>'block_number')::numeric, (q->>'log_index')::int), '[]'::json) from (
+select coalesce(json_agg(q), '[]'::json) from (
   select block_number::text as block_number,
          log_index,
          topic1,
@@ -222,6 +222,7 @@ select coalesce(json_agg(q order by (q->>'block_number')::numeric, (q->>'log_ind
   where chain_id = ${Number(chainId)}
     and lower(address) = ${ql(token)}
     and topic0 = ${ql(TRANSFER_SELECTOR)}
+  order by block_number, log_index
 ) q;`;
 }
 
