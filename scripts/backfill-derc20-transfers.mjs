@@ -278,16 +278,23 @@ returning 1;
 }
 
 async function processToken(args, client, work) {
+  const log = (msg) => console.log(`  [${work.token}] ${msg}`);
+
   const head = await client.getBlockNumber();
   const deployBlock = BigInt(work.deploy_block);
   if (deployBlock === 0n) {
     throw new Error(`Token ${work.token} has no deploy_block in factory_addresses; run airlock backfill first.`);
   }
   const windows = makeWindows(deployBlock, head, args.windowSize);
+  log(
+    `${windows.length} windows from block ${deployBlock} to ${head} (size=${args.windowSize})`,
+  );
 
   let buffer = [];
   let transferCount = 0;
   let logsWritten = 0;
+  let windowsDone = 0;
+  let lastReport = Date.now();
 
   const fetcher = (w) => fetchTransferRange(client, work.token, w.from, w.to);
 
@@ -315,24 +322,31 @@ async function processToken(args, client, work) {
     fetcher,
     args.rpcConcurrency,
   )) {
-    for (const log of logs) {
+    for (const entry of logs) {
       transferCount++;
       buffer.push({
-        address: lowerHex(log.address),
-        blockHash: lowerHex(log.blockHash),
-        blockNumber: BigInt(log.blockNumber),
+        address: lowerHex(entry.address),
+        blockHash: lowerHex(entry.blockHash),
+        blockNumber: BigInt(entry.blockNumber),
         chainId: args.chainId,
-        data: log.data,
-        logIndex: Number(log.logIndex),
-        topic0: lowerHex(log.topics[0]),
-        topic1: log.topics[1] ? lowerHex(log.topics[1]) : null,
-        topic2: log.topics[2] ? lowerHex(log.topics[2]) : null,
-        topic3: log.topics[3] ? lowerHex(log.topics[3]) : null,
-        transactionHash: lowerHex(log.transactionHash),
-        transactionIndex: Number(log.transactionIndex),
+        data: entry.data,
+        logIndex: Number(entry.logIndex),
+        topic0: lowerHex(entry.topics[0]),
+        topic1: entry.topics[1] ? lowerHex(entry.topics[1]) : null,
+        topic2: entry.topics[2] ? lowerHex(entry.topics[2]) : null,
+        topic3: entry.topics[3] ? lowerHex(entry.topics[3]) : null,
+        transactionHash: lowerHex(entry.transactionHash),
+        transactionIndex: Number(entry.transactionIndex),
       });
     }
     flushIfFull();
+    windowsDone++;
+    if (Date.now() - lastReport > 5000) {
+      log(
+        `windows ${windowsDone}/${windows.length}  transfers=${transferCount}  logs_written=${logsWritten}`,
+      );
+      lastReport = Date.now();
+    }
   }
 
   flushFinal();

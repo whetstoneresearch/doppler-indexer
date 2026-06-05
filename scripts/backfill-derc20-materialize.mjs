@@ -384,12 +384,17 @@ function setHolderCounts(databaseUrl, schema, chainId, token, pool, holderCount)
 }
 
 async function buildPlanForToken(args, client, work) {
+  const log = (msg) => console.log(`  [${work.token}] ${msg}`);
+
+  log("fetching Transfer rows from ponder_sync.logs...");
+  const t0 = Date.now();
   const transfersSql = selectTransfersSql(
     args.pondersyncSchema,
     args.chainId,
     work.token,
   );
   const transfers = psqlRowsTsv(args.databaseUrl, transfersSql);
+  log(`fetched ${transfers.length} transfers (${Date.now() - t0}ms)`);
 
   if (transfers.length === 0) {
     return {
@@ -402,16 +407,25 @@ async function buildPlanForToken(args, client, work) {
     };
   }
 
+  log("replaying transfers...");
+  const t1 = Date.now();
   const { balances, firstSeen, lastInteraction } = replay(transfers);
+  log(
+    `replayed: ${balances.size} unique addresses (${Date.now() - t1}ms)`,
+  );
+
   const blockNumbers = new Set();
   for (const v of firstSeen.values()) blockNumbers.add(v);
   for (const v of lastInteraction.values()) blockNumbers.add(v);
 
+  log(`fetching ${blockNumbers.size} block timestamps via RPC...`);
+  const t2 = Date.now();
   const blockTimestamps = await fetchBlockTimestampsBulk(
     client,
     [...blockNumbers],
     args.rpcConcurrency,
   );
+  log(`fetched block timestamps (${Date.now() - t2}ms)`);
 
   return { work, transfers, balances, firstSeen, lastInteraction, blockTimestamps };
 }
@@ -452,22 +466,35 @@ async function applyPlan(args, plan) {
     });
   }
 
+  const log = (msg) => console.log(`  [${work.token}] ${msg}`);
+
   let usersWritten = 0;
   if (!args.skipUserUpsert) {
-    for (const slice of chunk(userRows, args.batchSize)) {
-      usersWritten += writeUsersBatch(args.databaseUrl, args.schema, slice);
+    const slices = chunk(userRows, args.batchSize);
+    log(`writing ${userRows.length} user rows in ${slices.length} batch(es)...`);
+    const t = Date.now();
+    for (let i = 0; i < slices.length; i++) {
+      usersWritten += writeUsersBatch(args.databaseUrl, args.schema, slices[i]);
     }
+    log(`wrote users (${Date.now() - t}ms)`);
   }
 
+  const uaSlices = chunk(userAssetRows, args.batchSize);
+  log(
+    `writing ${userAssetRows.length} user_asset rows in ${uaSlices.length} batch(es)...`,
+  );
+  const tUa = Date.now();
   let userAssetsWritten = 0;
-  for (const slice of chunk(userAssetRows, args.batchSize)) {
+  for (let i = 0; i < uaSlices.length; i++) {
     userAssetsWritten += writeUserAssetBatch(
       args.databaseUrl,
       args.schema,
-      slice,
+      uaSlices[i],
     );
   }
+  log(`wrote user_assets (${Date.now() - tUa}ms)`);
 
+  log(`updating holder_count to ${heldBy.length}...`);
   setHolderCounts(
     args.databaseUrl,
     args.schema,
