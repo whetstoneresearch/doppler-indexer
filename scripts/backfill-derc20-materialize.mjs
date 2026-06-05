@@ -212,18 +212,35 @@ select coalesce(json_agg(q), '[]'::json) from (
 
 function selectTransfersSql(schema, chainId, token) {
   return `
-select coalesce(json_agg(q), '[]'::json) from (
-  select block_number::text as block_number,
-         log_index,
-         topic1,
-         topic2,
-         data
-  from ${schema}.logs
-  where chain_id = ${Number(chainId)}
-    and lower(address) = ${ql(token)}
-    and topic0 = ${ql(TRANSFER_SELECTOR)}
-  order by block_number, log_index
-) q;`;
+select block_number::text || E'\\t' || log_index::text || E'\\t' || topic1 || E'\\t' || topic2 || E'\\t' || data
+from ${schema}.logs
+where chain_id = ${Number(chainId)}
+  and lower(address) = ${ql(token)}
+  and topic0 = ${ql(TRANSFER_SELECTOR)}
+order by block_number, log_index;`;
+}
+
+function psqlRowsTsv(databaseUrl, sql) {
+  const stdout = execFileSync(
+    "psql",
+    [databaseUrl, "-X", "-A", "-t", "-v", "ON_ERROR_STOP=1", "-c", sql],
+    { encoding: "utf8", maxBuffer: 1024 * 1024 * 1024 },
+  );
+  const lines = stdout.split("\n");
+  const rows = [];
+  for (const line of lines) {
+    if (!line) continue;
+    const parts = line.split("\t");
+    if (parts.length < 5) continue;
+    rows.push({
+      block_number: parts[0],
+      log_index: Number(parts[1]),
+      topic1: parts[2],
+      topic2: parts[3],
+      data: parts[4],
+    });
+  }
+  return rows;
 }
 
 async function* orderedPrefetch(items, fetcher, concurrency) {
@@ -372,7 +389,7 @@ async function buildPlanForToken(args, client, work) {
     args.chainId,
     work.token,
   );
-  const transfers = psqlJson(args.databaseUrl, transfersSql);
+  const transfers = psqlRowsTsv(args.databaseUrl, transfersSql);
 
   if (transfers.length === 0) {
     return {
