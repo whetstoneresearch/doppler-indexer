@@ -12,7 +12,7 @@ import { computeReservesFromPositions } from "@app/utils/v4-utils/computeReserve
 import { getPositionsForPool, upsertPositionLedger } from "./shared/entities/positionLedger";
 import { PoolKey } from "@app/types/v4-types";
 import { getDHookPoolData } from "@app/utils/dhook-utils";
-import { StateViewABI, DopplerHookInitializerABI, RehypeDopplerHookInitializerABI } from "@app/abis";
+import { StateViewABI, DopplerHookInitializerABI } from "@app/abis";
 import { isPrecompileAddress } from "@app/utils/validation";
 import { updateCumulatedFees } from "./shared/cumulatedFees";
 import { Context } from "ponder:registry";
@@ -60,56 +60,6 @@ async function seedPositionLedgerFromCreateTx({
       context,
     });
   }
-}
-
-type PositionEntry = { tickLower: number; tickUpper: number; liquidity: bigint };
-
-async function fetchPositions({
-  initializerAddress,
-  assetAddress,
-  poolId,
-  context,
-}: {
-  initializerAddress: `0x${string}`;
-  assetAddress: `0x${string}`;
-  poolId: `0x${string}`;
-  context: Context;
-}): Promise<readonly PositionEntry[]> {
-  // Try getPositions (public on older initializer deployments, internal on newer)
-  try {
-    const positions = await context.client.readContract({
-      abi: DopplerHookInitializerABI,
-      address: initializerAddress,
-      functionName: "getPositions",
-      args: [assetAddress],
-    });
-    return positions;
-  } catch {}
-
-  // Fallback: use getState to discover dopplerHook, then getPosition on it
-  try {
-    const state = await context.client.readContract({
-      abi: DopplerHookInitializerABI,
-      address: initializerAddress,
-      functionName: "getState",
-      args: [assetAddress],
-    });
-    const dopplerHook = (state[2] as string).toLowerCase() as `0x${string}`;
-    if (dopplerHook !== "0x0000000000000000000000000000000000000000") {
-      const result = await context.client.readContract({
-        abi: RehypeDopplerHookInitializerABI,
-        address: dopplerHook,
-        functionName: "getPosition",
-        args: [poolId],
-      });
-      const [tickLower, tickUpper, liquidity] = result;
-      if (liquidity > 0n) return [{ tickLower, tickUpper, liquidity }];
-      return [];
-    }
-  } catch {}
-
-  // Last resort: position ledger
-  return getPositionsForPool({ poolId, context });
 }
 
 onIndexerEvent("DopplerHookInitializer:Create", async ({ event, context }) => {
@@ -313,7 +263,6 @@ onIndexerEvent("DopplerHookInitializer:Swap", async ({ event, context }) => {
   }
 
   const { stateView } = chainConfigs[chain.name].addresses.v4;
-  const initializerAddress = (poolEntity.initializer ?? event.log.address) as `0x${string}`;
 
   const [slot0, onChainPositions, quoteInfo, tokenEntity] = await Promise.all([
     client.readContract({
@@ -322,12 +271,7 @@ onIndexerEvent("DopplerHookInitializer:Swap", async ({ event, context }) => {
       functionName: "getSlot0",
       args: [poolId],
     }),
-    fetchPositions({
-      initializerAddress,
-      assetAddress: poolEntity.baseToken,
-      poolId: poolAddress,
-      context,
-    }),
+    getPositionsForPool({ poolId: poolAddress, context }),
     getQuoteInfo(poolEntity.quoteToken, timestamp, context),
     db.find(token, {
       address: poolEntity.baseToken,
@@ -511,12 +455,7 @@ onIndexerEvent("DopplerHookInitializer:ModifyLiquidity", async ({ event, context
         },
       ],
     }),
-    fetchPositions({
-      initializerAddress: event.log.address as `0x${string}`,
-      assetAddress: poolEntity.baseToken,
-      poolId: poolAddress,
-      context,
-    }),
+    getPositionsForPool({ poolId: poolAddress, context }),
   ]);
 
   const [slot0, liquidityResult] = multicallResults;
