@@ -346,6 +346,7 @@ function writeUserAssetBatch(databaseUrl, schema, rows) {
   if (rows.length === 0) return 0;
   const values = buildUserAssetValues(rows);
   const sql = `
+set session_replication_role = replica;
 insert into ${schema}.user_asset (chain_id, user_id, asset_id, balance, created_at, last_interaction)
 values
 ${values}
@@ -361,6 +362,7 @@ function writeUsersBatch(databaseUrl, schema, rows) {
   if (rows.length === 0) return 0;
   const values = buildUserValues(rows);
   const sql = `
+set session_replication_role = replica;
 insert into ${schema}."user" (address, chain_id, created_at, last_seen_at)
 values
 ${values}
@@ -373,6 +375,7 @@ returning 1;
 
 function setHolderCounts(databaseUrl, schema, chainId, token, pool, holderCount) {
   const parts = [
+    "set session_replication_role = replica;",
     `update ${schema}.token set holder_count = ${Number(holderCount)} where lower(address) = ${ql(token)} and chain_id = ${Number(chainId)};`,
   ];
   if (pool) {
