@@ -175,6 +175,20 @@ function psqlReturning1(databaseUrl, sql) {
   return stdout.split("\n").filter((line) => line.trim() === "1").length;
 }
 
+function psqlRowsTsv(databaseUrl, sql) {
+  const stdout = execFileSync(
+    "psql",
+    [databaseUrl, "-X", "-A", "-t", "-F", "\t", "-v", "ON_ERROR_STOP=1", "-c", sql],
+    { encoding: "utf8", maxBuffer: 1024 * 1024 * 1024 },
+  );
+  const out = [];
+  for (const line of stdout.split("\n")) {
+    if (!line) continue;
+    out.push(line.split("\t"));
+  }
+  return out;
+}
+
 function loadCheckpoint(path) {
   if (!existsSync(path)) {
     return { version: 1, tokens: {} };
@@ -231,69 +245,48 @@ function updateTokenCheckpoint(token, patch) {
   checkpointState.dirty = true;
 }
 
-function selectInProgressTokensSql(args, tokens) {
-  if (tokens.length === 0) return null;
+function selectAllCandidatesSql(args) {
   const fa = `${args.pondersyncSchema}.factory_addresses`;
   const tok = `${args.schema}.token`;
-  const list = tokens.map((t) => ql(t)).join(", ");
-  return `
-select coalesce(json_agg(q), '[]'::json) from (
-  select lower(t.address) as token,
-         t.chain_id::int as chain_id,
-         fa.block_number::text as deploy_block,
-         lower(t.pool) as pool
-  from ${tok} t
-  join ${fa} fa
-    on fa.factory_id = ${Number(args.factoryId)}
-   and fa.chain_id = t.chain_id
-   and lower(fa.address) = lower(t.address)
-  where t.chain_id = ${Number(args.chainId)}
-    and lower(t.address) in (${list})
-) q;`;
-}
-
-function selectWorkingSetSql(args) {
-  const fa = `${args.pondersyncSchema}.factory_addresses`;
-  const tok = `${args.schema}.token`;
-  const logs = `${args.pondersyncSchema}.logs`;
 
   if (args.token) {
     return `
-select coalesce(json_agg(q), '[]'::json) from (
-  select lower(t.address) as token,
-         t.chain_id::int as chain_id,
-         coalesce(fa.block_number, 0)::text as deploy_block,
-         lower(t.pool) as pool
-  from ${tok} t
-  left join ${fa} fa
-    on fa.factory_id = ${Number(args.factoryId)}
-   and fa.chain_id = t.chain_id
-   and lower(fa.address) = lower(t.address)
-  where lower(t.address) = ${ql(args.token)} and t.chain_id = ${Number(args.chainId)}
-) q;`;
+select lower(t.address),
+       t.chain_id::int,
+       coalesce(fa.block_number, 0)::text,
+       lower(coalesce(t.pool, ''))
+from ${tok} t
+left join ${fa} fa
+  on fa.factory_id = ${Number(args.factoryId)}
+ and fa.chain_id = t.chain_id
+ and lower(fa.address) = lower(t.address)
+where lower(t.address) = ${ql(args.token)} and t.chain_id = ${Number(args.chainId)};`;
   }
 
   const limit = args.limit ? `limit ${Number(args.limit)}` : "";
   return `
-select coalesce(json_agg(q), '[]'::json) from (
-  select lower(t.address) as token,
-         t.chain_id::int as chain_id,
-         fa.block_number::text as deploy_block,
-         lower(t.pool) as pool
-  from ${fa} fa
-  join ${tok} t
-    on lower(t.address) = lower(fa.address) and t.chain_id = fa.chain_id
-  where fa.factory_id = ${Number(args.factoryId)}
-    and fa.chain_id = ${Number(args.chainId)}
-    and not exists (
-      select 1 from ${logs} l
-      where l.chain_id = fa.chain_id
-        and lower(l.address) = lower(fa.address)
-        and l.topic0 = ${ql(TRANSFER_SELECTOR)}
-    )
-  order by fa.block_number
-  ${limit}
-) q;`;
+select lower(t.address),
+       t.chain_id::int,
+       fa.block_number::text,
+       lower(coalesce(t.pool, ''))
+from ${fa} fa
+join ${tok} t
+  on lower(t.address) = lower(fa.address) and t.chain_id = fa.chain_id
+where fa.factory_id = ${Number(args.factoryId)}
+  and fa.chain_id = ${Number(args.chainId)}
+order by fa.block_number
+${limit};`;
+}
+
+function selectExistingTokensSql(args, tokens) {
+  if (tokens.length === 0) return null;
+  const list = tokens.map((t) => ql(t)).join(", ");
+  return `
+select distinct lower(address)
+from ${args.pondersyncSchema}.logs
+where chain_id = ${Number(args.chainId)}
+  and topic0 = ${ql(TRANSFER_SELECTOR)}
+  and lower(address) in (${list});`;
 }
 
 function makeWindows(fromBlock, toBlock, size) {
@@ -558,37 +551,73 @@ async function main() {
     transport: http(rpcUrl, { timeout: 30_000, retryCount: 3 }),
   });
 
-  const sqlSet = psqlJson(args.databaseUrl, selectWorkingSetSql(args));
+  console.log("Loading candidate set (factory_addresses ∩ token)...");
+  const candidatesRaw = psqlRowsTsv(args.databaseUrl, selectAllCandidatesSql(args));
+  const candidates = [];
+  for (const [token, chainId, deployBlock, pool] of candidatesRaw) {
+    if (!token || deployBlock === "0") continue;
+    candidates.push({
+      token,
+      chain_id: Number(chainId),
+      deploy_block: deployBlock,
+      pool: pool || null,
+    });
+  }
+  console.log(`Loaded ${candidates.length} candidate token(s).`);
 
-  // Pull in tokens already in the checkpoint that aren't completed but
-  // wouldn't be re-selected by the SQL (because they already have Transfer
-  // rows from the prior partial run). Without this they'd be silently skipped.
-  const sqlTokens = new Set(sqlSet.map((w) => w.token));
-  const ckptInProgress = Object.entries(checkpoint.tokens)
-    .filter(([addr, entry]) => !entry.completed && !sqlTokens.has(addr))
-    .map(([addr]) => addr);
-
-  let mergedSet = sqlSet;
-  if (ckptInProgress.length > 0 && !args.token) {
-    const sql = selectInProgressTokensSql(args, ckptInProgress);
-    if (sql) {
-      const extra = psqlJson(args.databaseUrl, sql);
-      mergedSet = sqlSet.concat(extra);
+  // Seed checkpoint by batched existence check. Any token that already has at
+  // least one Transfer log in ponder_sync.logs was fully handled by the live
+  // indexer (Airlock Create event was received, subscription was active), so
+  // mark it completed and skip — we only need to backfill tokens with ZERO
+  // existing Transfer logs.
+  const unseeded = args.token
+    ? candidates.filter((c) => !checkpoint.tokens[c.token])
+    : candidates.filter((c) => !checkpoint.tokens[c.token]);
+  if (unseeded.length > 0) {
+    const SEED_BATCH = 2000;
+    const batches = Math.ceil(unseeded.length / SEED_BATCH);
+    console.log(
+      `Seeding checkpoint for ${unseeded.length} token(s) in ${batches} batch(es) of ${SEED_BATCH}...`,
+    );
+    let markedCompleted = 0;
+    let markedNeedBackfill = 0;
+    for (let i = 0; i < unseeded.length; i += SEED_BATCH) {
+      const slice = unseeded.slice(i, i + SEED_BATCH);
+      const addrs = slice.map((c) => c.token);
+      const sql = selectExistingTokensSql(args, addrs);
+      const rows = sql ? psqlRowsTsv(args.databaseUrl, sql) : [];
+      const existing = new Set(rows.map(([addr]) => addr));
+      for (const c of slice) {
+        if (existing.has(c.token)) {
+          updateTokenCheckpoint(c.token, {
+            completed: true,
+            reason: "preexisting-logs",
+          });
+          markedCompleted++;
+        } else {
+          updateTokenCheckpoint(c.token, {
+            deploy_block: c.deploy_block,
+            needs_backfill: true,
+          });
+          markedNeedBackfill++;
+        }
+      }
+      maybeSaveCheckpoint();
+      const batchNum = Math.floor(i / SEED_BATCH) + 1;
       console.log(
-        `Added ${extra.length} in-progress token(s) from checkpoint to the working set.`,
+        `  batch ${batchNum}/${batches}  preexisting=${markedCompleted}  needs_backfill=${markedNeedBackfill}`,
       );
     }
+    saveCheckpointNow();
+    console.log(
+      `Seeding done. ${markedCompleted} preexisting (skipped); ${markedNeedBackfill} need backfill.`,
+    );
   }
 
-  // Drop tokens already marked complete in the checkpoint.
-  const beforeCkptFilter = mergedSet.length;
-  mergedSet = mergedSet.filter(
-    (w) => !(checkpoint.tokens[w.token]?.completed === true),
+  // Working set: every candidate not marked completed.
+  const mergedSet = candidates.filter(
+    (c) => !(checkpoint.tokens[c.token]?.completed === true),
   );
-  const skippedCompleted = beforeCkptFilter - mergedSet.length;
-  if (skippedCompleted > 0) {
-    console.log(`Skipping ${skippedCompleted} token(s) already marked completed in checkpoint.`);
-  }
 
   console.log(`Selected ${mergedSet.length} token(s) to fetch transfers for.`);
   if (mergedSet.length === 0) return;
