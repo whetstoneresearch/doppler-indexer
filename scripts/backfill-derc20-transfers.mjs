@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import process from "node:process";
 import { createPublicClient, http } from "viem";
@@ -48,6 +48,8 @@ function parseArgs(argv) {
     batchSize: 1000,
     limit: undefined,
     token: undefined,
+    checkpoint: resolve(process.cwd(), "backfill-derc20-transfers.checkpoint.json"),
+    saveIntervalMs: 5000,
   };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -71,6 +73,8 @@ function parseArgs(argv) {
       else if (key === "batch-size") args.batchSize = Number(v);
       else if (key === "limit") args.limit = Number(v);
       else if (key === "token") args.token = v.toLowerCase();
+      else if (key === "checkpoint") args.checkpoint = resolve(v);
+      else if (key === "save-interval-ms") args.saveIntervalMs = Number(v);
       else throw new Error(`Unknown argument ${a}`);
     } else throw new Error(`Unknown argument ${a}`);
   }
@@ -109,7 +113,19 @@ Options:
   --batch-size <n>           Rows per DB INSERT batch. Default 1000.
   --limit <n>                Process at most N tokens (after filtering).
   --token <0x...>            Process exactly one token (ignores filters).
+  --checkpoint <path>        On-disk checkpoint JSON. Default
+                             ./backfill-derc20-transfers.checkpoint.json.
+                             Tracks per-token covered_to block so a restart
+                             skips windows already fetched + written.
+  --save-interval-ms <n>     Min ms between checkpoint flushes. Default 5000.
   --apply                    Actually write. Default is dry-run.
+
+Checkpoint behavior:
+  - On restart, tokens with covered_to >= head_at_start are skipped entirely.
+  - Tokens with a partial covered_to resume from covered_to + 1, regardless
+    of whether Transfer rows already exist for them (which lets us complete
+    tokens that were interrupted mid-run after their first batches landed).
+  - SIGINT triggers a final checkpoint save before exit.
 `);
 }
 
@@ -157,6 +173,83 @@ function psqlReturning1(databaseUrl, sql) {
     },
   );
   return stdout.split("\n").filter((line) => line.trim() === "1").length;
+}
+
+function loadCheckpoint(path) {
+  if (!existsSync(path)) {
+    return { version: 1, tokens: {} };
+  }
+  const raw = readFileSync(path, "utf8");
+  if (!raw.trim()) return { version: 1, tokens: {} };
+  const parsed = JSON.parse(raw);
+  if (!parsed.tokens || typeof parsed.tokens !== "object") {
+    return { version: 1, tokens: {} };
+  }
+  return parsed;
+}
+
+const checkpointState = {
+  path: null,
+  data: null,
+  dirty: false,
+  lastSave: 0,
+  saving: false,
+  intervalMs: 5000,
+};
+
+function setCheckpointState(path, data, intervalMs) {
+  checkpointState.path = path;
+  checkpointState.data = data;
+  checkpointState.intervalMs = intervalMs;
+  checkpointState.lastSave = Date.now();
+}
+
+function saveCheckpointNow() {
+  if (!checkpointState.path || !checkpointState.data) return;
+  if (checkpointState.saving) return;
+  checkpointState.saving = true;
+  try {
+    const tmp = `${checkpointState.path}.tmp`;
+    writeFileSync(tmp, JSON.stringify(checkpointState.data, null, 2));
+    renameSync(tmp, checkpointState.path);
+    checkpointState.dirty = false;
+    checkpointState.lastSave = Date.now();
+  } finally {
+    checkpointState.saving = false;
+  }
+}
+
+function maybeSaveCheckpoint() {
+  if (!checkpointState.dirty) return;
+  if (Date.now() - checkpointState.lastSave < checkpointState.intervalMs) return;
+  saveCheckpointNow();
+}
+
+function updateTokenCheckpoint(token, patch) {
+  const cur = checkpointState.data.tokens[token] ?? {};
+  checkpointState.data.tokens[token] = { ...cur, ...patch };
+  checkpointState.dirty = true;
+}
+
+function selectInProgressTokensSql(args, tokens) {
+  if (tokens.length === 0) return null;
+  const fa = `${args.pondersyncSchema}.factory_addresses`;
+  const tok = `${args.schema}.token`;
+  const list = tokens.map((t) => ql(t)).join(", ");
+  return `
+select coalesce(json_agg(q), '[]'::json) from (
+  select lower(t.address) as token,
+         t.chain_id::int as chain_id,
+         fa.block_number::text as deploy_block,
+         lower(t.pool) as pool
+  from ${tok} t
+  join ${fa} fa
+    on fa.factory_id = ${Number(args.factoryId)}
+   and fa.chain_id = t.chain_id
+   and lower(fa.address) = lower(t.address)
+  where t.chain_id = ${Number(args.chainId)}
+    and lower(t.address) in (${list})
+) q;`;
 }
 
 function selectWorkingSetSql(args) {
@@ -285,39 +378,65 @@ async function processToken(args, client, work) {
   if (deployBlock === 0n) {
     throw new Error(`Token ${work.token} has no deploy_block in factory_addresses; run airlock backfill first.`);
   }
-  const windows = makeWindows(deployBlock, head, args.windowSize);
+
+  const ckptEntry = checkpointState.data.tokens[work.token] ?? {};
+  const coveredTo = ckptEntry.covered_to ? BigInt(ckptEntry.covered_to) : null;
+  const resumeFrom = coveredTo !== null && coveredTo + 1n > deployBlock
+    ? coveredTo + 1n
+    : deployBlock;
+
+  if (resumeFrom > head) {
+    log(`already covered to ${coveredTo} (>= head ${head}); marking complete`);
+    updateTokenCheckpoint(work.token, {
+      covered_to: head.toString(),
+      head_at_complete: head.toString(),
+      completed: true,
+    });
+    saveCheckpointNow();
+    return { token: work.token, transferCount: 0, logsWritten: 0, windows: 0, resumed: true };
+  }
+
+  const windows = makeWindows(resumeFrom, head, args.windowSize);
   log(
-    `${windows.length} windows from block ${deployBlock} to ${head} (size=${args.windowSize})`,
+    `${windows.length} windows from block ${resumeFrom} to ${head} (size=${args.windowSize})` +
+      (coveredTo !== null ? ` [resuming from checkpoint covered_to=${coveredTo}]` : ""),
   );
+
+  updateTokenCheckpoint(work.token, {
+    deploy_block: deployBlock.toString(),
+    head_at_start: head.toString(),
+    completed: false,
+  });
 
   let buffer = [];
   let transferCount = 0;
   let logsWritten = 0;
   let windowsDone = 0;
   let lastReport = Date.now();
+  // Index of the most-recent window whose logs have been appended to buffer.
+  // After a full flush, every log in buffer up to and including this window
+  // is durably in the DB, so covered_to safely advances to windows[this].to.
+  let pendingWindowIndex = -1;
 
   const fetcher = (w) => fetchTransferRange(client, work.token, w.from, w.to);
 
-  const flushIfFull = () => {
+  const flushAll = () => {
     if (!args.apply) {
       buffer = [];
       return;
     }
-    while (buffer.length >= args.batchSize) {
-      const slice = buffer.splice(0, args.batchSize);
-      logsWritten += insertLogsBatch(args.databaseUrl, args.pondersyncSchema, slice);
-    }
-  };
-
-  const flushFinal = () => {
-    if (!args.apply) return;
     while (buffer.length > 0) {
       const slice = buffer.splice(0, args.batchSize);
       logsWritten += insertLogsBatch(args.databaseUrl, args.pondersyncSchema, slice);
     }
   };
 
-  for await (const { result: logs } of orderedPrefetch(
+  const advanceCheckpointTo = (toBlock) => {
+    updateTokenCheckpoint(work.token, { covered_to: toBlock.toString() });
+    maybeSaveCheckpoint();
+  };
+
+  for await (const { item: window, result: logs } of orderedPrefetch(
     windows,
     fetcher,
     args.rpcConcurrency,
@@ -339,8 +458,14 @@ async function processToken(args, client, work) {
         transactionIndex: Number(entry.transactionIndex),
       });
     }
-    flushIfFull();
     windowsDone++;
+    pendingWindowIndex = windowsDone - 1;
+
+    if (buffer.length >= args.batchSize) {
+      flushAll();
+      advanceCheckpointTo(windows[pendingWindowIndex].to);
+    }
+
     if (Date.now() - lastReport > 5000) {
       log(
         `windows ${windowsDone}/${windows.length}  transfers=${transferCount}  logs_written=${logsWritten}`,
@@ -349,7 +474,16 @@ async function processToken(args, client, work) {
     }
   }
 
-  flushFinal();
+  flushAll();
+  if (windowsDone > 0) {
+    advanceCheckpointTo(windows[windowsDone - 1].to);
+  }
+  updateTokenCheckpoint(work.token, {
+    covered_to: head.toString(),
+    head_at_complete: head.toString(),
+    completed: true,
+  });
+  saveCheckpointNow();
 
   return {
     token: work.token,
@@ -396,17 +530,76 @@ async function main() {
   if (args.help) return printHelp();
   if (!args.databaseUrl) throw new Error("Missing DATABASE_URL");
 
+  const checkpoint = loadCheckpoint(args.checkpoint);
+  setCheckpointState(args.checkpoint, checkpoint, args.saveIntervalMs);
+  console.log(`Checkpoint: ${args.checkpoint} (${Object.keys(checkpoint.tokens).length} tokens tracked)`);
+
+  process.on("SIGINT", () => {
+    console.log("\nSIGINT received — saving checkpoint and exiting.");
+    try {
+      saveCheckpointNow();
+    } catch (err) {
+      console.error(`checkpoint save failed: ${err.message || err}`);
+    }
+    process.exit(130);
+  });
+  process.on("SIGTERM", () => {
+    console.log("\nSIGTERM received — saving checkpoint and exiting.");
+    try {
+      saveCheckpointNow();
+    } catch (err) {
+      console.error(`checkpoint save failed: ${err.message || err}`);
+    }
+    process.exit(143);
+  });
+
   const rpcUrl = resolveRpcUrl(args.chainId, args.rpcUrl);
   const client = createPublicClient({
     transport: http(rpcUrl, { timeout: 30_000, retryCount: 3 }),
   });
 
-  const workingSet = psqlJson(args.databaseUrl, selectWorkingSetSql(args));
-  console.log(`Selected ${workingSet.length} token(s) to fetch transfers for.`);
-  if (workingSet.length === 0) return;
+  const sqlSet = psqlJson(args.databaseUrl, selectWorkingSetSql(args));
+
+  // Pull in tokens already in the checkpoint that aren't completed but
+  // wouldn't be re-selected by the SQL (because they already have Transfer
+  // rows from the prior partial run). Without this they'd be silently skipped.
+  const sqlTokens = new Set(sqlSet.map((w) => w.token));
+  const ckptInProgress = Object.entries(checkpoint.tokens)
+    .filter(([addr, entry]) => !entry.completed && !sqlTokens.has(addr))
+    .map(([addr]) => addr);
+
+  let mergedSet = sqlSet;
+  if (ckptInProgress.length > 0 && !args.token) {
+    const sql = selectInProgressTokensSql(args, ckptInProgress);
+    if (sql) {
+      const extra = psqlJson(args.databaseUrl, sql);
+      mergedSet = sqlSet.concat(extra);
+      console.log(
+        `Added ${extra.length} in-progress token(s) from checkpoint to the working set.`,
+      );
+    }
+  }
+
+  // Drop tokens already marked complete in the checkpoint.
+  const beforeCkptFilter = mergedSet.length;
+  mergedSet = mergedSet.filter(
+    (w) => !(checkpoint.tokens[w.token]?.completed === true),
+  );
+  const skippedCompleted = beforeCkptFilter - mergedSet.length;
+  if (skippedCompleted > 0) {
+    console.log(`Skipping ${skippedCompleted} token(s) already marked completed in checkpoint.`);
+  }
+
+  console.log(`Selected ${mergedSet.length} token(s) to fetch transfers for.`);
+  if (mergedSet.length === 0) return;
   if (!args.apply) console.log("(dry-run; pass --apply to actually write)");
 
-  const totals = await tokenPool(args, client, workingSet, args.tokenConcurrency);
+  let totals;
+  try {
+    totals = await tokenPool(args, client, mergedSet, args.tokenConcurrency);
+  } finally {
+    saveCheckpointNow();
+  }
   console.log(
     `Done. processed=${totals.processed} failed=${totals.failed} transfers=${totals.totalTransfers} ponder_sync_logs_written=${totals.totalLogs}`,
   );
