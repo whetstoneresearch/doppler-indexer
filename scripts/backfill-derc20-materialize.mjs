@@ -346,7 +346,8 @@ function writeUserAssetBatch(databaseUrl, schema, rows) {
   if (rows.length === 0) return 0;
   const values = buildUserAssetValues(rows);
   const sql = `
-set session_replication_role = replica;
+begin;
+alter table ${schema}.user_asset disable trigger user;
 insert into ${schema}.user_asset (chain_id, user_id, asset_id, balance, created_at, last_interaction)
 values
 ${values}
@@ -354,6 +355,8 @@ on conflict (user_id, asset_id, chain_id) do update set
   balance = excluded.balance,
   last_interaction = greatest(${schema}.user_asset.last_interaction, excluded.last_interaction)
 returning 1;
+alter table ${schema}.user_asset enable trigger user;
+commit;
 `;
   return psqlReturning1(databaseUrl, sql);
 }
@@ -362,27 +365,35 @@ function writeUsersBatch(databaseUrl, schema, rows) {
   if (rows.length === 0) return 0;
   const values = buildUserValues(rows);
   const sql = `
-set session_replication_role = replica;
+begin;
+alter table ${schema}."user" disable trigger user;
 insert into ${schema}."user" (address, chain_id, created_at, last_seen_at)
 values
 ${values}
 on conflict (address, chain_id) do update set
   last_seen_at = greatest(${schema}."user".last_seen_at, excluded.last_seen_at)
 returning 1;
+alter table ${schema}."user" enable trigger user;
+commit;
 `;
   return psqlReturning1(databaseUrl, sql);
 }
 
 function setHolderCounts(databaseUrl, schema, chainId, token, pool, holderCount) {
   const parts = [
-    "set session_replication_role = replica;",
+    "begin;",
+    `alter table ${schema}.token disable trigger user;`,
     `update ${schema}.token set holder_count = ${Number(holderCount)} where lower(address) = ${ql(token)} and chain_id = ${Number(chainId)};`,
+    `alter table ${schema}.token enable trigger user;`,
   ];
   if (pool) {
     parts.push(
+      `alter table ${schema}.pool disable trigger user;`,
       `update ${schema}.pool set holder_count = ${Number(holderCount)} where lower(address) = ${ql(pool)} and chain_id = ${Number(chainId)};`,
+      `alter table ${schema}.pool enable trigger user;`,
     );
   }
+  parts.push("commit;");
   psqlExec(databaseUrl, parts.join("\n"));
 }
 
