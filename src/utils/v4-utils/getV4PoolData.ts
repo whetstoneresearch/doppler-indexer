@@ -27,18 +27,34 @@ import { getMulticallOptions } from "@app/core/utils";
 import { chainConfigs } from "@app/config";
 import { getQuoteInfo, QuoteInfo } from "@app/utils/getQuoteInfo";
 import { isPrecompileAddress } from "../validation";
+import {
+  V4PoolImmutables,
+  getCachedV4Immutables,
+  hasCachedV4Immutables,
+  setCachedV4Immutables,
+} from "./v4ImmutableCache";
 
-export const getV4PoolData = async ({
+/**
+ * Fetch (and memoize) the immutable on-chain values for a v4 hook pool: its
+ * pool key, pool config, base token and decimals. These never change after
+ * pool creation, so the result is cached per (chainId, hook) and the contract
+ * reads only happen on the first event seen for each pool.
+ *
+ * Returns `null` for pools whose currencies are precompile addresses; that
+ * verdict is cached too so the pool is skipped without re-reading poolKey.
+ */
+const getV4PoolImmutables = async ({
   hook,
   context,
-  quoteInfo: providedQuoteInfo,
 }: {
   hook: Address;
   context: Context;
-  quoteInfo?: QuoteInfo;
-}): Promise<V4PoolData | null> => {
-  const { stateView } = chainConfigs[context.chain.name].addresses.v4;
+}): Promise<V4PoolImmutables | null> => {
   const { client, chain } = context;
+
+  if (hasCachedV4Immutables(chain.id, hook)) {
+    return getCachedV4Immutables(chain.id, hook) ?? null;
+  }
 
   const poolConfig = await getV4PoolConfig({ hook, context });
 
@@ -58,8 +74,49 @@ export const getV4PoolData = async ({
 
   // Skip events where either currency in the pool is a precompile address
   if (isPrecompileAddress(key.currency0) || isPrecompileAddress(key.currency1)) {
+    setCachedV4Immutables(chain.id, hook, null);
     return null;
   }
+
+  const assetData0 = await getAssetData(key.currency0, context);
+
+  const baseToken =
+    assetData0.poolInitializer != zeroAddress ? key.currency0 : key.currency1;
+  const isToken0 = baseToken === key.currency0;
+  const baseTokenDecimals = await client.readContract({
+    abi: DERC20ABI,
+    address: baseToken,
+    functionName: "decimals",
+  });
+
+  const immutables: V4PoolImmutables = {
+    key,
+    poolConfig,
+    baseToken,
+    isToken0,
+    baseTokenDecimals,
+  };
+  setCachedV4Immutables(chain.id, hook, immutables);
+  return immutables;
+};
+
+export const getV4PoolData = async ({
+  hook,
+  context,
+  quoteInfo: providedQuoteInfo,
+}: {
+  hook: Address;
+  context: Context;
+  quoteInfo?: QuoteInfo;
+}): Promise<V4PoolData | null> => {
+  const { stateView } = chainConfigs[context.chain.name].addresses.v4;
+  const { client, chain } = context;
+
+  const immutables = await getV4PoolImmutables({ hook, context });
+  if (!immutables) {
+    return null;
+  }
+  const { key, poolConfig, isToken0, baseTokenDecimals } = immutables;
 
   const poolId = getPoolId(key);
 
@@ -96,17 +153,6 @@ export const getV4PoolData = async ({
 
   const liquidityResult = liquidity?.result ?? 0n;
 
-  const assetData0 = await getAssetData(key.currency0, context);
-
-  const baseToken =
-    assetData0.poolInitializer != zeroAddress ? key.currency0 : key.currency1;
-  const isToken0 = baseToken === key.currency0;
-  const baseTokenDecimals = await context.client.readContract({
-    abi: DERC20ABI,
-    address: baseToken,
-    functionName: "decimals",
-  });
-  
   let quoteInfo: QuoteInfo;
   if (providedQuoteInfo) {    
     quoteInfo = providedQuoteInfo;
