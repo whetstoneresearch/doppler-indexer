@@ -1,8 +1,8 @@
 import { ethPrice, zoraUsdcPrice, fxhWethPrice, noiceWethPrice, monadUsdcPrice, eurcUsdcPrice, bankrWethPrice, usdcPrice, usdtPrice } from "ponder.schema";
 import { Context } from "ponder:registry";
 import { MarketDataService, PriceService } from "@app/core";
-import { chainConfigs } from "@app/config";
-import { parseUnits, zeroAddress } from "viem";
+import { chainConfigs, CHAIN_IDS, RPC_ENV_VARS } from "@app/config";
+import { createPublicClient, http, parseUnits, zeroAddress } from "viem";
 import { UniswapV3PoolABI } from "@app/abis/v3-abis/UniswapV3PoolABI";
 import { ChainlinkOracleABI } from "@app/abis/ChainlinkOracleABI";
 import { StateViewABI } from "@app/abis/v4-abis/StateViewABI";
@@ -13,6 +13,20 @@ const MAX_PRICE_LOOKUP_ATTEMPTS = 72;
 
 const FALLBACK_CACHE_TTL_MS = 30_000;
 const fallbackPriceCache = new Map<string, { price: bigint; timestamp: number }>();
+
+// ETH/USD is global, so chains without their own Chainlink ETH feed reuse Base's
+// ETH price (indexed every 5 min by the BaseChainlinkEthPriceFeed block handler).
+const ETH_PRICE_SOURCE_CHAIN = "base" as const;
+
+let ethSourceClient: ReturnType<typeof createPublicClient> | null = null;
+function getEthSourceClient() {
+  if (!ethSourceClient) {
+    ethSourceClient = createPublicClient({
+      transport: http(process.env[RPC_ENV_VARS.base]),
+    });
+  }
+  return ethSourceClient;
+}
 
 function getCachedFallbackPrice(key: string): bigint | null {
   const entry = fallbackPriceCache.get(key);
@@ -41,6 +55,14 @@ export const fetchEthPrice = async (
   context: Context
 ): Promise<bigint> => {
   const { db, chain, client } = context;
+
+  // When the current chain has no configured Chainlink ETH oracle, source the
+  // price from Base instead (both DB lookup and RPC fallback).
+  const hasOwnOracle =
+    chainConfigs[chain.name].addresses.shared.chainlinkEthOracle !== zeroAddress;
+  const sourceChainName = hasOwnOracle ? chain.name : ETH_PRICE_SOURCE_CHAIN;
+  const sourceChainId = hasOwnOracle ? chain.id : CHAIN_IDS.base;
+
   let roundedTimestamp = BigInt(Math.floor(Number(timestamp) / 300) * 300);
 
   let ethPriceData;
@@ -49,7 +71,7 @@ export const fetchEthPrice = async (
     attempts++;
     ethPriceData = await db.find(ethPrice, {
       timestamp: roundedTimestamp,
-      chainId: chain.id,
+      chainId: sourceChainId,
     });
 
     if (!ethPriceData) {
@@ -61,19 +83,27 @@ export const fetchEthPrice = async (
     return ethPriceData.price;
   }
 
-  const cacheKey = `eth:${chain.id}`;
+  const cacheKey = `eth:${sourceChainId}`;
   const cachedPrice = getCachedFallbackPrice(cacheKey);
   if (cachedPrice !== null) {
     return cachedPrice;
   }
 
-  console.warn(`[fetchEthPrice] DB lookup failed for chain ${chain.name}, falling back to Chainlink RPC`);
+  console.warn(`[fetchEthPrice] DB lookup failed for chain ${chain.name} (price source: ${sourceChainName}), falling back to Chainlink RPC`);
 
-  const latestAnswer = await client.readContract({
-    abi: ChainlinkOracleABI,
-    address: chainConfigs[chain.name].addresses.shared.chainlinkEthOracle,
-    functionName: "latestAnswer",
-  });
+  const oracleAddress =
+    chainConfigs[sourceChainName].addresses.shared.chainlinkEthOracle;
+  const latestAnswer = hasOwnOracle
+    ? await client.readContract({
+        abi: ChainlinkOracleABI,
+        address: oracleAddress,
+        functionName: "latestAnswer",
+      })
+    : await getEthSourceClient().readContract({
+        abi: ChainlinkOracleABI,
+        address: oracleAddress,
+        functionName: "latestAnswer",
+      });
 
   setCachedFallbackPrice(cacheKey, latestAnswer);
   return latestAnswer;
@@ -466,6 +496,14 @@ export const fetchUsdcPrice = async (
 
   return usdcPriceData.price;
   */
+};
+
+export const fetchUsdgPrice = async (
+  timestamp: bigint,
+  context: Context
+): Promise<bigint> => {
+  // USDG ("Global Dollar") is a $1-pegged stablecoin; hardcode like usdc/usdt.
+  return BigInt(100000000);
 };
 
 export const fetchUsdtPrice = async (

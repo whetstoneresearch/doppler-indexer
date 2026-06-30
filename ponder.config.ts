@@ -30,7 +30,7 @@ import { UniswapV4MulticurveInitializerABI } from "@app/abis/multicurve-abis/Uni
 import { UniswapV4ScheduledMulticurveInitializerHookABI } from "@app/abis/multicurve-abis/UniswapV4ScheduledMulticurveInitializerHookABI";
 import { UniswapV4ScheduledMulticurveInitializerABI } from "@app/abis/multicurve-abis/UniswapV4ScheduledMulticurveInitializerABI";
 
-const { base, baseSepolia, monad, mainnet, sepolia, ink, unichain } = chainConfigs;
+const { base, baseSepolia, monad, mainnet, sepolia, ink, unichain, robinhood } = chainConfigs;
 
 export default createConfig({
   database: {
@@ -69,6 +69,10 @@ export default createConfig({
     unichain: {
       id: CHAIN_IDS.unichain,
       rpc: process.env.PONDER_RPC_URL_130,
+    },
+    robinhood: {
+      id: CHAIN_IDS.robinhood,
+      rpc: process.env.PONDER_RPC_URL_4663,
     },
   },
   blocks: {
@@ -210,6 +214,10 @@ export default createConfig({
         mainnet: {
           startBlock: mainnet.v4StartBlock,
           address: mainnet.addresses.shared.airlock,
+        },
+        robinhood: {
+          startBlock: robinhood.startBlock,
+          address: robinhood.addresses.shared.airlock,
         }
       },
     },
@@ -247,6 +255,14 @@ export default createConfig({
           startBlock: mainnet.v4StartBlock,
           address: factory({
             address: mainnet.addresses.shared.airlock,
+            event: getAbiItem({ abi: AirlockABI, name: "Migrate" }),
+            parameter: "pool",
+          }),
+        },
+        robinhood: {
+          startBlock: robinhood.startBlock,
+          address: factory({
+            address: robinhood.addresses.shared.airlock,
             event: getAbiItem({ abi: AirlockABI, name: "Migrate" }),
             parameter: "pool",
           }),
@@ -288,6 +304,10 @@ export default createConfig({
         mainnet: {
           startBlock: mainnet.v4StartBlock,
           address: mainnet.addresses.v4.v4Initializer,
+        },
+        robinhood: {
+          startBlock: robinhood.v4StartBlock,
+          address: robinhood.addresses.v4.v4Initializer,
         }
       },
     },
@@ -330,6 +350,14 @@ export default createConfig({
           startBlock: mainnet.v4StartBlock,
           address: factory({
             address: mainnet.addresses.shared.airlock,
+            event: getAbiItem({ abi: AirlockABI, name: "Create" }),
+            parameter: "asset",
+          }),
+        },
+        robinhood: {
+          startBlock: robinhood.startBlock,
+          address: factory({
+            address: robinhood.addresses.shared.airlock,
             event: getAbiItem({ abi: AirlockABI, name: "Create" }),
             parameter: "asset",
           }),
@@ -398,6 +426,17 @@ export default createConfig({
             }),
             parameter: "poolOrHook"
           })
+        },
+        robinhood: {
+          startBlock: robinhood.startBlock,
+          address: factory({
+            address: robinhood.addresses.v3.lockableV3Initializer,
+            event: getAbiItem({
+              abi: LockableUniswapV3InitializerABI,
+              name: "Create"
+            }),
+            parameter: "poolOrHook"
+          })
         }
       },
     },
@@ -439,6 +478,10 @@ export default createConfig({
         mainnet: {
           startBlock: mainnet.v4StartBlock,
           address: mainnet.addresses.v4.poolManager,
+        },
+        robinhood: {
+          startBlock: robinhood.v4StartBlock,
+          address: robinhood.addresses.v4.poolManager,
         }
       },
     },
@@ -518,6 +561,14 @@ export default createConfig({
             event: getAbiItem({ abi: UniswapV4InitializerABI, name: "Create" }),
             parameter: "poolOrHook",
           }),
+        },
+        robinhood: {
+          startBlock: robinhood.v4StartBlock,
+          address: factory({
+            address: robinhood.addresses.v4.v4Initializer,
+            event: getAbiItem({ abi: UniswapV4InitializerABI, name: "Create" }),
+            parameter: "poolOrHook",
+          }),
         }
       },
     },
@@ -531,6 +582,10 @@ export default createConfig({
         monad: {
           startBlock: 34746370,
           address: monad.addresses.v3.lockableV3Initializer
+        },
+        robinhood: {
+          startBlock: robinhood.startBlock,
+          address: robinhood.addresses.v3.lockableV3Initializer
         }
       },
     },
@@ -686,6 +741,10 @@ export default createConfig({
           startBlock: monad.startBlock,
           address: monad.addresses.v4.DopplerHookInitializer,
         },
+        robinhood: {
+          startBlock: robinhood.v4StartBlock,
+          address: robinhood.addresses.v4.DopplerHookInitializer,
+        },
       },
     },
     DopplerHookMigrator: {
@@ -702,6 +761,10 @@ export default createConfig({
         monad: {
           startBlock: monad.startBlock,
           address: monad.addresses.v4.DopplerHookMigrator,
+        },
+        robinhood: {
+          startBlock: robinhood.v4StartBlock,
+          address: robinhood.addresses.v4.DopplerHookMigrator,
         },
       },
     },
@@ -720,6 +783,10 @@ export default createConfig({
           startBlock: monad.startBlock,
           address: monad.addresses.v4.RehypeDopplerHookInitializer,
         },
+        robinhood: {
+          startBlock: robinhood.v4StartBlock,
+          address: robinhood.addresses.v4.RehypeDopplerHookInitializer,
+        },
       },
     },
     RehypeDopplerHookMigrator: {
@@ -736,6 +803,10 @@ export default createConfig({
         monad: {
           startBlock: monad.startBlock,
           address: monad.addresses.v4.RehypeDopplerHookMigrator,
+        },
+        robinhood: {
+          startBlock: robinhood.v4StartBlock,
+          address: robinhood.addresses.v4.RehypeDopplerHookMigrator,
         },
       },
     },

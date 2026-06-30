@@ -131,6 +131,7 @@ export const baseConfig: ChainConfig = {
     stables: {
       usdc: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" as Address,
       usdt: "0xfde4c96c8593536e31f229ea8f37b2ada2699bb2" as Address,
+      usdg: COMMON_ADDRESSES.ZERO_ADDRESS,
     },
     oracle: ORACLE_ADDRESSES,
   },

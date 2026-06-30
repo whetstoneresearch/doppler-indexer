@@ -90,7 +90,8 @@ export const unichainConfig: ChainConfig = {
     },
     stables: {
       usdc: "0x078d782b760474a361dda0af3839290b0ef57ad6" as Address,
-      usdt: "0x9151434b16b9763660705744891fA906F660EcC5" as Address
+      usdt: "0x9151434b16b9763660705744891fA906F660EcC5" as Address,
+      usdg: COMMON_ADDRESSES.ZERO_ADDRESS
     },
     oracle: ORACLE_ADDRESSES,
   },
