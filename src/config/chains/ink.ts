@@ -90,7 +90,8 @@ export const inkConfig: ChainConfig = {
     },
     stables: {
       usdc: "0x2d270e6886d130d724215a266106e6832161eaed" as Address,
-      usdt: "0x0200C29006150606B650577BBE7B6248F58470c1" as Address
+      usdt: "0x0200C29006150606B650577BBE7B6248F58470c1" as Address,
+      usdg: COMMON_ADDRESSES.ZERO_ADDRESS
     },
     oracle: ORACLE_ADDRESSES,
   },

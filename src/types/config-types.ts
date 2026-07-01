@@ -13,7 +13,8 @@ export type Network =
   | "base"
   | "monad"
   | "mainnet"
-  | "sepolia";
+  | "sepolia"
+  | "robinhood";
 
 /**
  * Chain configuration
@@ -46,6 +47,7 @@ export interface ChainAddresses {
 export interface StablesAddresses {
   usdc: Address;
   usdt: Address;
+  usdg: Address;
 }
 
 export interface ZoraAddresses {

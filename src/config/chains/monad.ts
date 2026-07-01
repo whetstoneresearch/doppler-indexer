@@ -99,7 +99,8 @@ export const monadConfig: ChainConfig = {
     },
     stables: {
       usdc: "0x754704Bc059F8C67012fEd69BC8A327a5aafb603" as Address,
-      usdt: "0xe7cd86e13AC4309349F30B3435a9d337750fC82D" as Address
+      usdt: "0xe7cd86e13AC4309349F30B3435a9d337750fC82D" as Address,
+      usdg: COMMON_ADDRESSES.ZERO_ADDRESS
     },
     oracle: ORACLE_ADDRESSES,
   },

@@ -12,6 +12,7 @@ import {
   fetchMonadPrice,
   fetchUsdcPrice,
   fetchUsdtPrice,
+  fetchUsdgPrice,
   fetchEurcPrice,
   fetchBankrPrice
 } from "@app/indexer/shared/oracle";
@@ -24,6 +25,7 @@ export enum QuoteToken {
   Mon,
   Usdc,
   Usdt,
+  Usdg,
   Eurc,
   Bankr,
   CreatorCoin,
@@ -38,6 +40,7 @@ const VALID_QUOTE_TOKENS = new Set([
   QuoteToken.Mon,
   QuoteToken.Usdc,
   QuoteToken.Usdt,
+  QuoteToken.Usdg,
   QuoteToken.Eurc,
   QuoteToken.Bankr,
   QuoteToken.CreatorCoin,
@@ -65,6 +68,7 @@ export async function getQuoteInfo(quoteAddress: Address, timestamp: bigint | nu
   const monAddress = chainConfigs[context.chain.name].addresses.shared.monad.monAddress.toLowerCase();
   const usdcAddress = chainConfigs[context.chain.name].addresses.stables.usdc.toLowerCase();
   const usdtAddress = chainConfigs[context.chain.name].addresses.stables.usdt.toLowerCase();
+  const usdgAddress = chainConfigs[context.chain.name].addresses.stables.usdg.toLowerCase();
   const eurcAddress = chainConfigs[context.chain.name].addresses.shared.eurc.eurcAddress.toLowerCase();
   const bankrAddress = chainConfigs[context.chain.name].addresses.shared.bankr.bankrAddress.toLowerCase();
   
@@ -75,11 +79,12 @@ export async function getQuoteInfo(quoteAddress: Address, timestamp: bigint | nu
   const isQuoteMon = quoteAddress != zeroAddress && quoteAddress === monAddress;
   const isQuoteUsdc = quoteAddress != zeroAddress && quoteAddress === usdcAddress;
   const isQuoteUsdt = quoteAddress != zeroAddress && quoteAddress === usdtAddress;
+  const isQuoteUsdg = quoteAddress != zeroAddress && quoteAddress === usdgAddress;
   const isQuoteEurc = quoteAddress != zeroAddress && quoteAddress === eurcAddress;
   const isQuoteBankr = quoteAddress != zeroAddress && quoteAddress === bankrAddress;
   
   let creatorCoinInfo;
-  if (!(isQuoteZora || isQuoteFxh || isQuoteNoice || isQuoteMon || isQuoteUsdc || isQuoteUsdt || isQuoteEurc || isQuoteBankr)) {
+  if (!(isQuoteZora || isQuoteFxh || isQuoteNoice || isQuoteMon || isQuoteUsdc || isQuoteUsdt || isQuoteUsdg || isQuoteEurc || isQuoteBankr)) {
     creatorCoinInfo = await getCreatorCoinInfo(quoteAddress, context);    
   } else {
     creatorCoinInfo = {
@@ -96,6 +101,7 @@ export async function getQuoteInfo(quoteAddress: Address, timestamp: bigint | nu
     : isQuoteMon ? QuoteToken.Mon
     : isQuoteUsdc ? QuoteToken.Usdc
     : isQuoteUsdt ? QuoteToken.Usdt
+    : isQuoteUsdg ? QuoteToken.Usdg
     : isQuoteEurc ? QuoteToken.Eurc
     : isQuoteBankr ? QuoteToken.Bankr
     : creatorCoinInfo.isQuoteCreatorCoin ? QuoteToken.CreatorCoin
@@ -105,14 +111,14 @@ export async function getQuoteInfo(quoteAddress: Address, timestamp: bigint | nu
   // Token decimals (actual token decimals)
   const quoteDecimals = 
     (isQuoteZora || isQuoteFxh || isQuoteNoice || isQuoteMon || creatorCoinInfo.isQuoteCreatorCoin || isQuoteEth || isQuoteBankr) ? 18
-    : (isQuoteUsdc || isQuoteUsdt || isQuoteEurc) ? 6
+    : (isQuoteUsdc || isQuoteUsdt || isQuoteUsdg || isQuoteEurc) ? 6
     // assumes 18 decimals for unknown quote tokens
     : 18;
   
   // Price feed decimals (decimals of the USD price value)
   // Chainlink feeds use 8 decimals, EURC uses 18 (from computePriceFromSqrtPriceX96)
   const quotePriceDecimals =
-    (isQuoteEth || isQuoteUsdc || isQuoteUsdt) ? 8 // Chainlink feeds use 8 decimals
+    (isQuoteEth || isQuoteUsdc || isQuoteUsdt || isQuoteUsdg) ? 8 // Chainlink feeds use 8 decimals
     : isQuoteEurc ? 18 // EURC price computed from sqrtPriceX96 has 18 decimals
     : quoteDecimals;
   
@@ -149,6 +155,8 @@ export async function getQuoteInfo(quoteAddress: Address, timestamp: bigint | nu
     quotePrice = await fetchUsdcPrice(timestamp, context);
   } else if (isQuoteUsdt) {
     quotePrice = await fetchUsdtPrice(timestamp, context);
+  } else if (isQuoteUsdg) {
+    quotePrice = await fetchUsdgPrice(timestamp, context);
   } else if (isQuoteEurc) {
     quotePrice = await fetchEurcPrice(timestamp, context);
   } else if (isQuoteBankr) {
