@@ -6,6 +6,7 @@ import { chainConfigs } from "@app/config/chains";
 import { DopplerHookInitializerABI, StateViewABI } from "@app/abis";
 import { getPoolId } from "@app/utils/v4-utils";
 import { computeV4Price } from "@app/utils/v4-utils/computeV4Price";
+import { getMulticallOptions } from "@app/core/utils/multicall";
 
 export const getDHookPoolData = async ({
   assetAddress,
@@ -59,6 +60,7 @@ export const getDHookPoolData = async ({
         args: [poolId],
       },
     ],
+    ...getMulticallOptions(chain),
   });
 
   const slot0Data: Slot0Data = {

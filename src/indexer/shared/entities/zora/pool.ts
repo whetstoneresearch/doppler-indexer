@@ -7,6 +7,7 @@ import { ZoraV4HookABI } from "@app/abis/ZoraV4HookABI";
 import { StateViewABI } from "@app/abis";
 import { getPoolId } from "@app/utils/v4-utils/getPoolId";
 import { chainConfigs } from "@app/config";
+import { getMulticallOptions } from "@app/core/utils/multicall";
 import { 
   getAmount0Delta, 
   getAmount1Delta 
@@ -79,6 +80,7 @@ export const insertZoraPoolV4Optimized = async ({
         args: [poolId],
       },
     ],
+    ...getMulticallOptions(chain),
   });
 
   const sqrtPriceX96 = slot0Result.result?.[0] ?? 0n;

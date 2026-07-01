@@ -23,6 +23,7 @@ import { insertV4ConfigIfNotExists } from "./shared/entities/v4Config";
 import { getReservesV4, getReservesMulticurve } from "@app/utils/v4-utils/getV4PoolData";
 import { CHAINLINK_ETH_DECIMALS } from "@app/utils/constants";
 import { SwapService, SwapOrchestrator, PriceService, MarketDataService } from "@app/core";
+import { getMulticallOptions } from "@app/core/utils/multicall";
 import { TickMath } from "@uniswap/v3-sdk";
 import { computeGraduationPercentage } from "@app/utils/v4-utils";
 import { updateFifteenMinuteBucketUsd } from "@app/utils/time-buckets";
@@ -866,6 +867,7 @@ onIndexerEvent("UniswapV4MigratorHook:ModifyLiquidity", async ({ event, context 
         args: [poolId],
       },
     ],
+    ...getMulticallOptions(context.chain),
   });
 
   const tick = slot0.result?.[1] ?? 0;

@@ -218,6 +218,7 @@ export const getV4PoolConfig = async ({
         args: [],
       },
     ],
+    ...getMulticallOptions(context.chain),
   });
 
   return {
@@ -303,6 +304,7 @@ export const getReservesV4 = async ({
       },
       ...positionArgs,
     ],
+    ...getMulticallOptions(context.chain),
   });
 
   const positionData: PositionData[] = positions
@@ -460,6 +462,7 @@ export const getReservesV4Zora = async ({
         args: [poolId],
       },
     ],
+    ...getMulticallOptions(chain),
   });
 
 

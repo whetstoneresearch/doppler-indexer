@@ -4,6 +4,7 @@ import { insertTokenIfNotExists } from "./shared/entities/token";
 import { insertPoolIfNotExistsDHook, updatePool } from "./shared/entities/pool";
 import { insertAssetIfNotExists, updateAsset } from "./shared/entities/asset";
 import { SwapOrchestrator, PriceService, MarketDataService } from "@app/core";
+import { getMulticallOptions } from "@app/core/utils/multicall";
 import { updateFifteenMinuteBucketUsd } from "@app/utils/time-buckets";
 import { chainConfigs } from "@app/config/chains";
 import { pool, token } from "ponder:schema";
@@ -458,6 +459,7 @@ onIndexerEvent("DopplerHookInitializer:ModifyLiquidity", async ({ event, context
           args: [computedPoolId],
         },
       ],
+      ...getMulticallOptions(chain),
     }),
     fetchPositions({
       initializerAddress: event.log.address as `0x${string}`,

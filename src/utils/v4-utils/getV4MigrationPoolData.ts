@@ -8,6 +8,7 @@ import { chainConfigs } from "@app/config";
 import { getQuoteInfo, QuoteInfo } from "@app/utils/getQuoteInfo";
 import { getAssetData } from "@app/utils/getAssetData";
 import { zeroAddress } from "viem";
+import { getMulticallOptions } from "@app/core/utils/multicall";
 
 export interface BeneficiaryData {
   beneficiary: Address;
@@ -133,6 +134,7 @@ export const getV4MigrationPoolData = async ({
         args: [poolId],
       },
     ],
+    ...getMulticallOptions(chain),
   });
 
   const slot0Data: Slot0Data = {
