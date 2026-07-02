@@ -22,6 +22,15 @@ import process from "node:process";
 import { createPublicClient, http, parseAbiItem } from "viem";
 import { base, mainnet } from "viem/chains";
 
+// Robinhood is not in viem/chains; a minimal chain object is enough for
+// createPublicClient (transport is supplied explicitly via http(rpcUrl)).
+const robinhood = {
+  id: 4663,
+  name: "robinhood",
+  nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+  rpcUrls: { default: { http: [] } },
+};
+
 const CHAIN_DEFAULTS = {
   8453: {
     chain: base,
@@ -41,6 +50,18 @@ const CHAIN_DEFAULTS = {
     initializers: [
       "0xaa096f558f3d4c9226de77e7cc05f18e180b2544",
       "0xbdf938149ac6a781f94faa0ed45e6a0e984c6544",
+    ],
+  },
+  4663: {
+    chain: robinhood,
+    rpcEnvVars: ["PONDER_RPC_URL_4663", "ROBINHOOD_RPC"],
+    poolManager: "0x8366a39cc670b4001a1121b8f6a443a643e40951",
+    fromBlock: 367349n,
+    // On robinhood the DopplerHookInitializer is itself the pool hook, so the
+    // seeding ModifyLiquidity events on PoolManager carry sender = initializer.
+    initializers: [
+      "0x4e3468951d49f2eea976ed0d6e75ffcb44a9a544",
+      "0x6f02324d20cc679d0e585290caa6b16bacbc0f77",
     ],
   },
 };
