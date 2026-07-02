@@ -16,6 +16,7 @@ import {
   initializeDHookPoolCache,
   isDHookPoolCacheInitialized,
   isKnownDHookPool,
+  isDHookLiquiditySender,
 } from "./shared/dhookPoolCache";
 import { invalidatePoolCoinCache } from "./indexer-zora";
 
@@ -1027,7 +1028,7 @@ onIndexerEvent("PoolManager:Initialize", async ({ event, context }) => {
 });
 
 onIndexerEvent("PoolManager:ModifyLiquidity", async ({ event, context }) => {
-  const { id, tickLower, tickUpper, liquidityDelta } = event.args;
+  const { id, tickLower, tickUpper, liquidityDelta, sender } = event.args;
   const { chain } = context;
   const poolId = (id as string).toLowerCase() as `0x${string}`;
 
@@ -1042,9 +1043,14 @@ onIndexerEvent("PoolManager:ModifyLiquidity", async ({ event, context }) => {
     await initializeV4MigrationPoolCache(context);
   }
 
+  // A DHook pool's initial seeding mints fire before its Create event registers
+  // the pool in the cache, so isKnownDHookPool is still false at that point.
+  // Recognising the seeding sender (the DHook initializer/hook) lets us capture
+  // those positions into the ledger regardless of event ordering.
   if (
     !isKnownDHookPool(chain.id, poolId) &&
-    !isKnownV4MigrationPool(chain.id, poolId)
+    !isKnownV4MigrationPool(chain.id, poolId) &&
+    !isDHookLiquiditySender(chain.name, sender as string)
   ) {
     return;
   }

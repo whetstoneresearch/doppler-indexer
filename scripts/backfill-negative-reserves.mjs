@@ -582,7 +582,11 @@ function loadPositionLedger({ databaseUrl, schema, poolId, chainId }) {
          ${qi("tick_upper")}::integer as "tickUpper",
          ${qi("liquidity")}::text as "liquidity"
        from ${qualifiedTable}
-       where lower(${qi("pool_id")}::text) = ${ql(poolIdHex)}
+       where (
+           -- text pool_id stores a 0x-prefix; bytea renders with a backslash-x prefix
+           lower(${qi("pool_id")}::text) = ${ql("0x" + poolIdHex)}
+           or lower(${qi("pool_id")}::text) = ${ql("\\x" + poolIdHex)}
+         )
          and ${qi("chain_id")}::integer = ${Number(chainId)}
          and ${qi("liquidity")}::numeric > 0
      ) q`,
