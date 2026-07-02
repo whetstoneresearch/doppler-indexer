@@ -244,8 +244,8 @@ create temporary table if not exists live_query_tables (
   table_name text primary key
 ) on commit drop;
 update ${qualified} as p set ${qi(col.dollarLiquidity)} = v.dl
-from (values ${values}) as v(address, dl)
-where ${addrExpr(col.address)} = v.address and ${qi(col.chainId)}::numeric = ${Number(args.chainId)};
+from (values ${values}) as v(addr, dl)
+where lower(p.${qi(col.address)}::text) = v.addr and p.${qi(col.chainId)}::numeric = ${Number(args.chainId)};
 commit;`);
     applied += batch.length;
     console.log(`Applied ${applied}/${updates.length}`);
