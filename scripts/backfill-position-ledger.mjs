@@ -303,6 +303,13 @@ function buildUpsertSql({ schema, table, addressType, chainId, batch }) {
     )
     .join(",\n");
   return `begin;
+set local search_path = ${qi(schema)}, public;
+-- Ponder installs an AFTER trigger that inserts into an unqualified
+-- live_query_tables; provide a throwaway one so writes don't error when the
+-- real live-query bookkeeping table is absent in this schema.
+create temporary table if not exists live_query_tables (
+  table_name text primary key
+) on commit drop;
 insert into ${qualified} (${qi("pool_id")}, ${qi("tick_lower")}, ${qi("tick_upper")}, ${qi("liquidity")}, ${qi("chain_id")})
 select ${poolIdExpr}, v.tick_lower, v.tick_upper, v.liquidity, ${Number(chainId)}
 from (values ${values}) as v(pool_hex, tick_lower, tick_upper, liquidity)

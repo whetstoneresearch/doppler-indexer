@@ -237,6 +237,12 @@ async function main() {
     const batch = updates.slice(i, i + args.batchSize);
     const values = batch.map((u) => `(${ql(u.address)}, ${ql(u.dollarLiquidity.toString())}::numeric)`).join(",\n");
     psqlExec(args.databaseUrl, `begin;
+set local search_path = ${qi(table.table_schema)}, public;
+-- Satisfy Ponder's live-query trigger (unqualified insert into live_query_tables)
+-- when that bookkeeping table is absent in this schema.
+create temporary table if not exists live_query_tables (
+  table_name text primary key
+) on commit drop;
 update ${qualified} as p set ${qi(col.dollarLiquidity)} = v.dl
 from (values ${values}) as v(address, dl)
 where ${addrExpr(col.address)} = v.address and ${qi(col.chainId)}::numeric = ${Number(args.chainId)};
