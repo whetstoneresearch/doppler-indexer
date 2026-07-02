@@ -32,6 +32,7 @@ async function fetchPositions({
   poolId: `0x${string}`;
   context: Context;
 }): Promise<readonly PositionEntry[]> {
+  const dbg = context.chain.name === "robinhood";
   // Try getPositions (public on older initializer deployments, internal on newer)
   try {
     const positions = await context.client.readContract({
@@ -40,8 +41,11 @@ async function fetchPositions({
       functionName: "getPositions",
       args: [assetAddress],
     });
+    if (dbg) console.warn(`[fetchPositions] ${poolId} source=getPositions count=${positions.length}`);
     return positions;
-  } catch {}
+  } catch (e) {
+    if (dbg) console.warn(`[fetchPositions] ${poolId} getPositions threw: ${(e as Error).message?.slice(0, 80)}`);
+  }
 
   // Fallback: use getState to discover dopplerHook, then getPosition on it
   try {
@@ -52,6 +56,7 @@ async function fetchPositions({
       args: [assetAddress],
     });
     const dopplerHook = (state[2] as string).toLowerCase() as `0x${string}`;
+    if (dbg) console.warn(`[fetchPositions] ${poolId} getState dopplerHook=${dopplerHook}`);
     if (dopplerHook !== "0x0000000000000000000000000000000000000000") {
       const result = await context.client.readContract({
         abi: RehypeDopplerHookInitializerABI,
@@ -60,13 +65,18 @@ async function fetchPositions({
         args: [poolId],
       });
       const [tickLower, tickUpper, liquidity] = result;
+      if (dbg) console.warn(`[fetchPositions] ${poolId} source=getPosition liquidity=${liquidity}`);
       if (liquidity > 0n) return [{ tickLower, tickUpper, liquidity }];
       return [];
     }
-  } catch {}
+  } catch (e) {
+    if (dbg) console.warn(`[fetchPositions] ${poolId} getState/getPosition threw: ${(e as Error).message?.slice(0, 80)}`);
+  }
 
   // Last resort: position ledger
-  return getPositionsForPool({ poolId, context });
+  const ledger = await getPositionsForPool({ poolId, context });
+  if (dbg) console.warn(`[fetchPositions] ${poolId} source=ledger count=${ledger.length}`);
+  return ledger;
 }
 
 onIndexerEvent("DopplerHookInitializer:Create", async ({ event, context }) => {

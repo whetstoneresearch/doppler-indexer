@@ -71,6 +71,12 @@ export async function getPositionsForPool({
       )
     );
 
+  if (chain.name === "robinhood") {
+    console.warn(
+      `[getPositionsForPool] poolId=${poolIdLower} chainId=${chain.id} rawRows=${rows.length}`
+    );
+  }
+
   // Filter out zero-liquidity entries. Log negative entries as data integrity issues.
   return rows.filter((row) => {
     if (row.liquidity < 0n) {
