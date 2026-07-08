@@ -15,7 +15,6 @@ import { PoolKey } from "@app/types/v4-types";
 import { getDHookPoolData } from "@app/utils/dhook-utils";
 import { StateViewABI, DopplerHookInitializerABI } from "@app/abis";
 import { isPrecompileAddress } from "@app/utils/validation";
-import { updateCumulatedFees } from "./shared/cumulatedFees";
 import { Context } from "ponder:registry";
 import { transferPoolBeneficiary } from "./shared/entities/multicurve/poolBeneficiary";
 import { decodeAbiParameters } from "viem";
@@ -187,42 +186,6 @@ onIndexerEvent("DopplerHookInitializer:Create", async ({ event, context }) => {
   });
 });
 
-onIndexerEvent("DopplerHookInitializer:Collect", async ({ event, context }) => {
-  const { poolId } = event.args;
-  const timestamp = event.block.timestamp;
-  const { db, chain } = context;
-
-  const poolAddress = (poolId as string).toLowerCase() as `0x${string}`;
-
-  const poolEntity = await db.find(pool, {
-    address: poolAddress,
-    chainId: chain.id,
-  });
-
-  if (!poolEntity) {
-    return;
-  }
-
-  const quoteInfo = await getQuoteInfo(poolEntity.quoteToken, timestamp, context);
-
-  const price = PriceService.computePriceFromSqrtPriceX96({
-    sqrtPriceX96: poolEntity.sqrtPrice,
-    isToken0: poolEntity.isToken0,
-    decimals: 18,
-    quoteDecimals: quoteInfo.quoteDecimals,
-  });
-
-  // Re-fetch cumulated fees from the contract (reflects post-collection state)
-  await updateCumulatedFees({
-    poolId: poolAddress,
-    chainId: chain.id,
-    isToken0: poolEntity.isToken0,
-    price,
-    quoteInfo,
-    context,
-  });
-});
-
 onIndexerEvent("DopplerHookInitializer:UpdateBeneficiary", async ({ event, context }) => {
   const { poolId, oldBeneficiary, newBeneficiary } = event.args;
   const poolAddress = (poolId as string).toLowerCase() as `0x${string}`;
@@ -360,51 +323,35 @@ onIndexerEvent("DopplerHookInitializer:Swap", async ({ event, context }) => {
     updateAsset,
   };
 
-  await Promise.all([
-    SwapOrchestrator.performSwapUpdates(
-      {
-        swapData,
-        swapType: type,
-        metrics: marketMetrics,
-        poolData: {
-          parentPoolAddress: poolAddress,
-          price,
-          quotePriceDecimals: quoteInfo.quotePriceDecimals,
-          tickLower: 0,
-          currentTick,
-          graduationTick: poolEntity.graduationTick ?? 0,
-          type: "dhook",
-          baseToken: poolEntity.baseToken,
-        },
-        chainId: chain.id,
-        context,
-      },
-      entityUpdaters
-    ),
-    updatePool({
-      poolAddress,
-      context,
-      update: {
+  await SwapOrchestrator.performSwapUpdates(
+    {
+      swapData,
+      swapType: type,
+      metrics: marketMetrics,
+      poolData: {
+        parentPoolAddress: poolAddress,
         price,
+        quotePriceDecimals: quoteInfo.quotePriceDecimals,
+        tickLower: 0,
+        currentTick,
+        graduationTick: poolEntity.graduationTick ?? 0,
+        type: "dhook",
+        baseToken: poolEntity.baseToken,
+      },
+      chainId: chain.id,
+      context,
+      // Folded in from the previously-separate updatePool call: price, tick,
+      // dollarLiquidity, marketCapUsd and lastSwapTimestamp are already written
+      // by performSwapUpdates, so only the fields it doesn't cover remain here.
+      extraPoolUpdate: {
         sqrtPrice: sqrtPriceX96,
-        tick: currentTick,
         reserves0: newReserves0,
         reserves1: newReserves1,
-        dollarLiquidity,
-        marketCapUsd,
-        lastSwapTimestamp: timestamp,
         lastRefreshed: timestamp,
       },
-    }),
-    updateCumulatedFees({
-      poolId: poolAddress,
-      chainId: chain.id,
-      isToken0: poolEntity.isToken0,
-      price,
-      quoteInfo,
-      context,
-    }),
-  ]);
+    },
+    entityUpdaters
+  );
 });
 
 onIndexerEvent("DopplerHookInitializer:ModifyLiquidity", async ({ event, context }) => {

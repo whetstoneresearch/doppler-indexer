@@ -28,7 +28,7 @@ import { StateViewABI } from "@app/abis";
 import { zeroAddress } from "viem";
 import { getQuoteInfo } from "@app/utils/getQuoteInfo";
 import { readContractWithZeroDataPadding } from "@app/utils/readContractWithZeroDataPadding";
-import { updateCumulatedFees, handleCollect } from "./shared/cumulatedFees";
+import { handleCollect } from "./shared/cumulatedFees";
 import { transferPoolBeneficiary } from "./shared/entities/multicurve/poolBeneficiary";
 
 onIndexerEvent(
@@ -351,14 +351,6 @@ onIndexerEvent(
         quoteInfo,
         poolEntity
       ),
-      updateCumulatedFees({
-        poolId: poolAddress,
-        chainId: context.chain.id,
-        isToken0: poolEntity.isToken0,
-        price,
-        quoteInfo,
-        context,
-      }),
     ]);
   },
 );
