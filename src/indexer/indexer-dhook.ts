@@ -10,63 +10,57 @@ import { chainConfigs } from "@app/config/chains";
 import { pool, token } from "ponder:schema";
 import { getQuoteInfo } from "@app/utils/getQuoteInfo";
 import { computeReservesFromPositions } from "@app/utils/v4-utils/computeReservesFromPositions";
-import { getPositionsForPool } from "./shared/entities/positionLedger";
+import { getPositionsForPool, upsertPositionLedger } from "./shared/entities/positionLedger";
 import { PoolKey } from "@app/types/v4-types";
 import { getDHookPoolData } from "@app/utils/dhook-utils";
-import { StateViewABI, DopplerHookInitializerABI, RehypeDopplerHookInitializerABI } from "@app/abis";
+import { StateViewABI, DopplerHookInitializerABI } from "@app/abis";
 import { isPrecompileAddress } from "@app/utils/validation";
 import { updateCumulatedFees } from "./shared/cumulatedFees";
 import { Context } from "ponder:registry";
 import { transferPoolBeneficiary } from "./shared/entities/multicurve/poolBeneficiary";
+import { decodeAbiParameters } from "viem";
 
-type PositionEntry = { tickLower: number; tickUpper: number; liquidity: bigint };
+// keccak256("ModifyLiquidity(bytes32,address,int24,int24,int256,bytes32)") — v4 PoolManager.
+const POOL_MANAGER_MODIFY_LIQUIDITY_TOPIC =
+  "0xf208f4912782fd25c7f114ca3723a2d5dd6f3bcc3ac8db5af63baa85f711d5ec";
 
-async function fetchPositions({
-  initializerAddress,
-  assetAddress,
-  poolId,
+async function seedPositionLedgerFromCreateTx({
+  poolAddress,
   context,
+  txHash,
 }: {
-  initializerAddress: `0x${string}`;
-  assetAddress: `0x${string}`;
-  poolId: `0x${string}`;
+  poolAddress: `0x${string}`;
   context: Context;
-}): Promise<readonly PositionEntry[]> {
-  // Try getPositions (public on older initializer deployments, internal on newer)
-  try {
-    const positions = await context.client.readContract({
-      abi: DopplerHookInitializerABI,
-      address: initializerAddress,
-      functionName: "getPositions",
-      args: [assetAddress],
-    });
-    return positions;
-  } catch {}
+  txHash: `0x${string}`;
+}): Promise<void> {
+  const poolManagerAddress = chainConfigs[context.chain.name].addresses.v4.poolManager.toLowerCase();
+  const receipt = await context.client.getTransactionReceipt({ hash: txHash });
 
-  // Fallback: use getState to discover dopplerHook, then getPosition on it
-  try {
-    const state = await context.client.readContract({
-      abi: DopplerHookInitializerABI,
-      address: initializerAddress,
-      functionName: "getState",
-      args: [assetAddress],
-    });
-    const dopplerHook = (state[2] as string).toLowerCase() as `0x${string}`;
-    if (dopplerHook !== "0x0000000000000000000000000000000000000000") {
-      const result = await context.client.readContract({
-        abi: RehypeDopplerHookInitializerABI,
-        address: dopplerHook,
-        functionName: "getPosition",
-        args: [poolId],
-      });
-      const [tickLower, tickUpper, liquidity] = result;
-      if (liquidity > 0n) return [{ tickLower, tickUpper, liquidity }];
-      return [];
+  for (const log of receipt.logs) {
+    if (
+      log.address.toLowerCase() !== poolManagerAddress ||
+      log.topics[0] !== POOL_MANAGER_MODIFY_LIQUIDITY_TOPIC ||
+      log.topics[1]?.toLowerCase() !== poolAddress
+    ) {
+      continue;
     }
-  } catch {}
-
-  // Last resort: position ledger
-  return getPositionsForPool({ poolId, context });
+    const [tickLower, tickUpper, liquidityDelta] = decodeAbiParameters(
+      [
+        { type: "int24" },
+        { type: "int24" },
+        { type: "int256" },
+        { type: "bytes32" },
+      ],
+      log.data,
+    );
+    await upsertPositionLedger({
+      poolId: poolAddress,
+      tickLower: Number(tickLower),
+      tickUpper: Number(tickUpper),
+      liquidityDelta,
+      context,
+    });
+  }
 }
 
 onIndexerEvent("DopplerHookInitializer:Create", async ({ event, context }) => {
@@ -142,11 +136,19 @@ onIndexerEvent("DopplerHookInitializer:Create", async ({ event, context }) => {
     decimals: quoteInfo.quotePriceDecimals,
   });
 
-  // Seed reserves from on-chain positions (falls back to position ledger for
-  // newer contracts where getPositions was changed to internal visibility)
-  const onChainPositions = await fetchPositions({
-    initializerAddress: initializerAddress as `0x${string}`,
-    assetAddress,
+  // Seed position_ledger from this transaction's PoolManager.ModifyLiquidity logs.
+  // The newer DopplerHookInitializer (0xBDF938...) does not re-emit ModifyLiquidity
+  // at the initializer level, and the PoolManager:ModifyLiquidity handler can't
+  // populate the ledger for these logs — they fire at a lower log index than this
+  // Create event, so the dhook pool cache hasn't been told about the pool yet.
+  // Replaying the receipt here makes the ledger authoritative for the seeded state.
+  await seedPositionLedgerFromCreateTx({
+    poolAddress,
+    context,
+    txHash: event.transaction.hash,
+  });
+
+  const onChainPositions = await getPositionsForPool({
     poolId: poolAddress,
     context,
   });
@@ -262,7 +264,6 @@ onIndexerEvent("DopplerHookInitializer:Swap", async ({ event, context }) => {
   }
 
   const { stateView } = chainConfigs[chain.name].addresses.v4;
-  const initializerAddress = (poolEntity.initializer ?? event.log.address) as `0x${string}`;
 
   const [slot0, onChainPositions, quoteInfo, tokenEntity] = await Promise.all([
     client.readContract({
@@ -271,12 +272,7 @@ onIndexerEvent("DopplerHookInitializer:Swap", async ({ event, context }) => {
       functionName: "getSlot0",
       args: [poolId],
     }),
-    fetchPositions({
-      initializerAddress,
-      assetAddress: poolEntity.baseToken,
-      poolId: poolAddress,
-      context,
-    }),
+    getPositionsForPool({ poolId: poolAddress, context }),
     getQuoteInfo(poolEntity.quoteToken, timestamp, context),
     db.find(token, {
       address: poolEntity.baseToken,
@@ -461,12 +457,7 @@ onIndexerEvent("DopplerHookInitializer:ModifyLiquidity", async ({ event, context
       ],
       ...getMulticallOptions(chain),
     }),
-    fetchPositions({
-      initializerAddress: event.log.address as `0x${string}`,
-      assetAddress: poolEntity.baseToken,
-      poolId: poolAddress,
-      context,
-    }),
+    getPositionsForPool({ poolId: poolAddress, context }),
   ]);
 
   const [slot0, liquidityResult] = multicallResults;
