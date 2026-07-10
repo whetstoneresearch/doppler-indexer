@@ -89,6 +89,18 @@ Every swap handler ends in exactly one of these:
   back to a live Chainlink RPC read on chains without a local price table
   (e.g. robinhood sources ETH price from base).
 
+## Backfill
+
+`scripts/backfill-swaps.mjs` reconstructs swap rows missed while
+`performSwapUpdates` did not write them. It scans
+`DopplerHookInitializer.Swap` logs (dhook/rehype bonding) and
+`PoolManager.Swap` logs for migrated `v4_pools` ids, rebuilds each row with
+the same amount/type/volume math as the handlers (pricing from the
+`eth_price` / `monad_usdc_price` tables at the swap's 5-minute bucket), and
+inserts with `ON CONFLICT (tx_hash, chain_id) DO NOTHING` — idempotent and
+safe to run after the fixed indexer is live. Dry-run by default; `--apply`
+to write. It does not cover v2/v3/v4-dynamic-auction pools.
+
 ## Related files
 
 - `src/core/swaps/SwapOrchestrator.ts` — `createSwapData`,
