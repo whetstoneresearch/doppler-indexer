@@ -52,7 +52,7 @@ export class SwapOrchestrator {
     params: SwapUpdateParams,
     updaters: EntityUpdaters
   ): Promise<void> {
-    const { swapData, metrics, poolData, chainId, context, extraPoolUpdate } = params;
+    const { swapData, swapType, metrics, poolData, chainId, context, extraPoolUpdate } = params;
     const {
       updatePool,
       updateFifteenMinuteBucketUsd,
@@ -123,7 +123,22 @@ export class SwapOrchestrator {
         priceUsd: swapData.price * swapData.usdPrice / priceDivisor,
         volumeUsd: metrics.swapValueUsd,
       }),
-      handleAssetUpdate()
+      handleAssetUpdate(),
+      // Record the swap itself. Deduped by (txHash, chainId), so paths that
+      // emit multiple swap events per transaction still produce one row.
+      insertSwapIfNotExists({
+        txHash: swapData.transactionHash,
+        timestamp: swapData.timestamp,
+        context,
+        pool: poolData.parentPoolAddress,
+        asset: poolData.baseToken,
+        chainId,
+        type: swapType,
+        user: swapData.transactionFrom,
+        amountIn: swapData.amountIn,
+        amountOut: swapData.amountOut,
+        swapValueUsd: metrics.swapValueUsd,
+      }),
     ];
 
     // Execute all updates in parallel
