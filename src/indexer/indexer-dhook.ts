@@ -7,6 +7,7 @@ import { SwapOrchestrator, PriceService, MarketDataService } from "@app/core";
 import { getMulticallOptions } from "@app/core/utils/multicall";
 import { updateFifteenMinuteBucketUsd } from "@app/utils/time-buckets";
 import { chainConfigs } from "@app/config/chains";
+import { CHAIN_IDS } from "@app/config";
 import { pool, token } from "ponder:schema";
 import { getQuoteInfo } from "@app/utils/getQuoteInfo";
 import { computeReservesFromPositions } from "@app/utils/v4-utils/computeReservesFromPositions";
@@ -18,7 +19,7 @@ import { isPrecompileAddress } from "@app/utils/validation";
 import { updateCumulatedFees } from "./shared/cumulatedFees";
 import { Context } from "ponder:registry";
 import { transferPoolBeneficiary } from "./shared/entities/multicurve/poolBeneficiary";
-import { decodeAbiParameters } from "viem";
+import { decodeAbiParameters, Address } from "viem";
 
 // keccak256("ModifyLiquidity(bytes32,address,int24,int24,int256,bytes32)") — v4 PoolManager.
 const POOL_MANAGER_MODIFY_LIQUIDITY_TOPIC =
@@ -236,12 +237,41 @@ onIndexerEvent("DopplerHookInitializer:UpdateBeneficiary", async ({ event, conte
   });
 });
 
-onIndexerEvent("DopplerHookInitializer:Swap", async ({ event, context }) => {
-  const { sender, poolId, amount0, amount1 } = event.args;
-  const timestamp = event.block.timestamp;
+/**
+ * Processes a Doppler-hook (dhook/rehype) pool swap: recomputes price, reserves,
+ * market cap and dollar liquidity, then writes the pool / asset / 15-min-bucket
+ * updates (this path never persists a swap row and never uses `sender`).
+ *
+ * `priceData` supplies the post-swap sqrtPriceX96 and tick. When omitted (the
+ * DopplerHookInitializer:Swap path used on non-robinhood chains) we read them with a
+ * getSlot0 RPC. On robinhood the caller (PoolManager:Swap) passes them straight from
+ * the event, eliminating that per-swap RPC — the realtime-throughput bottleneck on
+ * that high-block-rate chain.
+ */
+export async function processDHookSwap({
+  context,
+  poolAddress,
+  sender,
+  amount0,
+  amount1,
+  timestamp,
+  transactionHash,
+  transactionFrom,
+  blockNumber,
+  priceData,
+}: {
+  context: Context;
+  poolAddress: `0x${string}`;
+  sender: Address;
+  amount0: bigint;
+  amount1: bigint;
+  timestamp: bigint;
+  transactionHash: `0x${string}`;
+  transactionFrom: Address;
+  blockNumber: bigint;
+  priceData?: { sqrtPriceX96: bigint; currentTick: number };
+}): Promise<void> {
   const { chain, client, db } = context;
-
-  const poolAddress = (poolId as string).toLowerCase() as `0x${string}`;
 
   const poolEntity = await db.find(pool, {
     address: poolAddress,
@@ -263,15 +293,19 @@ onIndexerEvent("DopplerHookInitializer:Swap", async ({ event, context }) => {
     return;
   }
 
+  // On chains that don't supply the post-swap price in the event, read it once here,
+  // concurrently with the ledger / quote / token reads below.
   const { stateView } = chainConfigs[chain.name].addresses.v4;
+  const slot0Promise = priceData
+    ? null
+    : client.readContract({
+        abi: StateViewABI,
+        address: stateView,
+        functionName: "getSlot0",
+        args: [poolAddress],
+      });
 
-  const [slot0, onChainPositions, quoteInfo, tokenEntity] = await Promise.all([
-    client.readContract({
-      abi: StateViewABI,
-      address: stateView,
-      functionName: "getSlot0",
-      args: [poolId],
-    }),
+  const [onChainPositions, quoteInfo, tokenEntity] = await Promise.all([
     getPositionsForPool({ poolId: poolAddress, context }),
     getQuoteInfo(poolEntity.quoteToken, timestamp, context),
     db.find(token, {
@@ -285,7 +319,16 @@ onIndexerEvent("DopplerHookInitializer:Swap", async ({ event, context }) => {
     return;
   }
 
-  const [sqrtPriceX96, currentTick] = slot0;
+  let sqrtPriceX96: bigint;
+  let currentTick: number;
+  if (priceData) {
+    sqrtPriceX96 = priceData.sqrtPriceX96;
+    currentTick = priceData.currentTick;
+  } else {
+    const slot0 = await slot0Promise!;
+    sqrtPriceX96 = slot0[0];
+    currentTick = slot0[1];
+  }
 
   const price = PriceService.computePriceFromSqrtPriceX96({
     sqrtPriceX96,
@@ -335,9 +378,9 @@ onIndexerEvent("DopplerHookInitializer:Swap", async ({ event, context }) => {
   const swapData = SwapOrchestrator.createSwapData({
     poolAddress,
     sender,
-    transactionHash: event.transaction.hash,
-    transactionFrom: event.transaction.from,
-    blockNumber: event.block.number,
+    transactionHash,
+    transactionFrom,
+    blockNumber,
     timestamp,
     assetAddress: poolEntity.baseToken,
     quoteAddress: poolEntity.quoteToken,
@@ -405,6 +448,30 @@ onIndexerEvent("DopplerHookInitializer:Swap", async ({ event, context }) => {
       context,
     }),
   ]);
+}
+
+onIndexerEvent("DopplerHookInitializer:Swap", async ({ event, context }) => {
+  // Robinhood dhook/rehype swaps are processed in PoolManager:Swap instead, which
+  // carries the post-swap sqrtPriceX96/tick and so avoids a getSlot0 RPC per swap —
+  // the realtime-throughput bottleneck on that high-block-rate chain. Skipping here
+  // avoids double-processing the same swap; other chains keep using this handler.
+  if (context.chain.id === CHAIN_IDS.robinhood) {
+    return;
+  }
+
+  const { sender, poolId, amount0, amount1 } = event.args;
+
+  await processDHookSwap({
+    context,
+    poolAddress: (poolId as string).toLowerCase() as `0x${string}`,
+    sender,
+    amount0,
+    amount1,
+    timestamp: event.block.timestamp,
+    transactionHash: event.transaction.hash,
+    transactionFrom: event.transaction.from,
+    blockNumber: event.block.number,
+  });
 });
 
 onIndexerEvent("DopplerHookInitializer:ModifyLiquidity", async ({ event, context }) => {
