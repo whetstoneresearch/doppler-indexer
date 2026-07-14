@@ -50,6 +50,32 @@ function setCachedFallbackPrice(key: string, price: bigint): void {
   fallbackPriceCache.set(key, { price, timestamp: Date.now() });
 }
 
+// Immutable per-bucket price memo. A (priceType, chainId, roundedTimestamp) key
+// maps to a fixed DB value once that 5-minute bucket has been written, so
+// repeated swaps in the same bucket skip the DB round-trip. Only populated on an
+// EXACT bucket hit (never on a walk-back fallback), so the in-progress realtime
+// bucket stays live until its price lands.
+const bucketPriceCache = new Map<string, bigint>();
+const BUCKET_PRICE_CACHE_MAX = 2000;
+
+function getBucketPrice(key: string): bigint | undefined {
+  return bucketPriceCache.get(key);
+}
+
+function setBucketPrice(key: string, price: bigint): void {
+  if (bucketPriceCache.size >= BUCKET_PRICE_CACHE_MAX) {
+    // Drop the oldest ~10% (Map preserves insertion order) to bound memory
+    // during long historical backfills.
+    const drop = Math.ceil(BUCKET_PRICE_CACHE_MAX / 10);
+    let i = 0;
+    for (const k of bucketPriceCache.keys()) {
+      bucketPriceCache.delete(k);
+      if (++i >= drop) break;
+    }
+  }
+  bucketPriceCache.set(key, price);
+}
+
 export const fetchEthPrice = async (
   timestamp: bigint,
   context: Context
@@ -64,6 +90,13 @@ export const fetchEthPrice = async (
   const sourceChainId = hasOwnOracle ? chain.id : CHAIN_IDS.base;
 
   let roundedTimestamp = BigInt(Math.floor(Number(timestamp) / 300) * 300);
+  const requestedBucket = roundedTimestamp;
+
+  const bucketKey = `eth:${sourceChainId}:${requestedBucket}`;
+  const memoizedPrice = getBucketPrice(bucketKey);
+  if (memoizedPrice !== undefined) {
+    return memoizedPrice;
+  }
 
   let ethPriceData;
   let attempts = 0;
@@ -80,6 +113,12 @@ export const fetchEthPrice = async (
   }
 
   if (ethPriceData) {
+    // Only memoize an exact bucket hit. If we walked back to an earlier bucket,
+    // the requested bucket isn't written yet (in-progress realtime bucket) —
+    // leave it uncached so later swaps pick up its price once it lands.
+    if (roundedTimestamp === requestedBucket) {
+      setBucketPrice(bucketKey, ethPriceData.price);
+    }
     return ethPriceData.price;
   }
 

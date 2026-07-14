@@ -533,7 +533,8 @@ export const linkAssetToDHookMigrationPool = async ({
   const { db, chain, client } = context;
 
   const { getPoolId } = await import("@app/utils/v4-utils/getPoolId");
-  const { DopplerHookMigratorABI } = await import("@app/abis");
+  const { DopplerHookMigratorABI, RehypeDopplerHookMigratorABI } = await import("@app/abis");
+  const { isRehypeMigrator } = await import("@app/utils/v4-utils");
 
   const token0 = assetAddress.toLowerCase() < numeraireAddress.toLowerCase()
     ? assetAddress
@@ -542,9 +543,21 @@ export const linkAssetToDHookMigrationPool = async ({
     ? numeraireAddress
     : assetAddress;
 
+  // The RehypeDopplerHookMigrator is a hook module on the DopplerHookMigrator
+  // and has no getAssetData itself; the asset data lives on the underlying
+  // migrator, reachable via MIGRATOR().
+  let assetDataSource = migratorAddress;
+  if (isRehypeMigrator(migratorAddress, chain.name)) {
+    assetDataSource = await client.readContract({
+      abi: RehypeDopplerHookMigratorABI,
+      address: migratorAddress,
+      functionName: "MIGRATOR",
+    });
+  }
+
   const assetData = await client.readContract({
     abi: DopplerHookMigratorABI,
-    address: migratorAddress,
+    address: assetDataSource,
     functionName: "getAssetData",
     args: [token0, token1],
   });
@@ -603,6 +616,11 @@ export const linkAssetToDHookMigrationPool = async ({
     isQuoteEth,
     dollarLiquidity,
   });
+
+  // Register the pool for the PoolManager:Swap fast path. The DopplerHookMigrator
+  // has no indexed Migrate handler, so this link is the only place the pool can
+  // enter the cache before a restart re-seeds it from the DB.
+  addToV4MigrationPoolCache(chain.id, poolId.toLowerCase());
 
   return { poolId: poolId.toLowerCase() as `0x${string}` };
 };

@@ -26,6 +26,9 @@ export interface SwapUpdateParams {
   };
   chainId: number;
   context: Context;
+  // Extra pool fields to write in the SAME updatePool as the standard swap
+  // update, so callers don't have to issue a second write to the pool row.
+  extraPoolUpdate?: Record<string, unknown>;
 }
 
 /**
@@ -49,7 +52,7 @@ export class SwapOrchestrator {
     params: SwapUpdateParams,
     updaters: EntityUpdaters
   ): Promise<void> {
-    const { swapData, metrics, poolData, chainId, context } = params;
+    const { swapData, swapType, metrics, poolData, chainId, context, extraPoolUpdate } = params;
     const {
       updatePool,
       updateFifteenMinuteBucketUsd,
@@ -106,11 +109,12 @@ export class SwapOrchestrator {
       : (poolData.isQuoteEth ? CHAINLINK_ETH_DECIMALS : WAD);
 
     const updates = [
-      // Update pool entity
+      // Update pool entity (merging any caller-supplied extra fields so the
+      // pool row is written exactly once per swap).
       updatePool({
         poolAddress: poolData.parentPoolAddress,
         context,
-        update: poolUpdate,
+        update: extraPoolUpdate ? { ...poolUpdate, ...extraPoolUpdate } : poolUpdate,
       }),
       updateFifteenMinuteBucketUsd(context, {
         poolAddress: poolData.parentPoolAddress,
@@ -119,7 +123,22 @@ export class SwapOrchestrator {
         priceUsd: swapData.price * swapData.usdPrice / priceDivisor,
         volumeUsd: metrics.swapValueUsd,
       }),
-      handleAssetUpdate()
+      handleAssetUpdate(),
+      // Record the swap itself. Deduped by (txHash, chainId), so paths that
+      // emit multiple swap events per transaction still produce one row.
+      insertSwapIfNotExists({
+        txHash: swapData.transactionHash,
+        timestamp: swapData.timestamp,
+        context,
+        pool: poolData.parentPoolAddress,
+        asset: poolData.baseToken,
+        chainId,
+        type: swapType,
+        user: swapData.transactionFrom,
+        amountIn: swapData.amountIn,
+        amountOut: swapData.amountOut,
+        swapValueUsd: metrics.swapValueUsd,
+      }),
     ];
 
     // Execute all updates in parallel
