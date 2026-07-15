@@ -30,7 +30,6 @@ import { computeGraduationPercentage } from "@app/utils/v4-utils";
 import { updateFifteenMinuteBucketUsd } from "@app/utils/time-buckets";
 import { UniswapV4MulticurveInitializerABI } from "@app/abis/multicurve-abis/UniswapV4MulticurveInitializerABI";
 import { chainConfigs } from "@app/config/chains";
-import { CHAIN_IDS } from "@app/config";
 import { processDHookSwap } from "./indexer-dhook";
 import { insertMulticurvePoolV4Optimized } from "./shared/entities/multicurve/pool";
 import { pool, token } from "ponder:schema";
@@ -624,30 +623,30 @@ onIndexerEvent("PoolManager:Swap", async ({ event, context }) => {
     await initializeV4MigrationPoolCache(context);
   }
 
-  // Robinhood dhook/rehype pools: process the swap here rather than in
-  // DopplerHookInitializer:Swap. PoolManager:Swap carries the post-swap sqrtPriceX96
-  // and tick, so we avoid a getSlot0 RPC round-trip per swap — the realtime
-  // throughput bottleneck on that high-block-rate chain. Other chains keep using the
-  // DopplerHookInitializer:Swap handler.
-  if (chain.id === CHAIN_IDS.robinhood) {
-    if (!isDHookPoolCacheInitialized()) {
-      await initializeDHookPoolCache(context);
-    }
-    if (isKnownDHookPool(chain.id, poolId as string)) {
-      await processDHookSwap({
-        context,
-        poolAddress: (poolId as string).toLowerCase() as `0x${string}`,
-        sender: sender.toLowerCase() as Address,
-        amount0: BigInt(amount0),
-        amount1: BigInt(amount1),
-        timestamp,
-        transactionHash: txHash,
-        transactionFrom: txFrom,
-        blockNumber: event.block.number,
-        priceData: { sqrtPriceX96, currentTick: Number(tick) },
-      });
-      return;
-    }
+  // Dhook/rehype pools (all chains): process the swap here rather than in a
+  // DopplerHookInitializer:Swap handler. PoolManager:Swap carries the post-swap
+  // sqrtPriceX96 and tick, so we avoid a getSlot0 RPC round-trip per swap.
+  // Originally robinhood-only (the realtime throughput bottleneck there, #79);
+  // extended to every chain once base's rehype swaps became the top absolute
+  // indexing cost via the same per-swap getSlot0. The dhook pool cache is
+  // chain-agnostic (loads all dhook/rehype pools, keyed by chainId:poolId).
+  if (!isDHookPoolCacheInitialized()) {
+    await initializeDHookPoolCache(context);
+  }
+  if (isKnownDHookPool(chain.id, poolId as string)) {
+    await processDHookSwap({
+      context,
+      poolAddress: (poolId as string).toLowerCase() as `0x${string}`,
+      sender: sender.toLowerCase() as Address,
+      amount0: BigInt(amount0),
+      amount1: BigInt(amount1),
+      timestamp,
+      transactionHash: txHash,
+      transactionFrom: txFrom,
+      blockNumber: event.block.number,
+      priceData: { sqrtPriceX96, currentTick: Number(tick) },
+    });
+    return;
   }
 
   if (!isKnownV4MigrationPool(chain.id, poolId as string)) {

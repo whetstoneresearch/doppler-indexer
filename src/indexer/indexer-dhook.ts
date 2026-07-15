@@ -7,7 +7,6 @@ import { SwapOrchestrator, PriceService, MarketDataService } from "@app/core";
 import { getMulticallOptions } from "@app/core/utils/multicall";
 import { updateFifteenMinuteBucketUsd } from "@app/utils/time-buckets";
 import { chainConfigs } from "@app/config/chains";
-import { CHAIN_IDS } from "@app/config";
 import { pool, token } from "ponder:schema";
 import { getQuoteInfo } from "@app/utils/getQuoteInfo";
 import { computeReservesFromPositions } from "@app/utils/v4-utils/computeReservesFromPositions";
@@ -405,29 +404,14 @@ export async function processDHookSwap({
   );
 }
 
-onIndexerEvent("DopplerHookInitializer:Swap", async ({ event, context }) => {
-  // Robinhood dhook/rehype swaps are processed in PoolManager:Swap instead, which
-  // carries the post-swap sqrtPriceX96/tick and so avoids a getSlot0 RPC per swap —
-  // the realtime-throughput bottleneck on that high-block-rate chain. Skipping here
-  // avoids double-processing the same swap; other chains keep using this handler.
-  if (context.chain.id === CHAIN_IDS.robinhood) {
-    return;
-  }
-
-  const { sender, poolId, amount0, amount1 } = event.args;
-
-  await processDHookSwap({
-    context,
-    poolAddress: (poolId as string).toLowerCase() as `0x${string}`,
-    sender,
-    amount0,
-    amount1,
-    timestamp: event.block.timestamp,
-    transactionHash: event.transaction.hash,
-    transactionFrom: event.transaction.from,
-    blockNumber: event.block.number,
-  });
-});
+// NOTE: there is intentionally no DopplerHookInitializer:Swap handler. Dhook/rehype
+// swaps on EVERY chain are processed in PoolManager:Swap (indexer-v4.ts), which
+// carries the post-swap sqrtPriceX96/tick in the event itself and so avoids a
+// getSlot0 RPC round-trip per swap (originally robinhood-only, #79; extended to all
+// chains when base's rehype swaps became the top indexing cost). Every hook Swap has
+// a PoolManager:Swap twin in the same tx by v4 architecture — all pool swaps go
+// through PoolManager.swap; the hook event is a re-emit from afterSwap. Dropping the
+// handler also stops Ponder fetching/enqueuing these logs entirely.
 
 onIndexerEvent("DopplerHookInitializer:ModifyLiquidity", async ({ event, context }) => {
   const { key: poolKeyTuple } = event.args;
