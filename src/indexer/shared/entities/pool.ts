@@ -488,6 +488,8 @@ export const insertPoolIfNotExistsDHook = async ({
   context,
   beneficiaries,
   initializerAddress,
+  totalSupply: totalSupplyOverride,
+  quoteInfo: quoteInfoOverride,
 }: {
   poolAddress: Address;
   timestamp: bigint;
@@ -496,6 +498,10 @@ export const insertPoolIfNotExistsDHook = async ({
   poolData: DHookPoolData;
   beneficiaries?: readonly { beneficiary: `0x${string}`; shares: bigint }[] | null;
   initializerAddress?: Address;
+  // Optional pre-computed values from the caller (the DHook Create handler already
+  // has both), letting us skip the redundant totalSupply RPC and getQuoteInfo call.
+  totalSupply?: bigint;
+  quoteInfo?: QuoteInfo;
 }): Promise<typeof pool.$inferSelect> => {
   const { db, chain, client } = context;
   const address = poolAddress.toLowerCase() as `0x${string}`;
@@ -528,13 +534,15 @@ export const insertPoolIfNotExistsDHook = async ({
   }
 
   const [totalSupply, assetData, quoteInfo] = await Promise.all([
-    client.readContract({
+    // Reuse the caller-supplied totalSupply / quoteInfo when present (0n is a
+    // valid supply, so `??` is correct — it only falls through on undefined).
+    totalSupplyOverride ?? client.readContract({
       address: assetAddr,
       abi: DERC20ABI,
       functionName: "totalSupply",
     }),
     getAssetData(assetAddr, context),
-    getQuoteInfo(numeraireAddr, timestamp, context)
+    quoteInfoOverride ?? getQuoteInfo(numeraireAddr, timestamp, context)
   ]);
 
   const dollarLiquidity = MarketDataService.calculateLiquidity({

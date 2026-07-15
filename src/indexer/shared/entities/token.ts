@@ -133,39 +133,39 @@ export const insertTokenIfNotExists = async ({
       isDerc20: false,
     });
   } else {
+    // Fetch the base ERC-20 metadata and the DERC20 vesting / balance-limit data
+    // in a SINGLE multicall round-trip. Previously these were two sequential
+    // multicalls to the same contract; the vesting calls have no dependency on the
+    // base ones, so they are merged into one. The vesting/limit results are only
+    // consumed when isDerc20 — for a non-DERC20 token those calls simply fail
+    // (allowFailure) and are ignored, so the merge is a pure round-trip saving.
     const [
       nameResult,
       symbolResult,
       decimalsResult,
       totalSupplyResult,
       tokenURIResult,
+      vestingStartResult,
+      vestingDurationResult,
+      vestedTotalAmountResult,
+      isBalanceLimitActiveResult,
+      balanceLimitEndResult,
+      maxBalanceLimitResult,
+      balanceLimitControllerResult,
     ] = await context.client.multicall({
       contracts: [
-        {
-          abi: DERC20ABI,
-          address,
-          functionName: "name",
-        },
-        {
-          abi: DERC20ABI,
-          address,
-          functionName: "symbol",
-        },
-        {
-          abi: DERC20ABI,
-          address,
-          functionName: "decimals",
-        },
-        {
-          abi: DERC20ABI,
-          address,
-          functionName: "totalSupply",
-        },
-        {
-          abi: DERC20ABI,
-          address,
-          functionName: "tokenURI",
-        },
+        { abi: DERC20ABI, address, functionName: "name" },
+        { abi: DERC20ABI, address, functionName: "symbol" },
+        { abi: DERC20ABI, address, functionName: "decimals" },
+        { abi: DERC20ABI, address, functionName: "totalSupply" },
+        { abi: DERC20ABI, address, functionName: "tokenURI" },
+        { abi: DERC20ABI, address, functionName: "vestingStart" },
+        { abi: DERC20ABI, address, functionName: "vestingDuration" },
+        { abi: DERC20ABI, address, functionName: "vestedTotalAmount" },
+        { abi: DERC20ABI, address, functionName: "isBalanceLimitActive" },
+        { abi: DERC20ABI, address, functionName: "balanceLimitEnd" },
+        { abi: DERC20ABI, address, functionName: "maxBalanceLimit" },
+        { abi: DERC20ABI, address, functionName: "controller" },
       ],
       ...multicallOptions,
     });
@@ -180,56 +180,6 @@ export const insertTokenIfNotExists = async ({
     let balanceLimitController: Address | undefined;
 
     if (isDerc20) {
-      const [
-        vestingStartResult,
-        vestingDurationResult,
-        vestedTotalAmountResult,
-        isBalanceLimitActiveResult,
-        balanceLimitEndResult,
-        maxBalanceLimitResult,
-        balanceLimitControllerResult,
-      ] =
-        await context.client.multicall({
-          contracts: [
-            {
-              abi: DERC20ABI,
-              address,
-              functionName: "vestingStart",
-            },
-            {
-              abi: DERC20ABI,
-              address,
-              functionName: "vestingDuration",
-            },
-            {
-              abi: DERC20ABI,
-              address,
-              functionName: "vestedTotalAmount",
-            },
-            {
-              abi: DERC20ABI,
-              address,
-              functionName: "isBalanceLimitActive",
-            },
-            {
-              abi: DERC20ABI,
-              address,
-              functionName: "balanceLimitEnd",
-            },
-            {
-              abi: DERC20ABI,
-              address,
-              functionName: "maxBalanceLimit",
-            },
-            {
-              abi: DERC20ABI,
-              address,
-              functionName: "controller",
-            },
-          ],
-          ...multicallOptions,
-        });
-
       if (vestingStartResult?.status === "success") {
         vestingStart = vestingStartResult.result;
       }

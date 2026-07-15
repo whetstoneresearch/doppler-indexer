@@ -261,15 +261,9 @@ onIndexerEvent("DERC20:Transfer", async ({ event, context }) => {
     holderCountDelta -= 1;
   }
 
-  // Build update promises array, conditionally including user update and pool operations
+  // Build update promises array, conditionally including holder-count, user,
+  // and pool operations.
   const updatePromises: Promise<unknown>[] = [
-    updateToken({
-      tokenAddress: assetId,
-      context,
-      update: {
-        holderCount: tokenData.holderCount + holderCountDelta,
-      },
-    }),
     updateUserAsset({
       userId: toId,
       assetId: assetId,
@@ -290,6 +284,22 @@ onIndexerEvent("DERC20:Transfer", async ({ event, context }) => {
     }),
   ];
 
+  // holderCount only changes when a wallet crosses 0<->positive. On the vast
+  // majority of transfers holderCountDelta === 0, so the token holderCount write
+  // (and the pool find + write below) would set the identical value — pure no-op
+  // round-trips. Skip them unless the count actually changed.
+  if (holderCountDelta !== 0) {
+    updatePromises.push(
+      updateToken({
+        tokenAddress: assetId,
+        context,
+        update: {
+          holderCount: tokenData.holderCount + holderCountDelta,
+        },
+      })
+    );
+  }
+
   // Only update user lastSeenAt if it changed
   if (fromUser.lastSeenAt !== timestamp) {
     updatePromises.push(
@@ -303,8 +313,10 @@ onIndexerEvent("DERC20:Transfer", async ({ event, context }) => {
     );
   }
 
-  // Only query and update pool if tokenData.pool exists
-  if (tokenData.pool && tokenData.pool !== zeroAddress) {
+  // Only query and update pool if the holder count changed AND the token has a
+  // pool. When holderCountDelta === 0 this whole block (a db.find + a no-op
+  // holderCount write) is skippable — the pool's holderCount is unchanged.
+  if (holderCountDelta !== 0 && tokenData.pool && tokenData.pool !== zeroAddress) {
     updatePromises.push(
       (async () => {
         const poolEntity = await db.find(pool, {

@@ -1,7 +1,7 @@
 import { onIndexerEvent } from "./entrypoint";
 import { getPoolId } from "@app/utils/v4-utils";
 import { insertTokenIfNotExists } from "./shared/entities/token";
-import { insertPoolIfNotExistsDHook, updatePool } from "./shared/entities/pool";
+import { insertPoolIfNotExistsDHook, updatePool, updatePoolDirect } from "./shared/entities/pool";
 import { insertAssetIfNotExists, updateAsset } from "./shared/entities/asset";
 import { SwapOrchestrator, PriceService, MarketDataService } from "@app/core";
 import { getMulticallOptions } from "@app/core/utils/multicall";
@@ -126,6 +126,11 @@ onIndexerEvent("DopplerHookInitializer:Create", async ({ event, context }) => {
     context,
     beneficiaries,
     initializerAddress,
+    // Reuse values already computed above to skip a totalSupply RPC + a
+    // getQuoteInfo (with its own DB finds) inside insertPoolIfNotExistsDHook.
+    // Same numeraire (event arg == pool quote currency) and same base token.
+    totalSupply,
+    quoteInfo,
   });
 
   const price = poolEntity.price;
@@ -167,7 +172,8 @@ onIndexerEvent("DopplerHookInitializer:Create", async ({ event, context }) => {
       quoteDecimals: quoteInfo.quoteDecimals,
     });
 
-    await updatePool({
+    // Pool was just inserted above, so skip the redundant existence find.
+    await updatePoolDirect({
       poolAddress,
       context,
       update: {
@@ -361,7 +367,9 @@ export async function processDHookSwap({
   };
 
   const entityUpdaters = {
-    updatePool,
+    // poolEntity was already fetched and existence-checked above (:239/:244),
+    // so use updatePoolDirect to skip the redundant db.find inside updatePool.
+    updatePool: updatePoolDirect,
     updateFifteenMinuteBucketUsd,
     updateAsset,
   };
