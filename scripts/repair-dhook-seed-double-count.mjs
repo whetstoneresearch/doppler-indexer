@@ -450,7 +450,7 @@ async function main() {
   console.log("dhook/rehype fleet with --all):");
   // Pass --pool through when a single pool was repaired; otherwise point at --all.
   const scope = args.pool ? `--pool ${args.pool}` : "--all";
-  console.log(`  node scripts/backfill-negative-reserves.mjs --schema ${ledgerTable.table_schema} --types dhook,rehype ${scope} --apply`);
+  console.log(`  node scripts/backfill-negative-reserves.mjs --schema ${ledgerTable.table_schema} --chain-id ${args.chainId} --types dhook,rehype ${scope} --apply`);
   console.log(`  node scripts/recompute-dhook-dollar-liquidity.mjs --schema ${ledgerTable.table_schema} --chain-id ${args.chainId} --eth-price-usd <chainlink_8dp> ${scope} --apply`);
 }
 
