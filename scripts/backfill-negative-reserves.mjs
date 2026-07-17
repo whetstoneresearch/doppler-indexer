@@ -22,6 +22,14 @@ const CHAINS = {
 const DEFAULT_CHAIN_ID = 8453;
 const DEFAULT_STATE_VIEW = "0xa3c0c9b65bad0b08107aa264b0f3db444b867a71";
 
+// Per-chain V4 StateView addresses (mirror src/config/chains/*.ts). Used to
+// default --state-view from --chain-id so cross-chain runs don't silently call
+// the wrong contract (getSlot0 returns "0x"). Falls back to Base's default.
+const STATE_VIEW_BY_CHAIN = {
+  8453: DEFAULT_STATE_VIEW, // Base
+  4663: "0xf3334192d15450cdd385c8b70e03f9a6bd9e673b", // robinhood
+};
+
 const STATE_VIEW_ABI = [
   {
     type: "function",
@@ -157,7 +165,7 @@ function parseArgs(argv) {
     retries: 2,
     verify: true,
     verbose: false,
-    stateView: DEFAULT_STATE_VIEW,
+    stateView: undefined,
     limit: undefined,
     types: undefined,
     pool: undefined,
@@ -213,6 +221,11 @@ function parseArgs(argv) {
       process.env[`PONDER_RPC_URL_${args.chainId}`] ?? process.env.BASE_RPC;
   }
 
+  // Default the StateView from the chain if not passed explicitly.
+  if (!args.stateView) {
+    args.stateView = STATE_VIEW_BY_CHAIN[args.chainId] ?? DEFAULT_STATE_VIEW;
+  }
+
   return args;
 }
 
@@ -229,7 +242,8 @@ Options:
   --table <table>          Pool table name. Auto-detected when possible.
   --rpc-url <url>          RPC URL. Defaults to PONDER_RPC_URL_{chainId}.
   --chain-id <id>          Chain ID. Defaults to 8453 (Base).
-  --state-view <address>   V4 StateView address. Defaults to Base StateView.
+  --state-view <address>   V4 StateView address. Defaults per --chain-id
+                           (Base and robinhood known; else Base's StateView).
   --block-number <n>       Pin eth_calls to this block. Defaults to latest.
   --types <list>           Comma-separated pool types to fix (dhook,rehype,v3,v4).
                            Defaults to all types with negative reserves.
@@ -1002,6 +1016,7 @@ async function main() {
 
   console.log(`Mode: ${args.apply ? "apply" : "dry-run"}`);
   console.log(`Table: ${table.schema}.${table.table}`);
+  console.log(`Chain: ${args.chainId} | StateView: ${args.stateView}`);
   console.log(`Block: ${blockNumber}`);
   console.log(`Pools: ${pools.length} total (dhook/rehype=${dhookPools.length}, v3=${v3Pools.length}, v4=${v4Pools.length})`);
 
