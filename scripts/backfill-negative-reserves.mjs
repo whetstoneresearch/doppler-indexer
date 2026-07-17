@@ -160,6 +160,7 @@ function parseArgs(argv) {
     stateView: DEFAULT_STATE_VIEW,
     limit: undefined,
     types: undefined,
+    pool: undefined,
     schema: undefined,
     table: undefined,
     databaseUrl: process.env.DATABASE_URL,
@@ -200,6 +201,7 @@ function parseArgs(argv) {
       else if (key === "table") args.table = value;
       else if (key === "types") args.types = value.split(",").map((t) => t.trim());
       else if (key === "limit") args.limit = Number(value);
+      else if (key === "pool") args.pool = normalizeHex(value);
       else throw new Error(`Unknown argument ${arg}`);
     } else {
       throw new Error(`Unknown argument ${arg}`);
@@ -232,6 +234,8 @@ Options:
   --types <list>           Comma-separated pool types to fix (dhook,rehype,v3,v4).
                            Defaults to all types with negative reserves.
   --all                    Backfill all matching pools, not just negative reserves.
+  --pool <address>         Backfill only this pool, regardless of reserve sign
+                           (use to refresh a single repaired pool).
   --include-zeroed         Also select dhook/rehype/v4 pools with both reserves = 0
                            (previously clamped). Use to re-repair from position ledger.
   --limit <n>              Limit selected rows.
@@ -401,7 +405,19 @@ function buildColumnMap(columns) {
 
 // ── Pool loading ──
 
-function loadPools({ databaseUrl, table, columns, chainId, types, all, includeZeroed, limit }) {
+// Address equality that works whether the column is bytea or 0x-text, mirroring
+// selectHexAddress's normalization. `value` is a normalizeHex'd 0x-lower string.
+function addressEqFilter(column, value) {
+  if (column.type === "bytea") {
+    return `${qi(column.name)} = decode(${ql(hexNoPrefix(value))}, 'hex')`;
+  }
+  return `case
+      when lower(${qi(column.name)}::text) like '0x%' then lower(${qi(column.name)}::text)
+      else concat('0x', lower(${qi(column.name)}::text))
+    end = ${ql(value)}`;
+}
+
+function loadPools({ databaseUrl, table, columns, chainId, types, all, includeZeroed, limit, pool }) {
   const qualifiedTable = `${qi(table.schema)}.${qi(table.table)}`;
   const filters = [`${qi(columns.chainId.name)}::numeric = ${Number(chainId)}`];
 
@@ -410,7 +426,11 @@ function loadPools({ databaseUrl, table, columns, chainId, types, all, includeZe
     `lower(${qi(columns.type.name)}::text) in (${poolTypes.map((t) => ql(t)).join(", ")})`,
   );
 
-  if (!all) {
+  // --pool targets one pool regardless of reserve sign (an over-counted pool has
+  // positive reserves, so the negative-reserves filter would otherwise skip it).
+  if (pool) {
+    filters.push(addressEqFilter(columns.address, pool));
+  } else if (!all) {
     const r0 = qi(columns.reserves0.name);
     const r1 = qi(columns.reserves1.name);
     const negative = `(${r0}::numeric < 0 or ${r1}::numeric < 0)`;
@@ -965,6 +985,7 @@ async function main() {
     all: args.all,
     includeZeroed: args.includeZeroed,
     limit: args.limit,
+    pool: args.pool,
   });
 
   const viemChain = CHAINS[args.chainId] ?? base;

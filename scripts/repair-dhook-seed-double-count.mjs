@@ -445,11 +445,13 @@ async function main() {
   console.log(`\nDone. Corrected ${affected.length} pool(s), ${applied} ledger rows.`);
   console.log("reserves0/1 and dollarLiquidity recompute from the ledger on each pool's next swap");
   console.log("(processDHookSwap overwrites them), so actively-traded pools self-heal within seconds.");
-  console.log("Only for pools that won't trade soon, refresh the whole dhook/rehype fleet with --all.");
-  console.log("These scripts have no single-pool filter, and an over-counted pool's reserves are");
-  console.log("neither negative nor zero, so --all is required for them to re-touch it:");
-  console.log(`  node scripts/backfill-negative-reserves.mjs --schema ${ledgerTable.table_schema} --types dhook,rehype --all --apply`);
-  console.log(`  node scripts/recompute-dhook-dollar-liquidity.mjs --schema ${ledgerTable.table_schema} --chain-id ${args.chainId} --eth-price-usd <chainlink_8dp> --all --apply`);
+  console.log("For pools that won't trade soon, refresh reserves/liquidity directly. An over-counted");
+  console.log("pool's reserves are neither negative nor zero, so target it with --pool (or the whole");
+  console.log("dhook/rehype fleet with --all):");
+  // Pass --pool through when a single pool was repaired; otherwise point at --all.
+  const scope = args.pool ? `--pool ${args.pool}` : "--all";
+  console.log(`  node scripts/backfill-negative-reserves.mjs --schema ${ledgerTable.table_schema} --types dhook,rehype ${scope} --apply`);
+  console.log(`  node scripts/recompute-dhook-dollar-liquidity.mjs --schema ${ledgerTable.table_schema} --chain-id ${args.chainId} --eth-price-usd <chainlink_8dp> ${scope} --apply`);
 }
 
 main().catch((e) => {

@@ -62,6 +62,7 @@ function parseArgs(argv) {
     databaseUrl: process.env.DATABASE_URL,
     ethPriceUsd: undefined,
     batchSize: 500,
+    pool: undefined,
   };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -77,6 +78,7 @@ function parseArgs(argv) {
       else if (key === "database-url") args.databaseUrl = value;
       else if (key === "eth-price-usd") args.ethPriceUsd = BigInt(value);
       else if (key === "batch-size") args.batchSize = Number(value);
+      else if (key === "pool") args.pool = value.toLowerCase();
       else throw new Error(`Unknown argument ${a}`);
     } else throw new Error(`Unknown argument ${a}`);
   }
@@ -98,6 +100,8 @@ Options:
                          for $3000). Required if any pool is WETH-quoted.
   --all                  Recompute every dhook/rehype pool, not just those with
                          dollarLiquidity = 0.
+  --pool <poolId>        Recompute only this pool, regardless of its current
+                         dollarLiquidity (use to refresh a single repaired pool).
   --batch-size <n>       Rows per update transaction. Defaults to 500.
   --apply                Write updates. Without this flag, dry-run only.
 `);
@@ -184,7 +188,10 @@ async function main() {
     `${qi(col.chainId)}::numeric = ${Number(args.chainId)}`,
     `${qi(col.type)} in ('dhook', 'rehype')`,
   ];
-  if (!args.all) where.push(`${qi(col.dollarLiquidity)}::numeric = 0`);
+  // --pool targets one pool regardless of its current dollarLiquidity (an
+  // over-counted pool is nonzero, so the default `= 0` filter would skip it).
+  if (args.pool) where.push(`${addrExpr(col.address)} = ${ql(args.pool)}`);
+  else if (!args.all) where.push(`${qi(col.dollarLiquidity)}::numeric = 0`);
 
   const rows = psqlJson(args.databaseUrl,
     `select coalesce(json_agg(q), '[]'::json) from (
