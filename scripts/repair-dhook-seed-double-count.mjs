@@ -443,10 +443,13 @@ async function main() {
   }
 
   console.log(`\nDone. Corrected ${affected.length} pool(s), ${applied} ledger rows.`);
-  console.log("reserves0/1 and dollarLiquidity recompute from the ledger on each pool's next swap.");
-  console.log("For idle pools, refresh now with:");
-  console.log(`  node scripts/backfill-negative-reserves.mjs --schema ${ledgerTable.table_schema} --types dhook,rehype --apply`);
-  console.log(`  node scripts/recompute-dhook-dollar-liquidity.mjs --schema ${ledgerTable.table_schema} --chain-id ${args.chainId} --eth-price-usd <chainlink_8dp> --apply`);
+  console.log("reserves0/1 and dollarLiquidity recompute from the ledger on each pool's next swap");
+  console.log("(processDHookSwap overwrites them), so actively-traded pools self-heal within seconds.");
+  console.log("Only for pools that won't trade soon, refresh the whole dhook/rehype fleet with --all.");
+  console.log("These scripts have no single-pool filter, and an over-counted pool's reserves are");
+  console.log("neither negative nor zero, so --all is required for them to re-touch it:");
+  console.log(`  node scripts/backfill-negative-reserves.mjs --schema ${ledgerTable.table_schema} --types dhook,rehype --all --apply`);
+  console.log(`  node scripts/recompute-dhook-dollar-liquidity.mjs --schema ${ledgerTable.table_schema} --chain-id ${args.chainId} --eth-price-usd <chainlink_8dp> --all --apply`);
 }
 
 main().catch((e) => {
