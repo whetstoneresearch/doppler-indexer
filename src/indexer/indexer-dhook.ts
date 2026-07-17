@@ -11,6 +11,7 @@ import { pool, token } from "ponder:schema";
 import { getQuoteInfo } from "@app/utils/getQuoteInfo";
 import { computeReservesFromPositions } from "@app/utils/v4-utils/computeReservesFromPositions";
 import { getPositionsForPool, upsertPositionLedger } from "./shared/entities/positionLedger";
+import { isDHookLiquiditySender } from "./shared/dhookPoolCache";
 import { PoolKey } from "@app/types/v4-types";
 import { getDHookPoolData } from "@app/utils/dhook-utils";
 import { StateViewABI, DopplerHookInitializerABI } from "@app/abis";
@@ -41,6 +42,18 @@ async function seedPositionLedgerFromCreateTx({
       log.topics[0] !== POOL_MANAGER_MODIFY_LIQUIDITY_TOPIC ||
       log.topics[1]?.toLowerCase() !== poolAddress
     ) {
+      continue;
+    }
+    // ModifyLiquidity(bytes32 indexed id, address indexed sender, ...): sender is
+    // the second indexed topic (last 20 bytes). If it's a recognised dhook/rehype
+    // initializer, the live PoolManager:ModifyLiquidity handler already recorded
+    // this log into the ledger via its isDHookLiquiditySender branch — it runs
+    // first because the seed logs sit at a lower log index than this Create event.
+    // Replaying it here would sum the same delta twice and inflate reserves
+    // (base reserves > total supply → dollarLiquidity > marketCap). Skip it; only
+    // seed logs from senders the live handler can't recognise need the replay.
+    const sender = `0x${(log.topics[2] ?? "").slice(-40)}`.toLowerCase();
+    if (isDHookLiquiditySender(context.chain.name, sender)) {
       continue;
     }
     const [tickLower, tickUpper, liquidityDelta] = decodeAbiParameters(
@@ -135,12 +148,13 @@ onIndexerEvent("DopplerHookInitializer:Create", async ({ event, context }) => {
     decimals: quoteInfo.quotePriceDecimals,
   });
 
-  // Seed position_ledger from this transaction's PoolManager.ModifyLiquidity logs.
-  // The newer DopplerHookInitializer (0xBDF938...) does not re-emit ModifyLiquidity
-  // at the initializer level, and the PoolManager:ModifyLiquidity handler can't
-  // populate the ledger for these logs — they fire at a lower log index than this
-  // Create event, so the dhook pool cache hasn't been told about the pool yet.
-  // Replaying the receipt here makes the ledger authoritative for the seeded state.
+  // Seed position_ledger from this transaction's PoolManager.ModifyLiquidity logs,
+  // for seed senders the live PoolManager:ModifyLiquidity handler does NOT already
+  // capture. Recognised dhook/rehype initializers are captured live by that
+  // handler's isDHookLiquiditySender branch (it runs first — seed logs sit at a
+  // lower log index than this Create event), so seedPositionLedgerFromCreateTx
+  // skips them to avoid double-counting; it only replays logs from unrecognised
+  // senders that would otherwise be missed.
   await seedPositionLedgerFromCreateTx({
     poolAddress,
     context,
