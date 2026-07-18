@@ -25,13 +25,25 @@ import process from "node:process";
 
 const WAD = 10n ** 18n;
 
-// Recognised numeraires per chain: address -> { quoteDecimals, quotePriceUSD? }.
-// quotePriceUSD omitted means "supplied via --eth-price-usd" (ETH/WETH).
-// Mirrors src/config/chains/robinhood.ts and getQuoteInfo's classification.
+// Recognised numeraires per chain: address (lowercase) -> { kind, quoteDecimals, quotePriceUSD? }.
+// quotePriceUSD omitted means "supplied via --eth-price-usd" (ETH/WETH); a fixed
+// value pegs a stablecoin (Chainlink 8-decimal form, so 100000000n = $1.00).
+// Mirrors src/config/chains/*.ts and getQuoteInfo's classification. Only pools
+// quoted in a listed numeraire are recomputed; others are skipped as
+// "unrecognised numeraire" (they self-heal on their next swap via the indexer).
+// This offline script intentionally covers only statically-priceable numeraires
+// (WETH + USD stables); dynamically-priced quotes (Zora, creator coins, etc.)
+// are left to the live indexer's getQuoteInfo.
 const NUMERAIRES = {
   4663: {
     "0x0bd7d308f8e1639fab988df18a8011f41eacad73": { kind: "eth", quoteDecimals: 18 },
     "0x5fc5360d0400a0fd4f2af552add042d716f1d168": { kind: "usd", quoteDecimals: 6, quotePriceUSD: 100000000n },
+  },
+  8453: {
+    // WETH (priced via --eth-price-usd) and USDC ($1). Other Base numeraires
+    // (USDT/EURC/Zora/creator coins) are skipped and self-heal on next swap.
+    "0x4200000000000000000000000000000000000006": { kind: "eth", quoteDecimals: 18 },
+    "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913": { kind: "usd", quoteDecimals: 6, quotePriceUSD: 100000000n },
   },
 };
 
