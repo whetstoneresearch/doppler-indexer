@@ -118,6 +118,7 @@ function parseArgs(argv) {
     poolManager: undefined,
     pool: undefined,
     afterBlock: undefined,
+    afterCreated: undefined,
     applyBatchSize: 500,
   };
   for (let i = 0; i < argv.length; i++) {
@@ -140,6 +141,7 @@ function parseArgs(argv) {
       else if (key === "pool-manager") args.poolManager = value.toLowerCase();
       else if (key === "pool") args.pool = value.toLowerCase();
       else if (key === "after-block") args.afterBlock = BigInt(value);
+      else if (key === "after-created") args.afterCreated = BigInt(value);
       else if (key === "apply-batch-size") args.applyBatchSize = Number(value);
       else throw new Error(`Unknown argument ${a}`);
     } else throw new Error(`Unknown argument ${a}`);
@@ -166,6 +168,7 @@ Options:
   --after-block <n>         Only pools created at/after this block (pool.created_at is
                             a block timestamp; resolved via RPC). For re-running as a
                             staging indexer catches up.
+  --after-created <ts>      Same, but takes a created_at timestamp directly (no RPC).
   --pool-manager <addr>     PoolManager address. Defaults to chain default.
   --senders <list>          Comma-separated seed sender addresses. Defaults to
                             the chain's DopplerHookInitializer addresses.
@@ -377,10 +380,13 @@ async function main() {
   // --after-block: pool.created_at is a block timestamp, so resolve the block to
   // its timestamp and select only pools created at/after it (for re-running as a
   // staging indexer catches up).
-  let afterCreatedAt;
-  if (args.afterBlock !== undefined) {
+  let afterCreatedAt = args.afterCreated;
+  if (afterCreatedAt === undefined && args.afterBlock !== undefined) {
     afterCreatedAt = BigInt((await client.getBlock({ blockNumber: args.afterBlock })).timestamp);
-    console.log(`Filtering to pools created at/after block ${args.afterBlock} (ts ${afterCreatedAt})`);
+    console.log(`Resolved block ${args.afterBlock} -> created_at ${afterCreatedAt}`);
+  }
+  if (afterCreatedAt !== undefined) {
+    console.log(`Filtering to pools with created_at >= ${afterCreatedAt}`);
   }
 
   const knownPools = loadDhookPoolIds({

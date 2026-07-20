@@ -77,6 +77,7 @@ function parseArgs(argv) {
     batchSize: 500,
     pool: undefined,
     afterBlock: undefined,
+    afterCreated: undefined,
     rpcUrl: undefined,
   };
   for (let i = 0; i < argv.length; i++) {
@@ -95,6 +96,7 @@ function parseArgs(argv) {
       else if (key === "batch-size") args.batchSize = Number(value);
       else if (key === "pool") args.pool = value.toLowerCase();
       else if (key === "after-block") args.afterBlock = BigInt(value);
+      else if (key === "after-created") args.afterCreated = BigInt(value);
       else if (key === "rpc-url") args.rpcUrl = value;
       else throw new Error(`Unknown argument ${a}`);
     } else throw new Error(`Unknown argument ${a}`);
@@ -122,6 +124,7 @@ Options:
   --after-block <n>      Only pools created at/after this block (pool.created_at is
                          a block timestamp; resolved via RPC). For re-running as a
                          staging indexer catches up.
+  --after-created <ts>   Same, but takes a created_at timestamp directly (no RPC).
   --rpc-url <url>        RPC URL for --after-block. Defaults to PONDER_RPC_URL_<id>.
   --batch-size <n>       Rows per update transaction. Defaults to 500.
   --apply                Write updates. Without this flag, dry-run only.
@@ -232,15 +235,19 @@ async function main() {
   if (args.pool) where.push(`${addrExpr(col.address)} = ${ql(args.pool)}`);
   else if (!args.all) where.push(`${qi(col.dollarLiquidity)}::numeric = 0`);
 
-  // --after-block: pool.created_at is a block timestamp, so resolve the block to
-  // its timestamp via RPC and select only pools created at/after it. Lets you
-  // re-run as a staging indexer catches up, touching only newly-indexed pools.
-  if (args.afterBlock !== undefined) {
+  // Restrict to pools created at/after a cutoff, for re-running as a staging
+  // indexer catches up. --after-created takes a created_at (block timestamp)
+  // directly; --after-block resolves the block to its timestamp via RPC.
+  let afterCreatedAt = args.afterCreated;
+  if (afterCreatedAt === undefined && args.afterBlock !== undefined) {
     const rpcUrl = args.rpcUrl ?? process.env[`PONDER_RPC_URL_${args.chainId}`];
     if (!rpcUrl) throw new Error(`--after-block needs --rpc-url or PONDER_RPC_URL_${args.chainId}`);
-    const ts = await getBlockTimestamp(rpcUrl, args.afterBlock);
-    console.log(`Filtering to pools created at/after block ${args.afterBlock} (ts ${ts})`);
-    where.push(`${qi(col.createdAt)}::numeric >= ${ts}`);
+    afterCreatedAt = await getBlockTimestamp(rpcUrl, args.afterBlock);
+    console.log(`Resolved block ${args.afterBlock} -> created_at ${afterCreatedAt}`);
+  }
+  if (afterCreatedAt !== undefined) {
+    console.log(`Filtering to pools with created_at >= ${afterCreatedAt}`);
+    where.push(`${qi(col.createdAt)}::numeric >= ${afterCreatedAt}`);
   }
 
   const rows = psqlJson(args.databaseUrl,

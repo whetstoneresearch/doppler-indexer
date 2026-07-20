@@ -170,6 +170,7 @@ function parseArgs(argv) {
     types: undefined,
     pool: undefined,
     afterBlock: undefined,
+    afterCreated: undefined,
     schema: undefined,
     table: undefined,
     databaseUrl: process.env.DATABASE_URL,
@@ -212,6 +213,7 @@ function parseArgs(argv) {
       else if (key === "limit") args.limit = Number(value);
       else if (key === "pool") args.pool = normalizeHex(value);
       else if (key === "after-block") args.afterBlock = BigInt(value);
+      else if (key === "after-created") args.afterCreated = BigInt(value);
       else throw new Error(`Unknown argument ${arg}`);
     } else {
       throw new Error(`Unknown argument ${arg}`);
@@ -255,6 +257,7 @@ Options:
   --after-block <n>        Only pools created at/after this block (pool.created_at
                            is a block timestamp; resolved via RPC). For re-running
                            as a staging indexer catches up.
+  --after-created <ts>     Same, but takes a created_at timestamp directly (no RPC).
   --include-zeroed         Also select dhook/rehype/v4 pools with both reserves = 0
                            (previously clamped). Use to re-repair from position ledger.
   --limit <n>              Limit selected rows.
@@ -1022,10 +1025,13 @@ async function main() {
   // --after-block: pool.created_at is a block timestamp, so resolve the block to
   // its timestamp and select only pools created at/after it (for re-running as a
   // staging indexer catches up).
-  let afterCreatedAt;
-  if (args.afterBlock !== undefined) {
+  let afterCreatedAt = args.afterCreated;
+  if (afterCreatedAt === undefined && args.afterBlock !== undefined) {
     afterCreatedAt = await getBlockTimestamp(args.rpcUrl, args.afterBlock);
-    console.log(`Filtering to pools created at/after block ${args.afterBlock} (ts ${afterCreatedAt})`);
+    console.log(`Resolved block ${args.afterBlock} -> created_at ${afterCreatedAt}`);
+  }
+  if (afterCreatedAt !== undefined) {
+    console.log(`Filtering to pools with created_at >= ${afterCreatedAt}`);
   }
 
   const pools = loadPools({
