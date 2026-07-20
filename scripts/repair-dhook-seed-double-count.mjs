@@ -117,6 +117,7 @@ function parseArgs(argv) {
     rpcUrl: undefined,
     poolManager: undefined,
     pool: undefined,
+    afterBlock: undefined,
     applyBatchSize: 500,
   };
   for (let i = 0; i < argv.length; i++) {
@@ -138,6 +139,7 @@ function parseArgs(argv) {
       else if (key === "database-url") args.databaseUrl = value;
       else if (key === "pool-manager") args.poolManager = value.toLowerCase();
       else if (key === "pool") args.pool = value.toLowerCase();
+      else if (key === "after-block") args.afterBlock = BigInt(value);
       else if (key === "apply-batch-size") args.applyBatchSize = Number(value);
       else throw new Error(`Unknown argument ${a}`);
     } else throw new Error(`Unknown argument ${a}`);
@@ -161,6 +163,9 @@ Options:
   --rpc-url <url>           RPC URL. Defaults to PONDER_RPC_URL_<chainId>.
   --chain-id <id>           Chain ID. Defaults to 4663 (robinhood).
   --pool <poolId>           Repair only this v4 poolId. Default: all dhook/rehype pools.
+  --after-block <n>         Only pools created at/after this block (pool.created_at is
+                            a block timestamp; resolved via RPC). For re-running as a
+                            staging indexer catches up.
   --pool-manager <addr>     PoolManager address. Defaults to chain default.
   --senders <list>          Comma-separated seed sender addresses. Defaults to
                             the chain's DopplerHookInitializer addresses.
@@ -233,10 +238,14 @@ function hexColumnExpr(name, type) {
     : `lower(${qi(name)}::text)`;
 }
 
-function loadDhookPoolIds({ databaseUrl, poolTable, addressType, chainId, onePool }) {
+function loadDhookPoolIds({ databaseUrl, poolTable, addressType, chainId, onePool, afterCreatedAt }) {
   const qualified = `${qi(poolTable.table_schema)}.${qi(poolTable.table_name)}`;
   const addrExpr = hexColumnExpr("address", addressType);
   const poolFilter = onePool ? `and ${addrExpr} = ${ql(onePool.toLowerCase())}` : "";
+  // --after-block resolves to a created_at timestamp cutoff (only newer pools).
+  const createdFilter = afterCreatedAt !== undefined
+    ? `and ${qi("created_at")}::numeric >= ${afterCreatedAt}`
+    : "";
   const rows = psqlJson(
     databaseUrl,
     `select coalesce(json_agg(q), '[]'::json) from (
@@ -245,6 +254,7 @@ function loadDhookPoolIds({ databaseUrl, poolTable, addressType, chainId, onePoo
        where ${qi("chain_id")}::numeric = ${Number(chainId)}
          and lower(${qi("type")}::text) in ('dhook', 'rehype')
          ${poolFilter}
+         ${createdFilter}
      ) q`,
   );
   return new Set(rows.map((r) => String(r.address).toLowerCase()));
@@ -364,9 +374,18 @@ async function main() {
   console.log(`Senders: ${senders.join(", ")}`);
   console.log(`Block range: [${fromBlock}, ${toBlock}]`);
 
+  // --after-block: pool.created_at is a block timestamp, so resolve the block to
+  // its timestamp and select only pools created at/after it (for re-running as a
+  // staging indexer catches up).
+  let afterCreatedAt;
+  if (args.afterBlock !== undefined) {
+    afterCreatedAt = BigInt((await client.getBlock({ blockNumber: args.afterBlock })).timestamp);
+    console.log(`Filtering to pools created at/after block ${args.afterBlock} (ts ${afterCreatedAt})`);
+  }
+
   const knownPools = loadDhookPoolIds({
     databaseUrl: args.databaseUrl, poolTable, addressType: poolAddressType,
-    chainId: args.chainId, onePool: args.pool,
+    chainId: args.chainId, onePool: args.pool, afterCreatedAt,
   });
   if (knownPools.size === 0) throw new Error(args.pool ? `Pool ${args.pool} is not a dhook/rehype pool on chain ${args.chainId}` : "No dhook/rehype pools found");
   console.log(`Target dhook/rehype pools: ${knownPools.size}${args.pool ? ` (--pool ${args.pool})` : ""}`);

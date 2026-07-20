@@ -36,6 +36,7 @@ const WAD = 10n ** 18n;
 // are left to the live indexer's getQuoteInfo.
 const NUMERAIRES = {
   4663: {
+    // WETH (priced via --eth-price-usd) and USDG (robinhood's native $1 stable, 6 dec).
     "0x0bd7d308f8e1639fab988df18a8011f41eacad73": { kind: "eth", quoteDecimals: 18 },
     "0x5fc5360d0400a0fd4f2af552add042d716f1d168": { kind: "usd", quoteDecimals: 6, quotePriceUSD: 100000000n },
   },
@@ -75,6 +76,8 @@ function parseArgs(argv) {
     ethPriceUsd: undefined,
     batchSize: 500,
     pool: undefined,
+    afterBlock: undefined,
+    rpcUrl: undefined,
   };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -91,6 +94,8 @@ function parseArgs(argv) {
       else if (key === "eth-price-usd") args.ethPriceUsd = BigInt(value);
       else if (key === "batch-size") args.batchSize = Number(value);
       else if (key === "pool") args.pool = value.toLowerCase();
+      else if (key === "after-block") args.afterBlock = BigInt(value);
+      else if (key === "rpc-url") args.rpcUrl = value;
       else throw new Error(`Unknown argument ${a}`);
     } else throw new Error(`Unknown argument ${a}`);
   }
@@ -114,6 +119,10 @@ Options:
                          dollarLiquidity = 0.
   --pool <poolId>        Recompute only this pool, regardless of its current
                          dollarLiquidity (use to refresh a single repaired pool).
+  --after-block <n>      Only pools created at/after this block (pool.created_at is
+                         a block timestamp; resolved via RPC). For re-running as a
+                         staging indexer catches up.
+  --rpc-url <url>        RPC URL for --after-block. Defaults to PONDER_RPC_URL_<id>.
   --batch-size <n>       Rows per update transaction. Defaults to 500.
   --apply                Write updates. Without this flag, dry-run only.
 `);
@@ -172,6 +181,23 @@ function calculateLiquidity({ assetBalance, quoteBalance, price, quotePriceUSD, 
   return assetValueUsd + quoteValueUsd;
 }
 
+// Resolve a block number to its unix timestamp via a raw JSON-RPC call (avoids a
+// viem dependency in this otherwise DB-only script). Returns a BigInt (seconds).
+async function getBlockTimestamp(rpcUrl, blockNumber) {
+  const res = await fetch(rpcUrl, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      jsonrpc: "2.0", id: 1, method: "eth_getBlockByNumber",
+      params: [`0x${BigInt(blockNumber).toString(16)}`, false],
+    }),
+  });
+  const json = await res.json();
+  if (json.error) throw new Error(`eth_getBlockByNumber failed: ${json.error.message}`);
+  if (!json.result) throw new Error(`Block ${blockNumber} not found`);
+  return BigInt(json.result.timestamp);
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   if (args.help) { printHelp(); return; }
@@ -192,6 +218,7 @@ async function main() {
     isToken0: pick(names, ["is_token0", "isToken0"]),
     quoteToken: pick(names, ["quote_token", "quoteToken"]),
     dollarLiquidity: pick(names, ["dollar_liquidity", "dollarLiquidity"]),
+    createdAt: pick(names, ["created_at", "createdAt"]),
   };
   const qualified = `${qi(table.table_schema)}.${qi(table.table_name)}`;
   const addrExpr = (c) => `lower(${qi(c)}::text)`;
@@ -204,6 +231,17 @@ async function main() {
   // over-counted pool is nonzero, so the default `= 0` filter would skip it).
   if (args.pool) where.push(`${addrExpr(col.address)} = ${ql(args.pool)}`);
   else if (!args.all) where.push(`${qi(col.dollarLiquidity)}::numeric = 0`);
+
+  // --after-block: pool.created_at is a block timestamp, so resolve the block to
+  // its timestamp via RPC and select only pools created at/after it. Lets you
+  // re-run as a staging indexer catches up, touching only newly-indexed pools.
+  if (args.afterBlock !== undefined) {
+    const rpcUrl = args.rpcUrl ?? process.env[`PONDER_RPC_URL_${args.chainId}`];
+    if (!rpcUrl) throw new Error(`--after-block needs --rpc-url or PONDER_RPC_URL_${args.chainId}`);
+    const ts = await getBlockTimestamp(rpcUrl, args.afterBlock);
+    console.log(`Filtering to pools created at/after block ${args.afterBlock} (ts ${ts})`);
+    where.push(`${qi(col.createdAt)}::numeric >= ${ts}`);
+  }
 
   const rows = psqlJson(args.databaseUrl,
     `select coalesce(json_agg(q), '[]'::json) from (

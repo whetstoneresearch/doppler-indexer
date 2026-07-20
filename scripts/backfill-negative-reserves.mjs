@@ -169,6 +169,7 @@ function parseArgs(argv) {
     limit: undefined,
     types: undefined,
     pool: undefined,
+    afterBlock: undefined,
     schema: undefined,
     table: undefined,
     databaseUrl: process.env.DATABASE_URL,
@@ -210,6 +211,7 @@ function parseArgs(argv) {
       else if (key === "types") args.types = value.split(",").map((t) => t.trim());
       else if (key === "limit") args.limit = Number(value);
       else if (key === "pool") args.pool = normalizeHex(value);
+      else if (key === "after-block") args.afterBlock = BigInt(value);
       else throw new Error(`Unknown argument ${arg}`);
     } else {
       throw new Error(`Unknown argument ${arg}`);
@@ -250,6 +252,9 @@ Options:
   --all                    Backfill all matching pools, not just negative reserves.
   --pool <address>         Backfill only this pool, regardless of reserve sign
                            (use to refresh a single repaired pool).
+  --after-block <n>        Only pools created at/after this block (pool.created_at
+                           is a block timestamp; resolved via RPC). For re-running
+                           as a staging indexer catches up.
   --include-zeroed         Also select dhook/rehype/v4 pools with both reserves = 0
                            (previously clamped). Use to re-repair from position ledger.
   --limit <n>              Limit selected rows.
@@ -413,6 +418,7 @@ function buildColumnMap(columns) {
     quoteToken: pickColumn(columns, ["quote_token", "quoteToken"], false),
     poolKey: pickColumn(columns, ["pool_key", "poolKey"], false),
     initializer: pickColumn(columns, ["initializer"], false),
+    createdAt: pickColumn(columns, ["created_at", "createdAt"], false),
     lastSwapTimestamp: pickColumn(columns, ["last_swap_timestamp", "lastSwapTimestamp"], false),
   };
 }
@@ -431,7 +437,7 @@ function addressEqFilter(column, value) {
     end = ${ql(value)}`;
 }
 
-function loadPools({ databaseUrl, table, columns, chainId, types, all, includeZeroed, limit, pool }) {
+function loadPools({ databaseUrl, table, columns, chainId, types, all, includeZeroed, limit, pool, afterCreatedAt }) {
   const qualifiedTable = `${qi(table.schema)}.${qi(table.table)}`;
   const filters = [`${qi(columns.chainId.name)}::numeric = ${Number(chainId)}`];
 
@@ -439,6 +445,12 @@ function loadPools({ databaseUrl, table, columns, chainId, types, all, includeZe
   filters.push(
     `lower(${qi(columns.type.name)}::text) in (${poolTypes.map((t) => ql(t)).join(", ")})`,
   );
+
+  // --after-block resolves to a created_at timestamp cutoff (only newer pools).
+  if (afterCreatedAt !== undefined) {
+    if (!columns.createdAt) throw new Error("pool table has no created_at column; --after-block unsupported");
+    filters.push(`${qi(columns.createdAt.name)}::numeric >= ${afterCreatedAt}`);
+  }
 
   // --pool targets one pool regardless of reserve sign (an over-counted pool has
   // positive reserves, so the negative-reserves filter would otherwise skip it).
@@ -978,6 +990,22 @@ function verifyUpdates({ databaseUrl, table, columns, updates }) {
 
 // ── Main ──
 
+// Resolve a block number to its unix timestamp via a raw JSON-RPC call.
+async function getBlockTimestamp(rpcUrl, blockNumber) {
+  const res = await fetch(rpcUrl, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      jsonrpc: "2.0", id: 1, method: "eth_getBlockByNumber",
+      params: [`0x${BigInt(blockNumber).toString(16)}`, false],
+    }),
+  });
+  const json = await res.json();
+  if (json.error) throw new Error(`eth_getBlockByNumber failed: ${json.error.message}`);
+  if (!json.result) throw new Error(`Block ${blockNumber} not found`);
+  return BigInt(json.result.timestamp);
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   if (args.help) {
@@ -990,6 +1018,16 @@ async function main() {
 
   const table = resolvePoolTable(args.databaseUrl, args.schema, args.table);
   const columns = buildColumnMap(table.columns);
+
+  // --after-block: pool.created_at is a block timestamp, so resolve the block to
+  // its timestamp and select only pools created at/after it (for re-running as a
+  // staging indexer catches up).
+  let afterCreatedAt;
+  if (args.afterBlock !== undefined) {
+    afterCreatedAt = await getBlockTimestamp(args.rpcUrl, args.afterBlock);
+    console.log(`Filtering to pools created at/after block ${args.afterBlock} (ts ${afterCreatedAt})`);
+  }
+
   const pools = loadPools({
     databaseUrl: args.databaseUrl,
     table,
@@ -1000,6 +1038,7 @@ async function main() {
     includeZeroed: args.includeZeroed,
     limit: args.limit,
     pool: args.pool,
+    afterCreatedAt,
   });
 
   const viemChain = CHAINS[args.chainId] ?? base;
