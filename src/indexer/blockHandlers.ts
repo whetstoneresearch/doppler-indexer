@@ -1,6 +1,6 @@
 import { onIndexerEvent } from "./entrypoint";
 import { ChainlinkOracleABI } from "@app/abis/ChainlinkOracleABI";
-import { ethPrice, zoraUsdcPrice, fxhWethPrice, noiceWethPrice, monadUsdcPrice, eurcUsdcPrice, bankrWethPrice, usdcPrice, usdtPrice } from "ponder.schema";
+import { ethPrice, zoraUsdcPrice, fxhWethPrice, noiceWethPrice, monadUsdcPrice, eurcUsdcPrice, bankrWethPrice, stockUsdPrice, usdcPrice, usdtPrice } from "ponder.schema";
 import { UniswapV3PoolABI } from "@app/abis/v3-abis/UniswapV3PoolABI";
 import { StateViewABI } from "@app/abis/v4-abis/StateViewABI";
 import { PriceService } from "@app/core";
@@ -422,6 +422,52 @@ onIndexerEvent("EurcUsdcPrice:block", async ({ event, context }) => {
   } else {
     return;
   }
+});
+
+onIndexerEvent("RobinhoodStockPriceFeed:block", async ({ event, context }) => {
+  const { db, client, chain } = context;
+  const { timestamp, number: blockNumber } = event.block;
+
+  const stockTokens = chainConfigs[chain.name].addresses.stockTokens;
+  if (!stockTokens || stockTokens.length === 0) {
+    return;
+  }
+
+  const roundedTimestamp = BigInt(Math.floor(Number(timestamp) / 300) * 300);
+  const adjustedTimestamp = roundedTimestamp + 300n;
+
+  const rows = (
+    await Promise.all(
+      stockTokens.map(async (stock) => {
+        try {
+          const latestAnswer = await client.readContract({
+            abi: ChainlinkOracleABI,
+            address: stock.chainlinkOracle,
+            functionName: "latestAnswer",
+          });
+          return {
+            address: stock.address,
+            timestamp: adjustedTimestamp,
+            chainId: chain.id,
+            price: latestAnswer,
+          };
+        } catch (error) {
+          // A feed listed after startBlock doesn't exist yet at older blocks;
+          // skip it for this tick instead of failing the whole batch.
+          console.warn(
+            `[RobinhoodStockPriceFeed] ${stock.symbol} feed read failed | block=${blockNumber} | oracle=${stock.chainlinkOracle} | error=${error}`
+          );
+          return null;
+        }
+      })
+    )
+  ).filter((row): row is NonNullable<typeof row> => row !== null);
+
+  if (rows.length === 0) {
+    return;
+  }
+
+  await db.insert(stockUsdPrice).values(rows).onConflictDoNothing();
 });
 
 onIndexerEvent("BankrWethPrice:block", async ({ event, context }) => {
