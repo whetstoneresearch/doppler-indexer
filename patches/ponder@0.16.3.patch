@@ -57,7 +57,7 @@ index cd8df0b2352161ca01104b4b3e4882fe6ff25a03..6cc76d99b4219ce890b085121db9ba38
                      }
                  }
 diff --git a/dist/esm/database/actions.js b/dist/esm/database/actions.js
-index 058794bde30e72c2a61ee1fe1af61d8d4cdb74fa..01d272e5f1f71c32f3ec3855e7c3475c3728c5d7 100644
+index 058794bde30e72c2a61ee1fe1af61d8d4cdb74fa..a450841ab7f46243d4af0a2d6a647bb66200906f 100644
 --- a/dist/esm/database/actions.js
 +++ b/dist/esm/database/actions.js
 @@ -6,13 +6,95 @@ import { and, eq, getTableColumns, getTableName, getViewName, lte, sql, } from "
@@ -162,7 +162,22 @@ index 058794bde30e72c2a61ee1fe1af61d8d4cdb74fa..01d272e5f1f71c32f3ec3855e7c3475c
  };
  export const createTriggers = async (qb, { tables, chainId }, context) => {
      await qb.transaction(async (tx) => {
-@@ -54,6 +136,14 @@ export const dropTriggers = async (qb, { tables, chainId }, context) => {
+@@ -24,6 +106,14 @@ export const createTriggers = async (qb, { tables, chainId }, context) => {
+   CREATE OR REPLACE FUNCTION "${schema}".${getReorgProcedureName(table)}
+   RETURNS TRIGGER AS $$
+   BEGIN
++  -- Reorg-log suppression gate. The realtime reorg path sets this
++  -- transaction-local GUC (SET LOCAL ponder.suppress_reorg_log = '1') so
++  -- revertMultichain's inverse DML is not re-logged into _reorg__*. This
++  -- replaces per-reorg DROP/CREATE TRIGGER DDL (~120 ACCESS EXCLUSIVE
++  -- statements) with one cheap session setting. current_setting(..., true)
++  -- returns NULL when unset, and NULL = '1' is not TRUE, so logging outside
++  -- the reorg transaction is byte-identical to before this gate.
++  IF current_setting('ponder.suppress_reorg_log', true) = '1' THEN RETURN NULL; END IF;
+   IF TG_OP = 'INSERT' THEN
+   INSERT INTO "${schema}"."${getReorgTableName(table)}" (${columnNames.join(",")}, operation, checkpoint)
+   VALUES (${columnNames.map((name) => `NEW.${name}`).join(",")}, 0, '${MAX_CHECKPOINT_STRING}');
+@@ -54,6 +144,14 @@ export const dropTriggers = async (qb, { tables, chainId }, context) => {
      }, undefined, context);
  };
  export const createLiveQueryTriggers = async (qb, { namespaceBuild, tables, chainId, }, context) => {
@@ -177,7 +192,7 @@ index 058794bde30e72c2a61ee1fe1af61d8d4cdb74fa..01d272e5f1f71c32f3ec3855e7c3475c
      await qb.transaction(async (tx) => {
          const notifyProcedure = getLiveQueryNotifyProcedureName();
          const notifyTrigger = getLiveQueryNotifyTriggerName();
-@@ -86,6 +176,11 @@ export const dropLiveQueryTriggers = async (qb, { namespaceBuild, tables, chainI
+@@ -86,6 +184,11 @@ export const dropLiveQueryTriggers = async (qb, { namespaceBuild, tables, chainI
      }, undefined, context);
  };
  export const createLiveQueryProcedures = async (qb, { namespaceBuild }, context) => {
@@ -189,7 +204,20 @@ index 058794bde30e72c2a61ee1fe1af61d8d4cdb74fa..01d272e5f1f71c32f3ec3855e7c3475c
      await qb.transaction(async (tx) => {
          const schema = namespaceBuild.schema;
          const procedure = getLiveQueryProcedureName();
-@@ -147,6 +242,13 @@ export const createViews = async (qb, { tables, views, namespaceBuild, }, contex
+@@ -94,6 +197,12 @@ CREATE OR REPLACE FUNCTION "${schema}".${procedure}
+ RETURNS TRIGGER LANGUAGE plpgsql
+ AS $$
+ BEGIN
++  -- Same reorg-log suppression gate as the per-table reorg trigger. When the
++  -- realtime reorg path sets ponder.suppress_reorg_log = '1', revert DML must
++  -- not enqueue live-query notifications either (previously achieved by
++  -- dropping/recreating the live-query triggers per reorg). Only reached when
++  -- live queries are enabled (PONDER_DISABLE_LIVE_QUERY unset); no-op in prod.
++  IF current_setting('ponder.suppress_reorg_log', true) = '1' THEN RETURN NULL; END IF;
+   INSERT INTO ${getLiveQueryTempTableName()} (table_name)
+   VALUES (TG_TABLE_NAME)
+   ON CONFLICT (table_name) DO NOTHING;
+@@ -147,6 +256,13 @@ export const createViews = async (qb, { tables, views, namespaceBuild, }, contex
          await tx.wrap((tx) => tx.execute(`DROP VIEW IF EXISTS "${namespaceBuild.viewsSchema}"."${PONDER_CHECKPOINT_TABLE_NAME}"`));
          await tx.wrap((tx) => tx.execute(`CREATE VIEW "${namespaceBuild.viewsSchema}"."${PONDER_META_TABLE_NAME}" AS SELECT * FROM "${namespaceBuild.schema}"."${PONDER_META_TABLE_NAME}"`));
          await tx.wrap((tx) => tx.execute(`CREATE VIEW "${namespaceBuild.viewsSchema}"."${PONDER_CHECKPOINT_TABLE_NAME}" AS SELECT * FROM "${namespaceBuild.schema}"."${PONDER_CHECKPOINT_TABLE_NAME}"`));
@@ -350,8 +378,56 @@ index 8b37dc75bc572b1a1ac33b5c0e4522dad8a480f2..462fc8b466b1dafcdf62d7bb40f026d7
                  }).request,
                  hostname: "custom_transport",
              },
+diff --git a/dist/esm/runtime/isolated.js b/dist/esm/runtime/isolated.js
+index a92d741a2e0f3ca3e69f12e6537eca13b3d4c62f..4ee6f3fa6cb82d1739bfb8b4bfa3512e8143528e 100644
+--- a/dist/esm/runtime/isolated.js
++++ b/dist/esm/runtime/isolated.js
+@@ -320,7 +320,14 @@ export async function runIsolated({ common, preBuild, namespaceBuild, schemaBuil
+                 ]);
+                 await database.userQB.transaction(async (tx) => {
+                     if (database.userQB.$dialect === "postgres") {
+-                        await tx.wrap((tx) => tx.execute(`CREATE TEMP TABLE ${getLiveQueryTempTableName()} (table_name TEXT PRIMARY KEY) ON COMMIT DROP`), context);
++                        // Gate: when PONDER_DISABLE_LIVE_QUERY=1, no live-query trigger writes to
++                        // this temp table and no notify procedure reads it (see createLiveQueryTriggers
++                        // and createLiveQueryProcedures), so skip creating it. A per-block
++                        // CREATE TEMP TABLE ... ON COMMIT DROP churns pg_class/pg_attribute and
++                        // progressively degrades long-lived pooled backends (~+1-2ms per 1k blocks).
++                        if (process.env.PONDER_DISABLE_LIVE_QUERY !== "1") {
++                            await tx.wrap((tx) => tx.execute(`CREATE TEMP TABLE ${getLiveQueryTempTableName()} (table_name TEXT PRIMARY KEY) ON COMMIT DROP`), context);
++                        }
+                     }
+                     else {
+                         await tx.wrap((tx) => tx.execute(`CREATE TEMP TABLE IF NOT EXISTS ${getLiveQueryTempTableName()} (table_name TEXT PRIMARY KEY)`), context);
+@@ -403,8 +410,16 @@ export async function runIsolated({ common, preBuild, namespaceBuild, schemaBuil
+                 // Note: `_ponder_checkpoint` is not called here, instead it is called
+                 // in the `block` case.
+                 await database.userQB.transaction(async (tx) => {
+-                    await dropTriggers(tx, { tables, chainId: chain.id }, context);
+-                    await dropLiveQueryTriggers(tx, { namespaceBuild, tables, chainId: chain.id }, context);
++                    // Suppress reorg-log (and live-query) triggers for the duration of
++                    // the revert via a transaction-local GUC instead of dropping and
++                    // recreating the per-chain triggers per reorg. The per-table reorg
++                    // trigger function and the live-query trigger function both RETURN
++                    // NULL when ponder.suppress_reorg_log = '1' (see database/actions.js),
++                    // so revertIsolated's inverse DML is not re-logged into _reorg__* and
++                    // fires no notifications. SET LOCAL auto-resets at COMMIT/ROLLBACK, so
++                    // normal logging resumes with zero cleanup. This replaces the
++                    // ACCESS EXCLUSIVE-locking DDL per reorg that inflated read latencies.
++                    await tx.wrap((tx) => tx.execute(`SET LOCAL ponder.suppress_reorg_log = '1'`), context);
+                     const counts = await revertIsolated(tx, {
+                         checkpoint: event.checkpoint,
+                         tables,
+@@ -418,8 +433,6 @@ export async function runIsolated({ common, preBuild, namespaceBuild, schemaBuil
+                             row_count: counts[index],
+                         });
+                     }
+-                    await createTriggers(tx, { tables, chainId: chain.id }, context);
+-                    await createLiveQueryTriggers(tx, { namespaceBuild, tables, chainId: chain.id }, context);
+                 }, undefined, context);
+                 indexingCache.clear();
+                 common.logger.info({
 diff --git a/dist/esm/runtime/multichain.js b/dist/esm/runtime/multichain.js
-index c5efbc3bf913959800f5e62c9bf98fdc76a3ba37..5bef0b7abb89968d74258223c0379816a9717b21 100644
+index c5efbc3bf913959800f5e62c9bf98fdc76a3ba37..ec19995b47792689ab7f5d913ed3781eb1b231c1 100644
 --- a/dist/esm/runtime/multichain.js
 +++ b/dist/esm/runtime/multichain.js
 @@ -307,15 +307,13 @@ export async function runMultichain({ common, preBuild, namespaceBuild, schemaBu
@@ -413,8 +489,52 @@ index c5efbc3bf913959800f5e62c9bf98fdc76a3ba37..5bef0b7abb89968d74258223c0379816
      if (namespaceBuild.viewsSchema !== undefined) {
          const endClock = startClock();
          await createViews(database.adminQB, { tables, views, namespaceBuild });
+@@ -371,7 +398,14 @@ export async function runMultichain({ common, preBuild, namespaceBuild, schemaBu
+                 ]);
+                 await database.userQB.transaction(async (tx) => {
+                     if (database.userQB.$dialect === "postgres") {
+-                        await tx.wrap((tx) => tx.execute(`CREATE TEMP TABLE ${getLiveQueryTempTableName()} (table_name TEXT PRIMARY KEY) ON COMMIT DROP`), context);
++                        // Gate: when PONDER_DISABLE_LIVE_QUERY=1, no live-query trigger writes to
++                        // this temp table and no notify procedure reads it (see createLiveQueryTriggers
++                        // and createLiveQueryProcedures), so skip creating it. A per-block
++                        // CREATE TEMP TABLE ... ON COMMIT DROP churns pg_class/pg_attribute and
++                        // progressively degrades long-lived pooled backends (~+1-2ms per 1k blocks).
++                        if (process.env.PONDER_DISABLE_LIVE_QUERY !== "1") {
++                            await tx.wrap((tx) => tx.execute(`CREATE TEMP TABLE ${getLiveQueryTempTableName()} (table_name TEXT PRIMARY KEY) ON COMMIT DROP`), context);
++                        }
+                     }
+                     else {
+                         await tx.wrap((tx) => tx.execute(`CREATE TEMP TABLE IF NOT EXISTS ${getLiveQueryTempTableName()} (table_name TEXT PRIMARY KEY)`), context);
+@@ -454,8 +488,16 @@ export async function runMultichain({ common, preBuild, namespaceBuild, schemaBu
+                 // Note: `_ponder_checkpoint` is not called here, instead it is called
+                 // in the `block` case.
+                 await database.userQB.transaction(async (tx) => {
+-                    await dropTriggers(tx, { tables }, context);
+-                    await dropLiveQueryTriggers(tx, { namespaceBuild, tables }, context);
++                    // Suppress reorg-log (and live-query) triggers for the duration of
++                    // the revert via a transaction-local GUC instead of dropping and
++                    // recreating ~120 triggers per reorg. The per-table reorg trigger
++                    // function and the live-query trigger function both RETURN NULL when
++                    // ponder.suppress_reorg_log = '1' (see database/actions.js), so
++                    // revertMultichain's inverse DML is not re-logged into _reorg__* and
++                    // fires no notifications. SET LOCAL auto-resets at COMMIT/ROLLBACK, so
++                    // normal logging resumes with zero cleanup. This replaces 1-6s of
++                    // ACCESS EXCLUSIVE-locking DDL per reorg that inflated read latencies.
++                    await tx.wrap((tx) => tx.execute(`SET LOCAL ponder.suppress_reorg_log = '1'`), context);
+                     const counts = await revertMultichain(tx, {
+                         checkpoint: event.checkpoint,
+                         tables,
+@@ -467,8 +509,6 @@ export async function runMultichain({ common, preBuild, namespaceBuild, schemaBu
+                             row_count: counts[index],
+                         });
+                     }
+-                    await createTriggers(tx, { tables }, context);
+-                    await createLiveQueryTriggers(tx, { namespaceBuild, tables }, context);
+                 }, undefined, context);
+                 indexingCache.clear();
+                 common.logger.info({
 diff --git a/dist/esm/runtime/omnichain.js b/dist/esm/runtime/omnichain.js
-index ff59bf37e048955f06311123a89af83d401ef3a0..4e50de4d8dee15ed4a2c0722cb427cd74259153a 100644
+index ff59bf37e048955f06311123a89af83d401ef3a0..727bb08b680b8b3aa008801d7620b28c4b637e74 100644
 --- a/dist/esm/runtime/omnichain.js
 +++ b/dist/esm/runtime/omnichain.js
 @@ -314,15 +314,13 @@ export async function runOmnichain({ common, preBuild, namespaceBuild, schemaBui
@@ -476,6 +596,50 @@ index ff59bf37e048955f06311123a89af83d401ef3a0..4e50de4d8dee15ed4a2c0722cb427cd7
      if (namespaceBuild.viewsSchema !== undefined) {
          const endClock = startClock();
          await createViews(database.adminQB, { tables, views, namespaceBuild });
+@@ -379,7 +406,14 @@ export async function runOmnichain({ common, preBuild, namespaceBuild, schemaBui
+                 ]);
+                 await database.userQB.transaction(async (tx) => {
+                     if (database.userQB.$dialect === "postgres") {
+-                        await tx.wrap((tx) => tx.execute(`CREATE TEMP TABLE ${getLiveQueryTempTableName()} (table_name TEXT PRIMARY KEY) ON COMMIT DROP`), context);
++                        // Gate: when PONDER_DISABLE_LIVE_QUERY=1, no live-query trigger writes to
++                        // this temp table and no notify procedure reads it (see createLiveQueryTriggers
++                        // and createLiveQueryProcedures), so skip creating it. A per-block
++                        // CREATE TEMP TABLE ... ON COMMIT DROP churns pg_class/pg_attribute and
++                        // progressively degrades long-lived pooled backends (~+1-2ms per 1k blocks).
++                        if (process.env.PONDER_DISABLE_LIVE_QUERY !== "1") {
++                            await tx.wrap((tx) => tx.execute(`CREATE TEMP TABLE ${getLiveQueryTempTableName()} (table_name TEXT PRIMARY KEY) ON COMMIT DROP`), context);
++                        }
+                     }
+                     else {
+                         await tx.wrap((tx) => tx.execute(`CREATE TEMP TABLE IF NOT EXISTS ${getLiveQueryTempTableName()} (table_name TEXT PRIMARY KEY)`), context);
+@@ -464,8 +498,16 @@ export async function runOmnichain({ common, preBuild, namespaceBuild, schemaBui
+                 // Note: `_ponder_checkpoint` is not called here, instead it is called
+                 // in the `block` case.
+                 await database.userQB.transaction(async (tx) => {
+-                    await dropTriggers(tx, { tables }, context);
+-                    await dropLiveQueryTriggers(tx, { namespaceBuild, tables }, context);
++                    // Suppress reorg-log (and live-query) triggers for the duration of
++                    // the revert via a transaction-local GUC instead of dropping and
++                    // recreating ~120 triggers per reorg. The per-table reorg trigger
++                    // function and the live-query trigger function both RETURN NULL when
++                    // ponder.suppress_reorg_log = '1' (see database/actions.js), so
++                    // revertOmnichain's inverse DML is not re-logged into _reorg__* and
++                    // fires no notifications. SET LOCAL auto-resets at COMMIT/ROLLBACK, so
++                    // normal logging resumes with zero cleanup. This replaces 1-6s of
++                    // ACCESS EXCLUSIVE-locking DDL per reorg that inflated read latencies.
++                    await tx.wrap((tx) => tx.execute(`SET LOCAL ponder.suppress_reorg_log = '1'`), context);
+                     const counts = await revertOmnichain(tx, {
+                         tables,
+                         checkpoint: event.checkpoint,
+@@ -477,8 +519,6 @@ export async function runOmnichain({ common, preBuild, namespaceBuild, schemaBui
+                             row_count: counts[index],
+                         });
+                     }
+-                    await createTriggers(tx, { tables }, context);
+-                    await createLiveQueryTriggers(tx, { namespaceBuild, tables }, context);
+                 });
+                 indexingCache.clear();
+                 common.logger.info({
 diff --git a/dist/esm/sync-historical/index.js b/dist/esm/sync-historical/index.js
 index 3c0810be57bb1d6cf149485a1f34dd55540fc976..aeadc0821aa472baca4aab2883fe328fcf63ac97 100644
 --- a/dist/esm/sync-historical/index.js
