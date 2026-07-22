@@ -687,6 +687,30 @@ export const poolBeneficiary = onchainTable(
   })
 );
 
+// Rehype fee beneficiaries (FeesManager pull-based shares) are a separate share
+// system from the LP-lock beneficiaries stored in pool_beneficiary; the same
+// address can appear in both sets for one pool. `initializer` is the rehype
+// hook contract to claim against.
+export const rehypeFeeBeneficiary = onchainTable(
+  "rehype_fee_beneficiary",
+  (t) => ({
+    poolId: t.hex().notNull(),
+    chainId: t.integer().notNull(),
+    beneficiary: t.hex().notNull(),
+    assetId: t.hex().notNull(),
+    shares: t.bigint().notNull(),
+    initializer: t.hex().notNull(),
+    discoveredAt: t.bigint().notNull(),
+    updatedAt: t.bigint().notNull(),
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.poolId, table.chainId, table.beneficiary] }),
+    beneficiaryIdx: index().on(table.beneficiary),
+    assetIdx: index().on(table.assetId),
+    beneficiaryAssetIdx: index().on(table.beneficiary, table.assetId, table.chainId),
+  })
+);
+
 export const userAsset = onchainTable(
   "user_asset",
   (t) => ({

@@ -8,3 +8,4 @@ export * from "./indexer-v4-decay";
 export * from "./blockHandlers";
 export * from "./indexer-zora";
 export * from "./indexer-dhook";
+export * from "./indexer-rehype";
