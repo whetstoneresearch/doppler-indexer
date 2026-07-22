@@ -84,8 +84,13 @@ export async function getQuoteInfo(quoteAddress: Address, timestamp: bigint | nu
   const isQuoteBankr = quoteAddress != zeroAddress && quoteAddress === bankrAddress;
   
   let creatorCoinInfo;
-  if (!(isQuoteZora || isQuoteFxh || isQuoteNoice || isQuoteMon || isQuoteUsdc || isQuoteUsdt || isQuoteUsdg || isQuoteEurc || isQuoteBankr)) {
-    creatorCoinInfo = await getCreatorCoinInfo(quoteAddress, context);    
+  // isQuoteEth is excluded here too: WETH / native ETH can never be a creator
+  // coin, and the ETH branches below (quoteToken/decimals and the price path)
+  // never read creatorCoinInfo — so skipping this db.find(token) is a pure
+  // round-trip saving with no change in result. WETH is robinhood's numeraire,
+  // so this fires on the majority of its swaps.
+  if (!(isQuoteEth || isQuoteZora || isQuoteFxh || isQuoteNoice || isQuoteMon || isQuoteUsdc || isQuoteUsdt || isQuoteUsdg || isQuoteEurc || isQuoteBankr)) {
+    creatorCoinInfo = await getCreatorCoinInfo(quoteAddress, context);
   } else {
     creatorCoinInfo = {
       isQuoteCreatorCoin: false,

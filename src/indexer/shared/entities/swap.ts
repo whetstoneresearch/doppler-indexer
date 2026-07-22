@@ -25,7 +25,7 @@ export const insertSwapIfNotExists = async ({
     amountIn: bigint;
     amountOut: bigint;
     swapValueUsd: bigint;
-}): Promise<typeof swap.$inferSelect> => {
+}): Promise<void> => {
     const { db, chain } = context;
 
     const lowerTxHash = txHash.toLowerCase() as `0x${string}`;
@@ -33,16 +33,10 @@ export const insertSwapIfNotExists = async ({
     const lowerAsset = asset.toLowerCase() as `0x${string}`;
     const lowerUser = user.toLowerCase() as `0x${string}`;
 
-    const existingSwap = await db.find(swap, {
-        txHash: lowerTxHash,
-        chainId: chain.id,
-    });
-
-    if (existingSwap) {
-        return existingSwap;
-    }
-
-    return await db.insert(swap).values({
+    // Dedup on the (txHash, chainId) primary key in a single write. Replaces the
+    // previous find-then-insert, so every swap costs one DB round-trip instead
+    // of two. Callers discard the return, so we no longer return the row.
+    await db.insert(swap).values({
         txHash: lowerTxHash,
         timestamp,
         pool: lowerPool,
@@ -53,5 +47,5 @@ export const insertSwapIfNotExists = async ({
         amountIn,
         amountOut,
         swapValueUsd,
-    });
+    }).onConflictDoNothing();
 };
