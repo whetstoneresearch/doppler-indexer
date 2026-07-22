@@ -194,6 +194,15 @@ export default createConfig({
       startBlock: 41900609,
       interval: BLOCK_INTERVALS.FIVE_MINUTES, // every 5 minutes
     },
+    // Chainlink USD feeds for Robinhood stock tokens. Starts at the Doppler
+    // deployment block — no prices are stored from before it. (The feeds
+    // themselves were deployed earlier, ~block 97950, so every tick from
+    // startBlock has live feeds; per-feed read failures are still skipped.)
+    RobinhoodStockPriceFeed: {
+      chain: "robinhood",
+      startBlock: robinhood.startBlock,
+      interval: BLOCK_INTERVALS.FIVE_MINUTES_ROBINHOOD,
+    },
   },
   contracts: {
     DN404Factory: {

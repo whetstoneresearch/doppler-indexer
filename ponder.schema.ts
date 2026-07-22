@@ -237,6 +237,23 @@ export const noiceWethPrice = onchainTable(
   })
 );
 
+// USD prices (8 decimals, Chainlink) for tokenized stocks/ETFs used as quote
+// tokens, keyed by the stock token's (lowercase) address on the chain.
+export const stockUsdPrice = onchainTable(
+  "stock_usd_price",
+  (t) => ({
+    address: t.hex().notNull(),
+    timestamp: t.bigint().notNull(),
+    chainId: t.integer().notNull(),
+    price: t.bigint().notNull(),
+  }),
+  (table) => ({
+    pk: primaryKey({
+      columns: [table.address, table.timestamp, table.chainId],
+    }),
+  })
+);
+
 export const bankrWethPrice = onchainTable(
   "bankr_weth_price",
   (t) => ({

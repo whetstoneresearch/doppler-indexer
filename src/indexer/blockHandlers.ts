@@ -1,9 +1,10 @@
 import { onIndexerEvent } from "./entrypoint";
 import { ChainlinkOracleABI } from "@app/abis/ChainlinkOracleABI";
-import { ethPrice, zoraUsdcPrice, fxhWethPrice, noiceWethPrice, monadUsdcPrice, eurcUsdcPrice, bankrWethPrice, usdcPrice, usdtPrice } from "ponder.schema";
+import { ethPrice, zoraUsdcPrice, fxhWethPrice, noiceWethPrice, monadUsdcPrice, eurcUsdcPrice, bankrWethPrice, stockUsdPrice, usdcPrice, usdtPrice } from "ponder.schema";
 import { UniswapV3PoolABI } from "@app/abis/v3-abis/UniswapV3PoolABI";
 import { StateViewABI } from "@app/abis/v4-abis/StateViewABI";
 import { PriceService } from "@app/core";
+import { getMulticallOptions } from "@app/core/utils/multicall";
 import { chainConfigs } from "@app/config";
 import { parseUnits, zeroAddress, createPublicClient, http, numberToHex } from "viem";
 
@@ -422,6 +423,60 @@ onIndexerEvent("EurcUsdcPrice:block", async ({ event, context }) => {
   } else {
     return;
   }
+});
+
+onIndexerEvent("RobinhoodStockPriceFeed:block", async ({ event, context }) => {
+  const { db, client, chain } = context;
+  const { timestamp, number: blockNumber } = event.block;
+
+  const stockTokens = chainConfigs[chain.name].addresses.stockTokens;
+  if (!stockTokens || stockTokens.length === 0) {
+    return;
+  }
+
+  const roundedTimestamp = BigInt(Math.floor(Number(timestamp) / 300) * 300);
+  const adjustedTimestamp = roundedTimestamp + 300n;
+
+  // One Multicall3 batch per tick instead of a per-feed fan-out. allowFailure
+  // keeps a single reverting feed (e.g. one listed after startBlock that
+  // doesn't exist yet at older blocks) from failing the whole batch.
+  const results = await client.multicall({
+    contracts: stockTokens.map((stock) => ({
+      abi: ChainlinkOracleABI,
+      address: stock.chainlinkOracle,
+      functionName: "latestAnswer",
+    })),
+    allowFailure: true,
+    ...getMulticallOptions(chain),
+  });
+
+  const rows: {
+    address: `0x${string}`;
+    timestamp: bigint;
+    chainId: number;
+    price: bigint;
+  }[] = [];
+  stockTokens.forEach((stock, i) => {
+    const result = results[i];
+    if (result?.status === "success") {
+      rows.push({
+        address: stock.address,
+        timestamp: adjustedTimestamp,
+        chainId: chain.id,
+        price: result.result as bigint,
+      });
+    } else {
+      console.warn(
+        `[RobinhoodStockPriceFeed] ${stock.symbol} feed read failed | block=${blockNumber} | oracle=${stock.chainlinkOracle} | error=${result?.error}`
+      );
+    }
+  });
+
+  if (rows.length === 0) {
+    return;
+  }
+
+  await db.insert(stockUsdPrice).values(rows).onConflictDoNothing();
 });
 
 onIndexerEvent("BankrWethPrice:block", async ({ event, context }) => {
