@@ -231,6 +231,80 @@ index 058794bde30e72c2a61ee1fe1af61d8d4cdb74fa..a450841ab7f46243d4af0a2d6a647bb6
          const notifyProcedure = getLiveQueryNotifyProcedureName();
          const channel = getLiveQueryChannelName(namespaceBuild.viewsSchema);
          await tx.wrap((tx) => tx.execute(`
+@@ -397,6 +499,73 @@ export const commitBlock = async (qb, { checkpoint, table, preBuild, }, context)
+     }
+     await qb.wrap({ label: "commit_block" }, (db) => db.update(reorgTable).set({ checkpoint }).where(whereClause), context);
+ };
++// Batched variant of `commitBlock`: stamps the real checkpoint on the reorg
++// log of EVERY onchain table in a SINGLE database round trip instead of one
++// UPDATE per table. The per-block realtime path issues ~1 statement per table
++// (~30 tables) on the SAME transaction connection, which node-postgres
++// serializes into ~30 sequential round trips per block. At ~13 blk/s across
++// chains that is ~400 round trips/s and, measured, the #1 DB method by summed
++// time (commit_block). Batching collapses it to one round trip per block.
++//
++// Mechanism: drizzle's `db.execute()` uses the pg *extended* query protocol,
++// which cannot run multiple statements in one message. So we build a single
++// semicolon-joined multi-statement string (identical UPDATE semantics to
++// `commitBlock`, one statement per table, in `tables` order) and send it via
++// the pg *simple* query protocol on the transaction's own connection
++// (`qb.$client`, i.e. `tx.session.client`). Being on the block transaction's
++// connection, the implicit transaction of a multi-statement simple query is
++// simply part of that block transaction — semantics match today's behavior.
++//
++// Multi-statement simple queries cannot carry $n bind parameters, so the
++// checkpoint is inlined as a SQL literal. The checkpoint is an internal
++// fixed-format all-digits string (see encodeCheckpoint); we assert /^[0-9]+$/
++// before inlining so a quote/semicolon can never reach the string. The other
++// inlined values are the module constant MAX_CHECKPOINT_STRING (all 9s) and,
++// for isolated ordering, a numeric chain_id.
++export const commitBlockBatch = async (qb, { checkpoint, tables, preBuild, }, context) => {
++    if (tables.length === 0)
++        return;
++    // PGlite executes via the extended protocol and cannot run multi-statement
++    // query strings; keep the original per-table path for it. Postgres only for
++    // the batched fast path.
++    if (qb.$dialect !== "postgres") {
++        await Promise.all(tables.map((table) => commitBlock(qb, { checkpoint, table, preBuild }, context)));
++        return;
++    }
++    // Structurally prevent SQL injection: the checkpoint must be the internal
++    // all-digits encoded form before it is inlined as a literal.
++    if (typeof checkpoint !== "string" || /^[0-9]+$/.test(checkpoint) === false) {
++        throw new Error(`commitBlockBatch: refusing to inline non-numeric checkpoint literal: ${String(checkpoint)}`);
++    }
++    const isIsolated = preBuild.ordering === "experimental_isolated";
++    // Note: Query must include `chain_id` because it's possible for multiple
++    // chains to be indexing in parallel (mirrors commitBlock).
++    let chainId;
++    if (isIsolated) {
++        chainId = Number(decodeCheckpoint(checkpoint).chainId);
++        if (Number.isInteger(chainId) === false) {
++            throw new Error(`commitBlockBatch: invalid chain_id ${String(chainId)}`);
++        }
++    }
++    const statements = tables.map((table) => {
++        // Mirror getReorgTable's schema-qualification: schema-qualified name
++        // only when a non-public schema is set, otherwise the bare name.
++        const schema = getTableConfig(table).schema;
++        const qualified = schema && schema !== "public"
++            ? `"${schema}"."${getReorgTableName(table)}"`
++            : `"${getReorgTableName(table)}"`;
++        const whereClause = isIsolated
++            ? `(${qualified}."checkpoint" = '${MAX_CHECKPOINT_STRING}' and chain_id = ${chainId})`
++            : `${qualified}."checkpoint" = '${MAX_CHECKPOINT_STRING}'`;
++        return `update ${qualified} set "checkpoint" = '${checkpoint}' where ${whereClause}`;
++    });
++    const batchedSql = statements.join(";\n");
++    // Run on the transaction's own connection via the simple query protocol
++    // (a plain string to node-postgres' client.query uses simple protocol and
++    // supports multiple statements). Record a single commit_block observation
++    // per block (dashboards use sum-of-rate, so this is expected).
++    await qb.wrap({ label: "commit_block" }, () => qb.$client.query(batchedSql), context);
++};
+ export const crashRecovery = async (qb, { table }, context) => {
+     const primaryKeyColumns = getPrimaryKeyColumns(table);
+     const schema = getTableConfig(table).schema ?? "public";
 diff --git a/dist/esm/database/queryBuilder.js b/dist/esm/database/queryBuilder.js
 index dddf085491df24a37bb1da1dcb43f76c31d0e0bb..8fefde11e9766cb645853733360bd582dba0f56c 100644
 --- a/dist/esm/database/queryBuilder.js
@@ -382,6 +456,12 @@ diff --git a/dist/esm/runtime/isolated.js b/dist/esm/runtime/isolated.js
 index a92d741a2e0f3ca3e69f12e6537eca13b3d4c62f..4ee6f3fa6cb82d1739bfb8b4bfa3512e8143528e 100644
 --- a/dist/esm/runtime/isolated.js
 +++ b/dist/esm/runtime/isolated.js
+@@ -1,4 +1,4 @@
+-import { commitBlock, createLiveQueryTriggers, createTriggers, dropLiveQueryTriggers, dropTriggers, finalizeIsolated, revertIsolated, } from '../database/actions.js';
++import { commitBlockBatch, createLiveQueryTriggers, createTriggers, dropLiveQueryTriggers, dropTriggers, finalizeIsolated, revertIsolated, } from '../database/actions.js';
+ import { getPonderCheckpointTable } from '../database/index.js';
+ import { getLiveQueryTempTableName } from '../drizzle/onchain.js';
+ import { createIndexingCache } from '../indexing-store/cache.js';
 @@ -320,7 +320,14 @@ export async function runIsolated({ common, preBuild, namespaceBuild, schemaBuil
                  ]);
                  await database.userQB.transaction(async (tx) => {
@@ -398,6 +478,15 @@ index a92d741a2e0f3ca3e69f12e6537eca13b3d4c62f..4ee6f3fa6cb82d1739bfb8b4bfa3512e
                      }
                      else {
                          await tx.wrap((tx) => tx.execute(`CREATE TEMP TABLE IF NOT EXISTS ${getLiveQueryTempTableName()} (table_name TEXT PRIMARY KEY)`), context);
+@@ -349,7 +356,7 @@ export async function runIsolated({ common, preBuild, namespaceBuild, schemaBuil
+                             });
+                             indexingStore.isProcessingEvents = false;
+                             await indexingCache.flush();
+-                            await Promise.all(tables.map((table) => commitBlock(tx, { table, checkpoint, preBuild }, context)));
++                            await commitBlockBatch(tx, { tables, checkpoint, preBuild }, context);
+                             cachedViemClient.clear();
+                             common.logger.trace({
+                                 msg: "Committed reorg data for block",
 @@ -403,8 +410,16 @@ export async function runIsolated({ common, preBuild, namespaceBuild, schemaBuil
                  // Note: `_ponder_checkpoint` is not called here, instead it is called
                  // in the `block` case.
@@ -430,6 +519,12 @@ diff --git a/dist/esm/runtime/multichain.js b/dist/esm/runtime/multichain.js
 index c5efbc3bf913959800f5e62c9bf98fdc76a3ba37..ec19995b47792689ab7f5d913ed3781eb1b231c1 100644
 --- a/dist/esm/runtime/multichain.js
 +++ b/dist/esm/runtime/multichain.js
+@@ -1,4 +1,4 @@
+-import { commitBlock, createIndexes, createLiveQueryTriggers, createTriggers, createViews, dropLiveQueryTriggers, dropTriggers, finalizeMultichain, revertMultichain, } from '../database/actions.js';
++import { commitBlockBatch, createIndexes, createLiveQueryTriggers, createTriggers, createViews, dropLiveQueryTriggers, dropTriggers, finalizeMultichain, revertMultichain, } from '../database/actions.js';
+ import { getPonderCheckpointTable, getPonderMetaTable, } from '../database/index.js';
+ import { getLiveQueryTempTableName } from '../drizzle/onchain.js';
+ import { createIndexingCache } from '../indexing-store/cache.js';
 @@ -307,15 +307,13 @@ export async function runMultichain({ common, preBuild, namespaceBuild, schemaBu
      const tables = Object.values(schemaBuild.schema).filter(isTable);
      const views = Object.values(schemaBuild.schema).filter(isView);
@@ -505,6 +600,15 @@ index c5efbc3bf913959800f5e62c9bf98fdc76a3ba37..ec19995b47792689ab7f5d913ed3781e
                      }
                      else {
                          await tx.wrap((tx) => tx.execute(`CREATE TEMP TABLE IF NOT EXISTS ${getLiveQueryTempTableName()} (table_name TEXT PRIMARY KEY)`), context);
+@@ -401,7 +435,7 @@ export async function runMultichain({ common, preBuild, namespaceBuild, schemaBu
+                             });
+                             indexingStore.isProcessingEvents = false;
+                             await indexingCache.flush();
+-                            await Promise.all(tables.map((table) => commitBlock(tx, { table, checkpoint, preBuild }, context)));
++                            await commitBlockBatch(tx, { tables, checkpoint, preBuild }, context);
+                             cachedViemClient.clear();
+                             common.logger.trace({
+                                 msg: "Committed reorg data for block",
 @@ -454,8 +488,16 @@ export async function runMultichain({ common, preBuild, namespaceBuild, schemaBu
                  // Note: `_ponder_checkpoint` is not called here, instead it is called
                  // in the `block` case.
@@ -537,6 +641,12 @@ diff --git a/dist/esm/runtime/omnichain.js b/dist/esm/runtime/omnichain.js
 index ff59bf37e048955f06311123a89af83d401ef3a0..727bb08b680b8b3aa008801d7620b28c4b637e74 100644
 --- a/dist/esm/runtime/omnichain.js
 +++ b/dist/esm/runtime/omnichain.js
+@@ -1,4 +1,4 @@
+-import { commitBlock, createIndexes, createLiveQueryTriggers, createTriggers, createViews, dropLiveQueryTriggers, dropTriggers, finalizeOmnichain, revertOmnichain, } from '../database/actions.js';
++import { commitBlockBatch, createIndexes, createLiveQueryTriggers, createTriggers, createViews, dropLiveQueryTriggers, dropTriggers, finalizeOmnichain, revertOmnichain, } from '../database/actions.js';
+ import { getPonderCheckpointTable, getPonderMetaTable, } from '../database/index.js';
+ import { getLiveQueryTempTableName } from '../drizzle/onchain.js';
+ import { createIndexingCache } from '../indexing-store/cache.js';
 @@ -314,15 +314,13 @@ export async function runOmnichain({ common, preBuild, namespaceBuild, schemaBui
      const tables = Object.values(schemaBuild.schema).filter(isTable);
      const views = Object.values(schemaBuild.schema).filter(isView);
@@ -612,6 +722,15 @@ index ff59bf37e048955f06311123a89af83d401ef3a0..727bb08b680b8b3aa008801d7620b28c
                      }
                      else {
                          await tx.wrap((tx) => tx.execute(`CREATE TEMP TABLE IF NOT EXISTS ${getLiveQueryTempTableName()} (table_name TEXT PRIMARY KEY)`), context);
+@@ -409,7 +443,7 @@ export async function runOmnichain({ common, preBuild, namespaceBuild, schemaBui
+                             });
+                             indexingStore.isProcessingEvents = false;
+                             await indexingCache.flush();
+-                            await Promise.all(tables.map((table) => commitBlock(tx, { table, checkpoint, preBuild }, context), context));
++                            await commitBlockBatch(tx, { tables, checkpoint, preBuild }, context);
+                             cachedViemClient.clear();
+                             common.logger.trace({
+                                 msg: "Committed reorg data for block",
 @@ -464,8 +498,16 @@ export async function runOmnichain({ common, preBuild, namespaceBuild, schemaBui
                  // Note: `_ponder_checkpoint` is not called here, instead it is called
                  // in the `block` case.
