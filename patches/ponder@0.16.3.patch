@@ -842,3 +842,86 @@ index 3e021c47fc1298e8f16b773cd437ca5f2cf4cba3..d8a82ca27db0a9e814614d1c56589937
              }
          }
      }
+diff --git a/dist/esm/utils/sql-parse.js b/dist/esm/utils/sql-parse.js
+index a74c2129674e71232a0e00d95c1ed52e08cf41c8..36b415d39d5c136421cb709911365bb501b6019b 100644
+--- a/dist/esm/utils/sql-parse.js
++++ b/dist/esm/utils/sql-parse.js
+@@ -1,13 +1,30 @@
+ const getNodeType = (node) => Object.keys(node)[0];
+ const ALLOW_CACHE = new Map();
+ const RELATIONS_CACHE = new Map();
++const READONLY_CACHE = new Map();
++// Instantiating the pg-query-emscripten module costs ~18ms and allocates
++// heavily. Upstream re-instantiates it on every parseSQLQuery call, which on
++// the indexing hot path (db.sql -> isReadonlySQLQuery, which has no cache of
++// its own) dominated CPU and GC. Instantiate once and reuse.
++let PARSER_PROMISE;
++const getParser = () => {
++    if (PARSER_PROMISE === undefined) {
++        PARSER_PROMISE = import(/* webpackIgnore: true */ "pg-query-emscripten")
++            // @ts-ignore
++            .then((Parser) => Parser.default())
++            .catch((error) => {
++                // Don't cache a failed instantiation.
++                PARSER_PROMISE = undefined;
++                throw error;
++            });
++    }
++    return PARSER_PROMISE;
++};
+ export const parseSQLQuery = async (sql) => {
+-    // @ts-ignore
+-    const Parser = await import(/* webpackIgnore: true */ "pg-query-emscripten");
+     if (sql.length > 5000) {
+         throw new Error("Invalid query");
+     }
+-    const { parse } = await Parser.default();
++    const { parse } = await getParser();
+     const parseResult = parse(sql);
+     if (parseResult.error !== null) {
+         throw new Error(parseResult.error);
+@@ -84,12 +101,30 @@ export const validateAllowableSQLQuery = async (sql) => {
+  * @param sql - SQL query
+  */
+ export const isReadonlySQLQuery = async (sql) => {
++    // The verdict is a pure function of the SQL text, and this is called on
++    // every db.sql query from an indexing function. Cache it like ALLOW_CACHE
++    // and RELATIONS_CACHE already do, otherwise every call re-parses.
++    const cached = READONLY_CACHE.get(sql);
++    if (cached !== undefined) {
++        READONLY_CACHE.delete(sql);
++        READONLY_CACHE.set(sql, cached);
++        return cached;
++    }
++    const remember = (result) => {
++        READONLY_CACHE.set(sql, result);
++        if (READONLY_CACHE.size > 10000) {
++            const firstKey = READONLY_CACHE.keys().next().value;
++            if (firstKey !== undefined)
++                READONLY_CACHE.delete(firstKey);
++        }
++        return result;
++    };
+     let root;
+     try {
+         root = await parseSQLQuery(sql);
+     }
+     catch {
+-        return false;
++        return remember(false);
+     }
+     const validate = (node) => {
+         if (ALLOW_LIST.has(getNodeType(node)) === false) {
+@@ -103,10 +138,10 @@ export const isReadonlySQLQuery = async (sql) => {
+     };
+     try {
+         validate(root);
+-        return true;
++        return remember(true);
+     }
+     catch {
+-        return false;
++        return remember(false);
+     }
+ };
+ /**
