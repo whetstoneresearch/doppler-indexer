@@ -37,7 +37,16 @@ export default createConfig({
     kind: "postgres",
     connectionString: process.env.DATABASE_URL,
     poolConfig: {
-      max: 100,
+      // Ponder splits this as: 2 internal + equal thirds for user/readonly/sync
+      // pools. max=100 risks overcommitting the shared 95-connection cluster
+      // (three indexers + read API); prod ran max=10 for a while, which starved
+      // the USER pool (all indexing reads/writes + the per-table commit_block
+      // stamps, ~193 UPDATEs/s at robinhood's block rate) down to 2 connections —
+      // measured commit_block avg was 47.5ms, almost all connection queue-wait.
+      // max=24 -> 7 conns per pool; cluster headroom verified at 33/95 in use.
+      // NOT part of the buildId (only ordering/contracts/accounts/blocks are
+      // hashed), so changing this is a plain-restart change, no re-index.
+      max: 24,
     },
   },
   ordering: "multichain",
@@ -73,6 +82,10 @@ export default createConfig({
     robinhood: {
       id: CHAIN_IDS.robinhood,
       rpc: process.env.PONDER_RPC_URL_4663,
+      // Robinhood produces ~10 blk/s; the default 1000ms head poll lets realtime
+      // fall behind in coarse 50-block (MAX_QUEUED_BLOCKS) ticks it can't recover
+      // from. Poll 4x more often so each reconcile tick is smaller and tracks tip.
+      pollingInterval: 250,
     },
   },
   blocks: {
@@ -180,6 +193,15 @@ export default createConfig({
       chain: "base",
       startBlock: 41900609,
       interval: BLOCK_INTERVALS.FIVE_MINUTES, // every 5 minutes
+    },
+    // Chainlink USD feeds for Robinhood stock tokens. Starts at the Doppler
+    // deployment block — no prices are stored from before it. (The feeds
+    // themselves were deployed earlier, ~block 97950, so every tick from
+    // startBlock has live feeds; per-feed read failures are still skipped.)
+    RobinhoodStockPriceFeed: {
+      chain: "robinhood",
+      startBlock: robinhood.startBlock,
+      interval: BLOCK_INTERVALS.FIVE_MINUTES_ROBINHOOD,
     },
   },
   contracts: {

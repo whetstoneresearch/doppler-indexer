@@ -49,9 +49,13 @@ export const monadConfig: ChainConfig = {
       RehypeHook: "0x97cad5684fb7cc2bed9a9b5ebfba67138f4f2503" as Address,
       RehypeDopplerHookMigrator: [
         "0xd199e7836e91654c0475a90e0c1d0e402bb84372",
-        "0xaa6b67BB06C5cb2502530d190261a9f3d57A2065"
+        "0xaa6b67BB06C5cb2502530d190261a9f3d57A2065",
+        "0x975f9d1939cf6e4a3c9d99f9d41e6411cf4da23b"
       ] as Address[],
-      RehypeDopplerHookInitializer: "0x34159D65BF89015D0Be068A99E41dE6e399B111B" as Address,
+      RehypeDopplerHookInitializer: [
+        "0x34159D65BF89015D0Be068A99E41dE6e399B111B",
+        "0x9982538f41f2ae29ddb9d3d9307010052984fdbb"
+      ] as Address[],
       DopplerHookMigrator: [
         "0x1e40b0875dda35f41e15cfb475403859b8c860c4",
         "0x65b6737c7a897029afe54dbb61bc4a84b232e0c4"
