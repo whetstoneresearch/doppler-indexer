@@ -67,6 +67,7 @@ function parseArgs(argv) {
     stateFile: join(REPO_ROOT, ".dhook-repair-state.json"),
     databaseUrl: process.env.DATABASE_URL,
     chains: DEFAULT_CHAINS,
+    batchSize: undefined,
   };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -82,6 +83,7 @@ function parseArgs(argv) {
       else if (key === "state-file") args.stateFile = value;
       else if (key === "database-url") args.databaseUrl = value;
       else if (key === "chains") args.chains = value.split(",").map((c) => Number(c.trim()));
+      else if (key === "batch-size") args.batchSize = Number(value);
       else throw new Error(`Unknown argument ${a}`);
     } else throw new Error(`Unknown argument ${a}`);
   }
@@ -100,6 +102,9 @@ Options:
   --eth-price-usd <n>    ETH/USD in Chainlink 8-decimal form (e.g. 183900000000).
                          Required — passed to phase 3 for WETH-quoted pools.
   --chains <list>        Comma-separated chain ids. Defaults to 4663,8453.
+  --batch-size <n>       Rows per write transaction, passed to every phase
+                         (--apply-batch-size for repair/backfill, --batch-size for
+                         recompute). Omitted => each script's own default (500).
   --state-file <path>    Checkpoint file. Defaults to <repo>/.dhook-repair-state.json.
   --database-url <url>   Postgres URL. Defaults to DATABASE_URL.
   --full                 Ignore the checkpoint and run for all blocks.
@@ -203,16 +208,21 @@ async function main() {
       console.log("Full run for this chain (no checkpoint).");
     }
     const applyArgs = args.apply ? ["--apply"] : [];
+    // Batch size flag differs per script: repair/backfill use --apply-batch-size,
+    // recompute uses --batch-size. Omitted entirely when not set, so each script
+    // keeps its own default.
+    const applyBatchArgs = args.batchSize !== undefined ? ["--apply-batch-size", String(args.batchSize)] : [];
+    const batchArgs = args.batchSize !== undefined ? ["--batch-size", String(args.batchSize)] : [];
 
     try {
       runPhase("repair-dhook-seed-double-count.mjs",
-        ["--schema", args.schema, "--chain-id", String(chain), ...afterArgs, ...fromArgs, ...applyArgs]);
+        ["--schema", args.schema, "--chain-id", String(chain), ...afterArgs, ...fromArgs, ...applyBatchArgs, ...applyArgs]);
       runPhase("backfill-negative-reserves.mjs",
         ["--schema", args.schema, "--table", "pool", "--chain-id", String(chain),
-         "--types", "dhook,rehype", "--all", ...afterArgs, ...applyArgs]);
+         "--types", "dhook,rehype", "--all", ...afterArgs, ...applyBatchArgs, ...applyArgs]);
       runPhase("recompute-dhook-dollar-liquidity.mjs",
         ["--schema", args.schema, "--chain-id", String(chain), "--all",
-         "--eth-price-usd", String(args.ethPriceUsd), ...afterArgs, ...applyArgs]);
+         "--eth-price-usd", String(args.ethPriceUsd), ...afterArgs, ...batchArgs, ...applyArgs]);
     } catch (e) {
       console.error(`\nchain ${chain}: a phase failed — checkpoint NOT advanced. ${e.message}`);
       summary.push([chain, "FAILED (checkpoint unchanged)"]);
