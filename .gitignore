@@ -12,4 +12,4 @@ generated
 ponder.config.local.ts
 
 # dhook repair orchestrator checkpoint
-.dhook-repair-state.json
+*dhook-repair-state.json
