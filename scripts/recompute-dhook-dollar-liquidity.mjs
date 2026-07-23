@@ -25,13 +25,26 @@ import process from "node:process";
 
 const WAD = 10n ** 18n;
 
-// Recognised numeraires per chain: address -> { quoteDecimals, quotePriceUSD? }.
-// quotePriceUSD omitted means "supplied via --eth-price-usd" (ETH/WETH).
-// Mirrors src/config/chains/robinhood.ts and getQuoteInfo's classification.
+// Recognised numeraires per chain: address (lowercase) -> { kind, quoteDecimals, quotePriceUSD? }.
+// quotePriceUSD omitted means "supplied via --eth-price-usd" (ETH/WETH); a fixed
+// value pegs a stablecoin (Chainlink 8-decimal form, so 100000000n = $1.00).
+// Mirrors src/config/chains/*.ts and getQuoteInfo's classification. Only pools
+// quoted in a listed numeraire are recomputed; others are skipped as
+// "unrecognised numeraire" (they self-heal on their next swap via the indexer).
+// This offline script intentionally covers only statically-priceable numeraires
+// (WETH + USD stables); dynamically-priced quotes (Zora, creator coins, etc.)
+// are left to the live indexer's getQuoteInfo.
 const NUMERAIRES = {
   4663: {
+    // WETH (priced via --eth-price-usd) and USDG (robinhood's native $1 stable, 6 dec).
     "0x0bd7d308f8e1639fab988df18a8011f41eacad73": { kind: "eth", quoteDecimals: 18 },
     "0x5fc5360d0400a0fd4f2af552add042d716f1d168": { kind: "usd", quoteDecimals: 6, quotePriceUSD: 100000000n },
+  },
+  8453: {
+    // WETH (priced via --eth-price-usd) and USDC ($1). Other Base numeraires
+    // (USDT/EURC/Zora/creator coins) are skipped and self-heal on next swap.
+    "0x4200000000000000000000000000000000000006": { kind: "eth", quoteDecimals: 18 },
+    "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913": { kind: "usd", quoteDecimals: 6, quotePriceUSD: 100000000n },
   },
 };
 
@@ -62,6 +75,10 @@ function parseArgs(argv) {
     databaseUrl: process.env.DATABASE_URL,
     ethPriceUsd: undefined,
     batchSize: 500,
+    pool: undefined,
+    afterBlock: undefined,
+    afterCreated: undefined,
+    rpcUrl: undefined,
   };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -77,6 +94,10 @@ function parseArgs(argv) {
       else if (key === "database-url") args.databaseUrl = value;
       else if (key === "eth-price-usd") args.ethPriceUsd = BigInt(value);
       else if (key === "batch-size") args.batchSize = Number(value);
+      else if (key === "pool") args.pool = value.toLowerCase();
+      else if (key === "after-block") args.afterBlock = BigInt(value);
+      else if (key === "after-created") args.afterCreated = BigInt(value);
+      else if (key === "rpc-url") args.rpcUrl = value;
       else throw new Error(`Unknown argument ${a}`);
     } else throw new Error(`Unknown argument ${a}`);
   }
@@ -98,6 +119,13 @@ Options:
                          for $3000). Required if any pool is WETH-quoted.
   --all                  Recompute every dhook/rehype pool, not just those with
                          dollarLiquidity = 0.
+  --pool <poolId>        Recompute only this pool, regardless of its current
+                         dollarLiquidity (use to refresh a single repaired pool).
+  --after-block <n>      Only pools created at/after this block (pool.created_at is
+                         a block timestamp; resolved via RPC). For re-running as a
+                         staging indexer catches up.
+  --after-created <ts>   Same, but takes a created_at timestamp directly (no RPC).
+  --rpc-url <url>        RPC URL for --after-block. Defaults to PONDER_RPC_URL_<id>.
   --batch-size <n>       Rows per update transaction. Defaults to 500.
   --apply                Write updates. Without this flag, dry-run only.
 `);
@@ -156,6 +184,23 @@ function calculateLiquidity({ assetBalance, quoteBalance, price, quotePriceUSD, 
   return assetValueUsd + quoteValueUsd;
 }
 
+// Resolve a block number to its unix timestamp via a raw JSON-RPC call (avoids a
+// viem dependency in this otherwise DB-only script). Returns a BigInt (seconds).
+async function getBlockTimestamp(rpcUrl, blockNumber) {
+  const res = await fetch(rpcUrl, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      jsonrpc: "2.0", id: 1, method: "eth_getBlockByNumber",
+      params: [`0x${BigInt(blockNumber).toString(16)}`, false],
+    }),
+  });
+  const json = await res.json();
+  if (json.error) throw new Error(`eth_getBlockByNumber failed: ${json.error.message}`);
+  if (!json.result) throw new Error(`Block ${blockNumber} not found`);
+  return BigInt(json.result.timestamp);
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   if (args.help) { printHelp(); return; }
@@ -176,6 +221,7 @@ async function main() {
     isToken0: pick(names, ["is_token0", "isToken0"]),
     quoteToken: pick(names, ["quote_token", "quoteToken"]),
     dollarLiquidity: pick(names, ["dollar_liquidity", "dollarLiquidity"]),
+    createdAt: pick(names, ["created_at", "createdAt"]),
   };
   const qualified = `${qi(table.table_schema)}.${qi(table.table_name)}`;
   const addrExpr = (c) => `lower(${qi(c)}::text)`;
@@ -184,7 +230,25 @@ async function main() {
     `${qi(col.chainId)}::numeric = ${Number(args.chainId)}`,
     `${qi(col.type)} in ('dhook', 'rehype')`,
   ];
-  if (!args.all) where.push(`${qi(col.dollarLiquidity)}::numeric = 0`);
+  // --pool targets one pool regardless of its current dollarLiquidity (an
+  // over-counted pool is nonzero, so the default `= 0` filter would skip it).
+  if (args.pool) where.push(`${addrExpr(col.address)} = ${ql(args.pool)}`);
+  else if (!args.all) where.push(`${qi(col.dollarLiquidity)}::numeric = 0`);
+
+  // Restrict to pools created at/after a cutoff, for re-running as a staging
+  // indexer catches up. --after-created takes a created_at (block timestamp)
+  // directly; --after-block resolves the block to its timestamp via RPC.
+  let afterCreatedAt = args.afterCreated;
+  if (afterCreatedAt === undefined && args.afterBlock !== undefined) {
+    const rpcUrl = args.rpcUrl ?? process.env[`PONDER_RPC_URL_${args.chainId}`];
+    if (!rpcUrl) throw new Error(`--after-block needs --rpc-url or PONDER_RPC_URL_${args.chainId}`);
+    afterCreatedAt = await getBlockTimestamp(rpcUrl, args.afterBlock);
+    console.log(`Resolved block ${args.afterBlock} -> created_at ${afterCreatedAt}`);
+  }
+  if (afterCreatedAt !== undefined) {
+    console.log(`Filtering to pools with created_at >= ${afterCreatedAt}`);
+    where.push(`${qi(col.createdAt)}::numeric >= ${afterCreatedAt}`);
+  }
 
   const rows = psqlJson(args.databaseUrl,
     `select coalesce(json_agg(q), '[]'::json) from (

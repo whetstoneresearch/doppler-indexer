@@ -22,6 +22,14 @@ const CHAINS = {
 const DEFAULT_CHAIN_ID = 8453;
 const DEFAULT_STATE_VIEW = "0xa3c0c9b65bad0b08107aa264b0f3db444b867a71";
 
+// Per-chain V4 StateView addresses (mirror src/config/chains/*.ts). Used to
+// default --state-view from --chain-id so cross-chain runs don't silently call
+// the wrong contract (getSlot0 returns "0x"). Falls back to Base's default.
+const STATE_VIEW_BY_CHAIN = {
+  8453: DEFAULT_STATE_VIEW, // Base
+  4663: "0xf3334192d15450cdd385c8b70e03f9a6bd9e673b", // robinhood
+};
+
 const STATE_VIEW_ABI = [
   {
     type: "function",
@@ -157,9 +165,12 @@ function parseArgs(argv) {
     retries: 2,
     verify: true,
     verbose: false,
-    stateView: DEFAULT_STATE_VIEW,
+    stateView: undefined,
     limit: undefined,
     types: undefined,
+    pool: undefined,
+    afterBlock: undefined,
+    afterCreated: undefined,
     schema: undefined,
     table: undefined,
     databaseUrl: process.env.DATABASE_URL,
@@ -200,6 +211,9 @@ function parseArgs(argv) {
       else if (key === "table") args.table = value;
       else if (key === "types") args.types = value.split(",").map((t) => t.trim());
       else if (key === "limit") args.limit = Number(value);
+      else if (key === "pool") args.pool = normalizeHex(value);
+      else if (key === "after-block") args.afterBlock = BigInt(value);
+      else if (key === "after-created") args.afterCreated = BigInt(value);
       else throw new Error(`Unknown argument ${arg}`);
     } else {
       throw new Error(`Unknown argument ${arg}`);
@@ -209,6 +223,11 @@ function parseArgs(argv) {
   if (!args.rpcUrl) {
     args.rpcUrl =
       process.env[`PONDER_RPC_URL_${args.chainId}`] ?? process.env.BASE_RPC;
+  }
+
+  // Default the StateView from the chain if not passed explicitly.
+  if (!args.stateView) {
+    args.stateView = STATE_VIEW_BY_CHAIN[args.chainId] ?? DEFAULT_STATE_VIEW;
   }
 
   return args;
@@ -227,11 +246,18 @@ Options:
   --table <table>          Pool table name. Auto-detected when possible.
   --rpc-url <url>          RPC URL. Defaults to PONDER_RPC_URL_{chainId}.
   --chain-id <id>          Chain ID. Defaults to 8453 (Base).
-  --state-view <address>   V4 StateView address. Defaults to Base StateView.
+  --state-view <address>   V4 StateView address. Defaults per --chain-id
+                           (Base and robinhood known; else Base's StateView).
   --block-number <n>       Pin eth_calls to this block. Defaults to latest.
   --types <list>           Comma-separated pool types to fix (dhook,rehype,v3,v4).
                            Defaults to all types with negative reserves.
   --all                    Backfill all matching pools, not just negative reserves.
+  --pool <address>         Backfill only this pool, regardless of reserve sign
+                           (use to refresh a single repaired pool).
+  --after-block <n>        Only pools created at/after this block (pool.created_at
+                           is a block timestamp; resolved via RPC). For re-running
+                           as a staging indexer catches up.
+  --after-created <ts>     Same, but takes a created_at timestamp directly (no RPC).
   --include-zeroed         Also select dhook/rehype/v4 pools with both reserves = 0
                            (previously clamped). Use to re-repair from position ledger.
   --limit <n>              Limit selected rows.
@@ -395,13 +421,26 @@ function buildColumnMap(columns) {
     quoteToken: pickColumn(columns, ["quote_token", "quoteToken"], false),
     poolKey: pickColumn(columns, ["pool_key", "poolKey"], false),
     initializer: pickColumn(columns, ["initializer"], false),
+    createdAt: pickColumn(columns, ["created_at", "createdAt"], false),
     lastSwapTimestamp: pickColumn(columns, ["last_swap_timestamp", "lastSwapTimestamp"], false),
   };
 }
 
 // ── Pool loading ──
 
-function loadPools({ databaseUrl, table, columns, chainId, types, all, includeZeroed, limit }) {
+// Address equality that works whether the column is bytea or 0x-text, mirroring
+// selectHexAddress's normalization. `value` is a normalizeHex'd 0x-lower string.
+function addressEqFilter(column, value) {
+  if (column.type === "bytea") {
+    return `${qi(column.name)} = decode(${ql(hexNoPrefix(value))}, 'hex')`;
+  }
+  return `case
+      when lower(${qi(column.name)}::text) like '0x%' then lower(${qi(column.name)}::text)
+      else concat('0x', lower(${qi(column.name)}::text))
+    end = ${ql(value)}`;
+}
+
+function loadPools({ databaseUrl, table, columns, chainId, types, all, includeZeroed, limit, pool, afterCreatedAt }) {
   const qualifiedTable = `${qi(table.schema)}.${qi(table.table)}`;
   const filters = [`${qi(columns.chainId.name)}::numeric = ${Number(chainId)}`];
 
@@ -410,7 +449,17 @@ function loadPools({ databaseUrl, table, columns, chainId, types, all, includeZe
     `lower(${qi(columns.type.name)}::text) in (${poolTypes.map((t) => ql(t)).join(", ")})`,
   );
 
-  if (!all) {
+  // --after-block resolves to a created_at timestamp cutoff (only newer pools).
+  if (afterCreatedAt !== undefined) {
+    if (!columns.createdAt) throw new Error("pool table has no created_at column; --after-block unsupported");
+    filters.push(`${qi(columns.createdAt.name)}::numeric >= ${afterCreatedAt}`);
+  }
+
+  // --pool targets one pool regardless of reserve sign (an over-counted pool has
+  // positive reserves, so the negative-reserves filter would otherwise skip it).
+  if (pool) {
+    filters.push(addressEqFilter(columns.address, pool));
+  } else if (!all) {
     const r0 = qi(columns.reserves0.name);
     const r1 = qi(columns.reserves1.name);
     const negative = `(${r0}::numeric < 0 or ${r1}::numeric < 0)`;
@@ -944,6 +993,22 @@ function verifyUpdates({ databaseUrl, table, columns, updates }) {
 
 // ── Main ──
 
+// Resolve a block number to its unix timestamp via a raw JSON-RPC call.
+async function getBlockTimestamp(rpcUrl, blockNumber) {
+  const res = await fetch(rpcUrl, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      jsonrpc: "2.0", id: 1, method: "eth_getBlockByNumber",
+      params: [`0x${BigInt(blockNumber).toString(16)}`, false],
+    }),
+  });
+  const json = await res.json();
+  if (json.error) throw new Error(`eth_getBlockByNumber failed: ${json.error.message}`);
+  if (!json.result) throw new Error(`Block ${blockNumber} not found`);
+  return BigInt(json.result.timestamp);
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   if (args.help) {
@@ -956,6 +1021,19 @@ async function main() {
 
   const table = resolvePoolTable(args.databaseUrl, args.schema, args.table);
   const columns = buildColumnMap(table.columns);
+
+  // --after-block: pool.created_at is a block timestamp, so resolve the block to
+  // its timestamp and select only pools created at/after it (for re-running as a
+  // staging indexer catches up).
+  let afterCreatedAt = args.afterCreated;
+  if (afterCreatedAt === undefined && args.afterBlock !== undefined) {
+    afterCreatedAt = await getBlockTimestamp(args.rpcUrl, args.afterBlock);
+    console.log(`Resolved block ${args.afterBlock} -> created_at ${afterCreatedAt}`);
+  }
+  if (afterCreatedAt !== undefined) {
+    console.log(`Filtering to pools with created_at >= ${afterCreatedAt}`);
+  }
+
   const pools = loadPools({
     databaseUrl: args.databaseUrl,
     table,
@@ -965,6 +1043,8 @@ async function main() {
     all: args.all,
     includeZeroed: args.includeZeroed,
     limit: args.limit,
+    pool: args.pool,
+    afterCreatedAt,
   });
 
   const viemChain = CHAINS[args.chainId] ?? base;
@@ -981,6 +1061,7 @@ async function main() {
 
   console.log(`Mode: ${args.apply ? "apply" : "dry-run"}`);
   console.log(`Table: ${table.schema}.${table.table}`);
+  console.log(`Chain: ${args.chainId} | StateView: ${args.stateView}`);
   console.log(`Block: ${blockNumber}`);
   console.log(`Pools: ${pools.length} total (dhook/rehype=${dhookPools.length}, v3=${v3Pools.length}, v4=${v4Pools.length})`);
 
