@@ -34,9 +34,9 @@ export const baseConfig: ChainConfig = {
       poolManager: "0x498581ff718922c3f8e6a244956af099b2652b2b" as Address,
       dopplerDeployer: "0x014E1c0bd34f3B10546E554CB33B3293fECDD056" as Address,
       v4Initializer: [
-        "0x8AF018e28c273826e6b2d5a99e81c8fB63729b07", 
-        "0x77EbfBAE15AD200758E9E2E61597c0B07d731254", 
-        "0x82Ac010C67f70BACf7655cd8948a4AD92A173CAC", 
+        "0x8AF018e28c273826e6b2d5a99e81c8fB63729b07",
+        "0x77EbfBAE15AD200758E9E2E61597c0B07d731254",
+        "0x82Ac010C67f70BACf7655cd8948a4AD92A173CAC",
         "0xED344444633B965cd148F8fFCE3765938A179094",
         "0x53b4c21a6Cb61D64F636ABBfa6E8E90E6558e8ad"
       ] as Address[],
@@ -56,11 +56,11 @@ export const baseConfig: ChainConfig = {
       v4MulticurveInitializerHook:
         "0x892d3c2b4abeaaf67d52a7b29783e2161b7cad40" as Address,
       v4ScheduledMulticurveInitializer: [
-        "0xa36715da46ddf4a769f3290f49af58bf8132ed8e" 
+        "0xa36715da46ddf4a769f3290f49af58bf8132ed8e"
       ] as Address[],
       v4ScheduledMulticurveInitializerHook:
         "0x3e342a06f9592459d75721d6956b570f02ef2dc0" as Address,
-      DecayMulticurveInitializer: 
+      DecayMulticurveInitializer:
         "0xd59ce43e53d69f190e15d9822fb4540dccc91178" as Address,
       DecayMulticurveInitializerHook:
         "0xbb7784a4d481184283ed89619a3e3ed143e1adc0" as Address,
@@ -76,12 +76,14 @@ export const baseConfig: ChainConfig = {
         "0xc3c9f4cfd1dc0a7837cc4b202b3455b4156a8005",
         "0x82d5e22911fbbcb8d3e45812d74ee6203c5824e0",
         "0xd199e7836e91654c0475a90e0c1d0e402bb84372",
-        "0xea95DfdF69B90c65C827070852F7039D6aF6Dd7b"
+        "0xea95DfdF69B90c65C827070852F7039D6aF6Dd7b",
+        "0x975f9d1939cf6e4a3c9d99f9d41e6411cf4da23b"
       ] as Address[],
       RehypeDopplerHookInitializer: [
         "0xC918c6Edb8e0B62B5B73B3F812249a986ba8066d",
         "0x6ab5ae3191c914de8437431091776fc90f314be4",
-        "0xBF4195ab0B03e1eB3345dd1e83BeD7650b1ed123"
+        "0xBF4195ab0B03e1eB3345dd1e83BeD7650b1ed123",
+        "0x9982538f41f2ae29ddb9d3d9307010052984fdbb"
       ] as Address[],
       DopplerHookMigrator: [
         "0x1e40b0875dda35f41e15cfb475403859b8c860c4",
