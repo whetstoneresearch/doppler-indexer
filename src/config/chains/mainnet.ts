@@ -62,12 +62,14 @@ export const mainnetConfig: ChainConfig = {
         "0xc3c9f4cfd1dc0a7837cc4b202b3455b4156a8005",
         "0x82d5e22911fbbcb8d3e45812d74ee6203c5824e0",
         "0xd199e7836e91654c0475a90e0c1d0e402bb84372",
-        "0xea95DfdF69B90c65C827070852F7039D6aF6Dd7b"
+        "0xea95DfdF69B90c65C827070852F7039D6aF6Dd7b",
+        "0x975f9d1939cf6e4a3c9d99f9d41e6411cf4da23b"
       ] as Address[],
       RehypeDopplerHookInitializer: [
         "0x6ab5ae3191c914de8437431091776fc90f314be4",
         "0xC918c6Edb8e0B62B5B73B3F812249a986ba8066d",
-        "0xBF4195ab0B03e1eB3345dd1e83BeD7650b1ed123"
+        "0xBF4195ab0B03e1eB3345dd1e83BeD7650b1ed123",
+        "0x9982538f41f2ae29ddb9d3d9307010052984fdbb"
       ] as Address[],
       DopplerHookMigrator: [
         "0x1e40b0875dda35f41e15cfb475403859b8c860c4",

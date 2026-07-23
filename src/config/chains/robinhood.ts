@@ -64,11 +64,15 @@ export const robinhoodConfig: ChainConfig = {
         "0x4e3468951d49f2eea976ed0d6e75ffcb44a9a544" as Address,
       RehypeHook: COMMON_ADDRESSES.ZERO_ADDRESS,
       // RehypeDopplerHookMigrator
-      RehypeDopplerHookMigrator:
-        "0x1a0f286bb7f5967ae89c13d3425d5ce04c34cd27" as Address,
+      RehypeDopplerHookMigrator: [
+        "0x1a0f286bb7f5967ae89c13d3425d5ce04c34cd27",
+        "0x975f9d1939cf6e4a3c9d99f9d41e6411cf4da23b"
+      ] as Address[],
       // RehypeDopplerHookInitializer
-      RehypeDopplerHookInitializer:
-        "0x6f02324d20cc679d0e585290caa6b16bacbc0f77" as Address,
+      RehypeDopplerHookInitializer: [
+        "0x6f02324d20cc679d0e585290caa6b16bacbc0f77",
+        "0x9982538f41f2ae29ddb9d3d9307010052984fdbb"
+      ] as Address[],
       // DopplerHookMigrator
       DopplerHookMigrator:
         "0x7bf319d8e969f7596b1bc171da9ce322f67ae0c4" as Address,
