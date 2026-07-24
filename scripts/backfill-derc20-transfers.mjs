@@ -52,7 +52,7 @@ function parseArgs(argv) {
     apply: false,
     chainId: 8453,
     factoryId: undefined,
-    schema: "prod_1",
+    schema: undefined,
     pondersyncSchema: "ponder_sync",
     databaseUrl: process.env.DATABASE_URL,
     rpcUrl: undefined,
@@ -92,6 +92,10 @@ function parseArgs(argv) {
       else throw new Error(`Unknown argument ${a}`);
     } else throw new Error(`Unknown argument ${a}`);
   }
+  if (!args.help && !args.schema)
+    throw new Error(
+      "Missing required --schema (the prod schema this deployment writes, e.g. prod_2)",
+    );
   args.factoryId ??= FACTORY_ID_BY_CHAIN[args.chainId];
   if (!args.help && args.factoryId === undefined)
     throw new Error(`No --factory-id and no default for chain ${args.chainId}`);
@@ -121,7 +125,9 @@ Options:
   --chain-id <id>            EVM chain id. Default 8453.
   --factory-id <n>           Source factory id. Default per-chain
                              (8453 -> 640791, 4663 -> 827059).
-  --schema <name>            Materialized indexer schema. Default prod_1.
+  --schema <name>            Materialized indexer schema. REQUIRED
+                             (e.g. prod_2); no default to avoid writing
+                             the wrong deployment.
   --ponder-sync-schema <s>   Sync schema name. Default ponder_sync.
   --rpc-url <url>            RPC URL. Default \$BASE_RPC_URL etc; falls back
                              to a public endpoint where one is known.
