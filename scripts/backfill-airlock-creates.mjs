@@ -92,7 +92,7 @@ function parseArgs(argv) {
     batchSize: 1000,
     rpcConcurrency: 4,
     pondersyncSchema: "ponder_sync",
-    schema: "prod_1",
+    schema: undefined,
   };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -155,7 +155,8 @@ Options:
   --rpc-concurrency <n>      Window fetches in flight. Default 4.
   --ponder-sync-schema <s>   Sync schema name. Default ponder_sync.
   --schema <name>            Materialized schema, used to detect gaps when
-                             --start-block is omitted. Default prod_1.
+                             --start-block is omitted. Required in that case
+                             (e.g. prod_2); unused with --start-block.
   --apply                    Actually write. Default is dry-run.
 
 Default --start-block:
@@ -405,6 +406,10 @@ async function main() {
   let startBlock = args.startBlock;
   let startReason = "explicit --start-block";
   if (startBlock === undefined) {
+    if (args.event === "create" && !args.schema)
+      throw new Error(
+        "Missing required --schema (the prod schema this deployment writes, e.g. prod_2); needed for the earliest-gap heuristic when --start-block is omitted",
+      );
     // The earliest-gap heuristic scans <schema>.token for DERC20 rows, which
     // only maps to children of the Create factory.
     const earliestGap =
