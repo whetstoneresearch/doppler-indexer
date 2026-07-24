@@ -14,8 +14,22 @@ const RPC_ENV_BY_CHAIN = {
   1: ["PONDER_RPC_URL_1", "MAINNET_RPC"],
   130: ["PONDER_RPC_URL_130", "UNICHAIN_RPC"],
   143: ["PONDER_RPC_URL_143", "MONAD_RPC"],
+  4663: ["PONDER_RPC_URL_4663", "ROBINHOOD_RPC"],
   8453: ["PONDER_RPC_URL_8453", "BASE_RPC", "BASE_RPC_URL"],
   57073: ["PONDER_RPC_URL_57073", "INK_RPC"],
+};
+
+// Last-resort public endpoints for chains where one exists. Rate-limited
+// (robinhood: aggressive 429s) — prefer a private RPC via the env vars
+// above for large backfills.
+const PUBLIC_RPC_BY_CHAIN = {
+  4663: "https://rpc.mainnet.chain.robinhood.com",
+};
+
+// ponder_sync.factories.id of the airlock Create (DERC20 asset) factory.
+const FACTORY_ID_BY_CHAIN = {
+  8453: 640791,
+  4663: 827059,
 };
 
 function loadDotEnv(path) {
@@ -38,7 +52,7 @@ function parseArgs(argv) {
   const args = {
     apply: false,
     chainId: 8453,
-    factoryId: 640791,
+    factoryId: undefined,
     schema: "prod_1",
     pondersyncSchema: "ponder_sync",
     databaseUrl: process.env.DATABASE_URL,
@@ -75,6 +89,9 @@ function parseArgs(argv) {
       else throw new Error(`Unknown argument ${a}`);
     } else throw new Error(`Unknown argument ${a}`);
   }
+  args.factoryId ??= FACTORY_ID_BY_CHAIN[args.chainId];
+  if (!args.help && args.factoryId === undefined)
+    throw new Error(`No --factory-id and no default for chain ${args.chainId}`);
   return args;
 }
 
@@ -100,10 +117,12 @@ the next token's RPC timestamp fetch overlaps with this token's DB writes.
 
 Options:
   --chain-id <id>            EVM chain id. Default 8453.
-  --factory-id <n>           Source factory id. Default 640791.
+  --factory-id <n>           Source factory id. Default per-chain
+                             (8453 -> 640791, 4663 -> 827059).
   --schema <name>            Materialized indexer schema. Default prod_1.
   --ponder-sync-schema <s>   Sync schema name. Default ponder_sync.
-  --rpc-url <url>            RPC URL. Default \$BASE_RPC_URL.
+  --rpc-url <url>            RPC URL. Default \$BASE_RPC_URL etc; falls back
+                             to a public endpoint where one is known.
   --database-url <url>       Postgres URL. Default \$DATABASE_URL.
   --token-concurrency <n>    Tokens processed in parallel. Default 4.
   --rpc-concurrency <n>      eth_getBlockByNumber calls in flight per
@@ -130,6 +149,12 @@ function resolveRpcUrl(chainId, override) {
   if (override) return override;
   for (const name of RPC_ENV_BY_CHAIN[chainId] ?? []) {
     if (process.env[name]) return process.env[name];
+  }
+  if (PUBLIC_RPC_BY_CHAIN[chainId]) {
+    console.warn(
+      `No RPC env var set for chain ${chainId}; using rate-limited public endpoint ${PUBLIC_RPC_BY_CHAIN[chainId]}.`,
+    );
+    return PUBLIC_RPC_BY_CHAIN[chainId];
   }
   throw new Error(
     `No RPC URL found for chain ${chainId}. Set --rpc-url or one of ${(RPC_ENV_BY_CHAIN[chainId] ?? []).join(", ")}.`,
