@@ -62,6 +62,7 @@ function parseArgs(argv) {
     batchSize: 1000,
     limit: undefined,
     token: undefined,
+    force: false,
     checkpoint: resolve(process.cwd(), "backfill-derc20-transfers.checkpoint.json"),
     saveIntervalMs: 5000,
   };
@@ -70,6 +71,7 @@ function parseArgs(argv) {
     if (a === "--") continue;
     if (a === "--help" || a === "-h") args.help = true;
     else if (a === "--apply") args.apply = true;
+    else if (a === "--force") args.force = true;
     else if (a.startsWith("--")) {
       const key = a.slice(2);
       const v = argv[++i];
@@ -99,6 +101,10 @@ function parseArgs(argv) {
   args.factoryId ??= FACTORY_ID_BY_CHAIN[args.chainId];
   if (!args.help && args.factoryId === undefined)
     throw new Error(`No --factory-id and no default for chain ${args.chainId}`);
+  if (args.force && !args.token)
+    throw new Error(
+      "--force requires --token; refusing to refetch the full range for every candidate",
+    );
   return args;
 }
 
@@ -138,6 +144,11 @@ Options:
   --batch-size <n>           Rows per DB INSERT batch. Default 1000.
   --limit <n>                Process at most N tokens (after filtering).
   --token <0x...>            Process exactly one token (ignores filters).
+  --force                    With --token: refetch the token's full range from
+                             its deploy block even if Transfer rows already
+                             exist (clears its checkpoint entry). Use for gap
+                             repair — inserts are idempotent, so re-covering
+                             existing rows is safe.
   --checkpoint <path>        On-disk checkpoint JSON. Default
                              ./backfill-derc20-transfers.checkpoint.json.
                              Tracks per-token covered_to block so a restart
@@ -601,6 +612,23 @@ async function main() {
   // indexer (Airlock Create event was received, subscription was active), so
   // mark it completed and skip — we only need to backfill tokens with ZERO
   // existing Transfer logs.
+  //
+  // Caveat: "has rows" does NOT prove completeness — a token whose factory
+  // child registration was lost mid-life has rows up to the loss and a gap
+  // after it (see the robinhood chain-4663 incident). --force (with --token)
+  // clears the checkpoint entry so the full deploy->head range is refetched;
+  // inserts are idempotent so re-covering existing rows is harmless.
+  if (args.force) {
+    for (const c of candidates) {
+      checkpointState.data.tokens[c.token] = {
+        deploy_block: c.deploy_block,
+        needs_backfill: true,
+        forced: true,
+      };
+    }
+    saveCheckpointNow();
+    console.log(`--force: reset checkpoint for ${candidates.length} token(s).`);
+  }
   const unseeded = args.token
     ? candidates.filter((c) => !checkpoint.tokens[c.token])
     : candidates.filter((c) => !checkpoint.tokens[c.token]);

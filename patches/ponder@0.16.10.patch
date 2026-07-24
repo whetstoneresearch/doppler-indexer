@@ -789,6 +789,61 @@ index 57a7d888db682479941b53e941f03c96fe910917..4e0704649aeb28a12bcbe6e24cce8ecb
                  });
                  indexingCache.clear();
                  common.logger.info({
+diff --git a/dist/esm/runtime/realtime.js b/dist/esm/runtime/realtime.js
+index 4e16042f0138f6c2839ba612e1f60e2060676fe0..60c4a559ed737cf0d85878dfd11e92d8e62da8fa 100644
+--- a/dist/esm/runtime/realtime.js
++++ b/dist/esm/runtime/realtime.js
+@@ -558,6 +558,50 @@ export async function handleRealtimeSyncEvent(event, params) {
+             params.common.metrics.ponder_sync_block.set({ chain: params.chain.name }, hexToNumber(params.syncProgress.current.number));
+             params.common.metrics.ponder_sync_block_timestamp.set({ chain: params.chain.name }, hexToNumber(params.syncProgress.current.timestamp));
+             params.unfinalizedBlocks.push(event);
++            // Persist newly discovered factory children NOW, not at finalize.
++            //
++            // Upstream only writes `factory_addresses` in the "finalize" branch
++            // below, which lags the head by ~2x finalityBlockCount. Any child
++            // discovered inside that window is lost if the process stops before
++            // the next finalize — and because finalize records intervals by
++            // block range, the child's block is later marked covered, so
++            // nothing ever re-discovers it. On restart the child is absent from
++            // the in-memory set, every log it emits stops matching, and the
++            // affected contract silently disappears from all child-filtered
++            // handlers. On a chain that launches contracts continuously this
++            // orphans a handful of contracts on EVERY restart (observed on
++            // robinhood/4663: 6 tokens lost across one afternoon of restarts,
++            // and ~91% of all children missing after weeks of deploys).
++            //
++            // Writing at discovery closes the window. Trade-off: a reorged
++            // block can leave a child row for a contract that no longer
++            // exists. That is harmless — an extra address contributes no logs,
++            // and `getChildAddresses` dedupes — whereas a MISSING child
++            // silently drops real events. Prefer over-inclusion.
++            //
++            // The finalize branch still inserts these same children; the
++            // duplicate rows are deduped on read by `getChildAddresses`.
++            if (params.chain.disableCache !== true) {
++                let hasNewChildAddresses = false;
++                for (const addresses of event.childAddresses.values()) {
++                    if (addresses.size > 0) {
++                        hasNewChildAddresses = true;
++                        break;
++                    }
++                }
++                if (hasNewChildAddresses) {
++                    const blockNumber = hexToNumber(event.block.number);
++                    const syncStore = createSyncStore({
++                        common: params.common,
++                        qb: params.database.syncQB,
++                    });
++                    await promiseAllSettledWithThrow(Array.from(event.childAddresses.entries()).map(([factory, addresses]) => syncStore.insertChildAddresses({
++                        factory,
++                        childAddresses: new Map(Array.from(addresses, (address) => [address, blockNumber])),
++                        chainId: params.chain.id,
++                    })));
++                }
++            }
+             break;
+         }
+         case "finalize": {
 diff --git a/dist/esm/sync-historical/index.js b/dist/esm/sync-historical/index.js
 index 3c0810be57bb1d6cf149485a1f34dd55540fc976..aeadc0821aa472baca4aab2883fe328fcf63ac97 100644
 --- a/dist/esm/sync-historical/index.js
