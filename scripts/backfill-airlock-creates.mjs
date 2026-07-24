@@ -6,13 +6,42 @@ import { resolve } from "node:path";
 import process from "node:process";
 import { createPublicClient, http } from "viem";
 
-const CREATE_SELECTOR =
-  "0x68ff1cfcdcf76864161555fc0de1878d8f83ec6949bf351df74d8a4a1a2679ab";
+// Airlock events that register ponder factory children. `child` describes
+// where the child address lives in the log (must match the ponder factory
+// config's childAddressLocation for the target factory row).
+const EVENTS = {
+  create: {
+    // Create(address asset, address indexed numeraire, ...)
+    selector:
+      "0x68ff1cfcdcf76864161555fc0de1878d8f83ec6949bf351df74d8a4a1a2679ab",
+    child: { kind: "data", offset: 0 },
+  },
+  migrate: {
+    // Migrate(address indexed asset, address indexed pool)
+    selector:
+      "0x2a05bb717043f3a794e94382bf63f2e275ecafc41be9b63c34f16d58da9822ca",
+    child: { kind: "topic", index: 2 },
+  },
+};
 
 const DEFAULTS = {
   8453: {
-    airlock: "0x660eaaedebc968f8f3694354fa8ec0b4c5ba8d12",
-    factoryId: 640791,
+    create: {
+      airlock: "0x660eaaedebc968f8f3694354fa8ec0b4c5ba8d12",
+      factoryId: 640791,
+    },
+  },
+  4663: {
+    create: {
+      airlock: "0xeb7c034704ef8dcd2d32324c1545f62fb4ad0862",
+      factoryId: 827059,
+    },
+    migrate: {
+      airlock: "0xeb7c034704ef8dcd2d32324c1545f62fb4ad0862",
+      // No default factoryId: look it up in ponder_sync.intervals /
+      // ponder_sync.factories (fragment factory_log_4663_<airlock>_<Migrate
+      // selector>_topic2_...) and pass --factory-id.
+    },
   },
 };
 
@@ -20,8 +49,16 @@ const RPC_ENV_BY_CHAIN = {
   1: ["PONDER_RPC_URL_1", "MAINNET_RPC"],
   130: ["PONDER_RPC_URL_130", "UNICHAIN_RPC"],
   143: ["PONDER_RPC_URL_143", "MONAD_RPC"],
+  4663: ["PONDER_RPC_URL_4663", "ROBINHOOD_RPC"],
   8453: ["PONDER_RPC_URL_8453", "BASE_RPC", "BASE_RPC_URL"],
   57073: ["PONDER_RPC_URL_57073", "INK_RPC"],
+};
+
+// Last-resort public endpoints for chains where one exists. Rate-limited
+// (robinhood: 10k logs per eth_getLogs, aggressive 429s) — prefer a private
+// RPC via the env vars above for large backfills.
+const PUBLIC_RPC_BY_CHAIN = {
+  4663: "https://rpc.mainnet.chain.robinhood.com",
 };
 
 function loadDotEnv(path) {
@@ -44,6 +81,7 @@ function parseArgs(argv) {
   const args = {
     apply: false,
     chainId: 8453,
+    event: "create",
     databaseUrl: process.env.DATABASE_URL,
     rpcUrl: undefined,
     airlock: undefined,
@@ -69,6 +107,7 @@ function parseArgs(argv) {
       if (key === "database-url") args.databaseUrl = v;
       else if (key === "rpc-url") args.rpcUrl = v;
       else if (key === "chain-id") args.chainId = Number(v);
+      else if (key === "event") args.event = v.toLowerCase();
       else if (key === "airlock") args.airlock = v.toLowerCase();
       else if (key === "factory-id") args.factoryId = Number(v);
       else if (key === "start-block") args.startBlock = BigInt(v);
@@ -88,19 +127,24 @@ function printHelp() {
   console.log(`Usage:
   node scripts/backfill-airlock-creates.mjs [options]
 
-Re-fetches missing Airlock Create logs from RPC and inserts them into
-ponder_sync.factory_addresses and ponder_sync.logs. Does NOT touch
-ponder_sync.intervals.
+Re-fetches missing Airlock factory logs (Create or Migrate) from RPC and
+inserts them into ponder_sync.factory_addresses and ponder_sync.logs. Does
+NOT touch ponder_sync.intervals.
 
 eth_getLogs windows are fetched with --rpc-concurrency in flight; results
 are handed to the DB writer in order so RPC and DB work overlap.
 
 Options:
   --chain-id <id>            EVM chain id. Default 8453.
+  --event <create|migrate>   Which airlock factory event to backfill.
+                             create -> DERC20 children (asset, data word 0),
+                             migrate -> MigrationPool children (pool, topic2).
+                             Default create.
   --airlock <0x...>          Airlock contract. Default per-chain.
-  --factory-id <n>           ponder_sync.factories.id for the DERC20
-                             subscription. Default per-chain.
-  --rpc-url <url>            RPC URL. Default \$BASE_RPC_URL etc.
+  --factory-id <n>           ponder_sync.factories.id for the target factory
+                             subscription. Default per-chain per-event.
+  --rpc-url <url>            RPC URL. Default \$BASE_RPC_URL etc; falls back
+                             to a public endpoint where one is known.
   --database-url <url>       Postgres URL. Default \$DATABASE_URL.
   --start-block <n>          From block (inclusive). Default = 1 + max
                              block_number already in factory_addresses
@@ -141,24 +185,47 @@ function dataAddressAtOffset(data, byteOffset) {
   return `0x${hex.slice(start, end).toLowerCase()}`;
 }
 
+function topicToAddress(topic) {
+  const hex = topic.startsWith("0x") ? topic.slice(2) : topic;
+  return `0x${hex.slice(24).toLowerCase()}`;
+}
+
+function extractChildAddress(log, child) {
+  if (child.kind === "data") return dataAddressAtOffset(log.data, child.offset);
+  const topic = log.topics[child.index];
+  if (!topic)
+    throw new Error(`log ${log.transactionHash} missing topic${child.index}`);
+  return topicToAddress(topic);
+}
+
 function resolveRpcUrl(chainId, override) {
   if (override) return override;
   for (const name of RPC_ENV_BY_CHAIN[chainId] ?? []) {
     if (process.env[name]) return process.env[name];
+  }
+  if (PUBLIC_RPC_BY_CHAIN[chainId]) {
+    console.warn(
+      `No RPC env var set for chain ${chainId}; using rate-limited public endpoint ${PUBLIC_RPC_BY_CHAIN[chainId]}.`,
+    );
+    return PUBLIC_RPC_BY_CHAIN[chainId];
   }
   throw new Error(
     `No RPC URL found for chain ${chainId}. Set --rpc-url or one of ${(RPC_ENV_BY_CHAIN[chainId] ?? []).join(", ")}.`,
   );
 }
 
-function resolveDefaults(chainId, airlockOverride, factoryIdOverride) {
-  const fallback = DEFAULTS[chainId];
+function resolveDefaults(chainId, event, airlockOverride, factoryIdOverride) {
+  const fallback = DEFAULTS[chainId]?.[event];
   const airlock = airlockOverride ?? fallback?.airlock?.toLowerCase();
   const factoryId = factoryIdOverride ?? fallback?.factoryId;
   if (!airlock)
-    throw new Error(`No --airlock and no default for chain ${chainId}`);
+    throw new Error(
+      `No --airlock and no default for chain ${chainId} event ${event}`,
+    );
   if (factoryId === undefined)
-    throw new Error(`No --factory-id and no default for chain ${chainId}`);
+    throw new Error(
+      `No --factory-id and no default for chain ${chainId} event ${event}`,
+    );
   return { airlock, factoryId };
 }
 
@@ -191,7 +258,7 @@ async function* orderedPrefetch(items, fetcher, concurrency) {
   }
 }
 
-async function fetchLogsRange(client, airlock, fromBlock, toBlock, attempts = 4) {
+async function fetchLogsRange(client, airlock, selector, fromBlock, toBlock, attempts = 4) {
   let lastErr;
   for (let attempt = 0; attempt < attempts; attempt++) {
     try {
@@ -200,7 +267,7 @@ async function fetchLogsRange(client, airlock, fromBlock, toBlock, attempts = 4)
         params: [
           {
             address: airlock,
-            topics: [CREATE_SELECTOR],
+            topics: [selector],
             fromBlock: `0x${fromBlock.toString(16)}`,
             toBlock: `0x${toBlock.toString(16)}`,
           },
@@ -316,9 +383,16 @@ async function main() {
   if (args.help) return printHelp();
   if (!args.databaseUrl) throw new Error("Missing DATABASE_URL");
 
+  const event = EVENTS[args.event];
+  if (!event)
+    throw new Error(
+      `Unknown --event ${args.event}; expected one of ${Object.keys(EVENTS).join(", ")}`,
+    );
+
   const rpcUrl = resolveRpcUrl(args.chainId, args.rpcUrl);
   const { airlock, factoryId } = resolveDefaults(
     args.chainId,
+    args.event,
     args.airlock,
     args.factoryId,
   );
@@ -331,13 +405,18 @@ async function main() {
   let startBlock = args.startBlock;
   let startReason = "explicit --start-block";
   if (startBlock === undefined) {
-    const earliestGap = findEarliestMissingBlock(
-      args.databaseUrl,
-      args.pondersyncSchema,
-      args.schema,
-      factoryId,
-      args.chainId,
-    );
+    // The earliest-gap heuristic scans <schema>.token for DERC20 rows, which
+    // only maps to children of the Create factory.
+    const earliestGap =
+      args.event === "create"
+        ? findEarliestMissingBlock(
+            args.databaseUrl,
+            args.pondersyncSchema,
+            args.schema,
+            factoryId,
+            args.chainId,
+          )
+        : 0n;
     if (earliestGap > 0n) {
       startBlock = earliestGap;
       startReason = `earliest gap (DERC20 token in ${args.schema}.token missing from factory ${factoryId})`;
@@ -359,7 +438,7 @@ async function main() {
   }
 
   console.log(
-    `Backfilling Airlock(${airlock}) Create logs on chain ${args.chainId}`,
+    `Backfilling Airlock(${airlock}) ${args.event} logs on chain ${args.chainId}`,
   );
   console.log(`  range: blocks [${startBlock}, ${head}]  (start: ${startReason})`);
   console.log(
@@ -421,7 +500,8 @@ async function main() {
     }
   };
 
-  const fetcher = (w) => fetchLogsRange(client, airlock, w.from, w.to);
+  const fetcher = (w) =>
+    fetchLogsRange(client, airlock, event.selector, w.from, w.to);
 
   for await (const { item: window, result: logs } of orderedPrefetch(
     windows,
@@ -429,7 +509,7 @@ async function main() {
     args.rpcConcurrency,
   )) {
     for (const log of logs) {
-      const asset = dataAddressAtOffset(log.data, 0);
+      const asset = extractChildAddress(log, event.child);
       const blockNumber = BigInt(log.blockNumber);
       const logIndex = Number(log.logIndex);
       factoryBuffer.push({
