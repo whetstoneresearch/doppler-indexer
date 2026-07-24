@@ -726,33 +726,33 @@ function runAggregate(args, quiet = false) {
     args.databaseUrl,
     `
 drop table if exists ${t.balance};
+-- rn is assigned inline. Populating it afterwards via an UPDATE joined on
+-- ctid is unsafe: ctid is not stable across an UPDATE, so rows can be left
+-- with a NULL rn. The batched writers filter on rn BETWEEN lo AND hi, which
+-- silently drops any NULL-rn row from every batch.
 create unlogged table ${t.balance} as
-select token,
-       holder,
-       sum(delta)     as balance,
-       min(first_ts)  as created_at,
-       max(last_ts)   as last_interaction
-from ${t.delta}
-group by token, holder;
-
-alter table ${t.balance} add column rn bigint;
-update ${t.balance} set rn = s.rn
-from (select ctid, row_number() over () as rn from ${t.balance}) s
-where ${t.balance}.ctid = s.ctid;
+select row_number() over () as rn, *
+from (
+  select token,
+         holder,
+         sum(delta)     as balance,
+         min(first_ts)  as created_at,
+         max(last_ts)   as last_interaction
+  from ${t.delta}
+  group by token, holder
+) q;
 create index on ${t.balance} (rn);
 
 drop table if exists ${t.user};
 create unlogged table ${t.user} as
-select holder                as address,
-       min(created_at)       as created_at,
-       max(last_interaction) as last_seen_at
-from ${t.balance}
-group by holder;
-
-alter table ${t.user} add column rn bigint;
-update ${t.user} set rn = s.rn
-from (select ctid, row_number() over () as rn from ${t.user}) s
-where ${t.user}.ctid = s.ctid;
+select row_number() over () as rn, *
+from (
+  select holder                as address,
+         min(created_at)       as created_at,
+         max(last_interaction) as last_seen_at
+  from ${t.balance}
+  group by holder
+) q;
 create index on ${t.user} (rn);
 `,
   );
@@ -882,19 +882,17 @@ function runReconcile(args) {
     `
 drop table if exists ${t.diff};
 create unlogged table ${t.diff} as
-select b.token, b.holder, b.balance, b.created_at, b.last_interaction
-from ${t.balance} b
-left join ${schema}.user_asset ua
-  on ua.chain_id = ${chainId}
- and ua.user_id  = b.holder
- and ua.asset_id = b.token
-where ua.user_id is null
-   or ua.balance is distinct from b.balance;
-
-alter table ${t.diff} add column rn bigint;
-update ${t.diff} set rn = s.rn
-from (select ctid, row_number() over () as rn from ${t.diff}) s
-where ${t.diff}.ctid = s.ctid;
+select row_number() over () as rn, *
+from (
+  select b.token, b.holder, b.balance, b.created_at, b.last_interaction
+  from ${t.balance} b
+  left join ${schema}.user_asset ua
+    on ua.chain_id = ${chainId}
+   and ua.user_id  = b.holder
+   and ua.asset_id = b.token
+  where ua.user_id is null
+     or ua.balance is distinct from b.balance
+) q;
 create index on ${t.diff} (rn);
 `,
   );
@@ -913,6 +911,13 @@ create index on ${t.diff} (rn);
   }
 
   const batch = Number(args.writeBatch);
+  const nullRn = Number(
+    psqlScalar(args.databaseUrl, `select count(*) from ${t.diff} where rn is null;`),
+  );
+  if (nullRn > 0)
+    throw new Error(
+      `${t.diff} has ${nullRn} rows with a NULL rn; the batched writer would skip them silently`,
+    );
   const maxRn = Number(
     psqlScalar(args.databaseUrl, `select coalesce(max(rn), 0) from ${t.diff};`),
   );
