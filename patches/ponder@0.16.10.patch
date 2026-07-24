@@ -57,7 +57,7 @@ index cd8df0b2352161ca01104b4b3e4882fe6ff25a03..6cc76d99b4219ce890b085121db9ba38
                      }
                  }
 diff --git a/dist/esm/database/actions.js b/dist/esm/database/actions.js
-index 058794bde30e72c2a61ee1fe1af61d8d4cdb74fa..01d272e5f1f71c32f3ec3855e7c3475c3728c5d7 100644
+index 8ecc13cbea6d85ad9b6e8f4340d6874f287f4ef6..d3073e9db127a9582217d92a13e57301079b1592 100644
 --- a/dist/esm/database/actions.js
 +++ b/dist/esm/database/actions.js
 @@ -6,13 +6,95 @@ import { and, eq, getTableColumns, getTableName, getViewName, lte, sql, } from "
@@ -189,7 +189,7 @@ index 058794bde30e72c2a61ee1fe1af61d8d4cdb74fa..01d272e5f1f71c32f3ec3855e7c3475c
      await qb.transaction(async (tx) => {
          const schema = namespaceBuild.schema;
          const procedure = getLiveQueryProcedureName();
-@@ -147,6 +242,13 @@ export const createViews = async (qb, { tables, views, namespaceBuild, }, contex
+@@ -121,6 +216,13 @@ export const createViews = async (qb, { tables, views, namespaceBuild, }, contex
          await tx.wrap((tx) => tx.execute(`DROP VIEW IF EXISTS "${namespaceBuild.viewsSchema}"."${PONDER_CHECKPOINT_TABLE_NAME}"`));
          await tx.wrap((tx) => tx.execute(`CREATE VIEW "${namespaceBuild.viewsSchema}"."${PONDER_META_TABLE_NAME}" AS SELECT * FROM "${namespaceBuild.schema}"."${PONDER_META_TABLE_NAME}"`));
          await tx.wrap((tx) => tx.execute(`CREATE VIEW "${namespaceBuild.viewsSchema}"."${PONDER_CHECKPOINT_TABLE_NAME}" AS SELECT * FROM "${namespaceBuild.schema}"."${PONDER_CHECKPOINT_TABLE_NAME}"`));
@@ -200,9 +200,9 @@ index 058794bde30e72c2a61ee1fe1af61d8d4cdb74fa..01d272e5f1f71c32f3ec3855e7c3475c
 +            await tx.wrap((tx) => tx.execute(`DROP TRIGGER IF EXISTS "${trigger}" ON "${namespaceBuild.schema}"."${PONDER_CHECKPOINT_TABLE_NAME}";`));
 +            return;
 +        }
-         const notifyProcedure = getLiveQueryNotifyProcedureName();
          const channel = getLiveQueryChannelName(namespaceBuild.viewsSchema);
-         await tx.wrap((tx) => tx.execute(`
+         await tx.wrap((tx) => tx.execute(getLiveQueryNotifyProcedureSql({
+             schema: namespaceBuild.viewsSchema,
 diff --git a/dist/esm/database/queryBuilder.js b/dist/esm/database/queryBuilder.js
 index dddf085491df24a37bb1da1dcb43f76c31d0e0bb..8fefde11e9766cb645853733360bd582dba0f56c 100644
 --- a/dist/esm/database/queryBuilder.js
@@ -274,10 +274,10 @@ index 62aeb11d5bfe0ea14648e54f9e3ccdce760975a9..9c51a1936f14ff4bc6789420c54710ad
      constructor(message) {
          super(message);
 diff --git a/dist/esm/rpc/actions.js b/dist/esm/rpc/actions.js
-index e90972393682a82c1e890a43fd79e5a283d5ea10..92346b38f6182014a5d2dc602d987cbbf287ad3a 100644
+index ae284fa3d3ba39b259175a4e9869a5ea6d4da4a2..40e6d1a6957fd6940407648fb990ec3f46ad704a 100644
 --- a/dist/esm/rpc/actions.js
 +++ b/dist/esm/rpc/actions.js
-@@ -985,4 +985,9 @@ function requestText(request) {
+@@ -984,4 +984,9 @@ function requestText(request) {
          params: request.params,
      }, null, 2)}`;
  }
@@ -302,7 +302,7 @@ index 3fe7dcd13bb1bf01149e157068ee1043b30d54c7..a82c4c583d3601be27ed48f9db9dd1fd
      return {
          async request(params) {
 diff --git a/dist/esm/rpc/index.js b/dist/esm/rpc/index.js
-index 8b37dc75bc572b1a1ac33b5c0e4522dad8a480f2..462fc8b466b1dafcdf62d7bb40f026d7de2f2605 100644
+index e30a2950150df8adc20d70c92f0f0ef72b8fcade..add774568e3b94944a9b008141f5b64547d07060 100644
 --- a/dist/esm/rpc/index.js
 +++ b/dist/esm/rpc/index.js
 @@ -75,7 +75,7 @@ export const createRpc = ({ common, chain, concurrency = 25, }) => {
@@ -351,10 +351,10 @@ index 8b37dc75bc572b1a1ac33b5c0e4522dad8a480f2..462fc8b466b1dafcdf62d7bb40f026d7
                  hostname: "custom_transport",
              },
 diff --git a/dist/esm/runtime/multichain.js b/dist/esm/runtime/multichain.js
-index c5efbc3bf913959800f5e62c9bf98fdc76a3ba37..5bef0b7abb89968d74258223c0379816a9717b21 100644
+index 1cafddb08401b05bf3e0d2294dd722c96ba106af..385a46ce8aa53ba7987ed808c560aa5931be537e 100644
 --- a/dist/esm/runtime/multichain.js
 +++ b/dist/esm/runtime/multichain.js
-@@ -307,15 +307,13 @@ export async function runMultichain({ common, preBuild, namespaceBuild, schemaBu
+@@ -306,15 +306,13 @@ export async function runMultichain({ common, preBuild, namespaceBuild, schemaBu
      const tables = Object.values(schemaBuild.schema).filter(isTable);
      const views = Object.values(schemaBuild.schema).filter(isView);
      let endClock = startClock();
@@ -377,7 +377,7 @@ index c5efbc3bf913959800f5e62c9bf98fdc76a3ba37..5bef0b7abb89968d74258223c0379816
      await createTriggers(database.adminQB, { tables });
      await createLiveQueryTriggers(database.adminQB, { namespaceBuild, tables });
      common.logger.debug({
-@@ -323,6 +321,35 @@ export async function runMultichain({ common, preBuild, namespaceBuild, schemaBu
+@@ -322,6 +320,35 @@ export async function runMultichain({ common, preBuild, namespaceBuild, schemaBu
          count: tables.length,
          duration: endClock(),
      });
@@ -414,10 +414,10 @@ index c5efbc3bf913959800f5e62c9bf98fdc76a3ba37..5bef0b7abb89968d74258223c0379816
          const endClock = startClock();
          await createViews(database.adminQB, { tables, views, namespaceBuild });
 diff --git a/dist/esm/runtime/omnichain.js b/dist/esm/runtime/omnichain.js
-index ff59bf37e048955f06311123a89af83d401ef3a0..4e50de4d8dee15ed4a2c0722cb427cd74259153a 100644
+index 57a7d888db682479941b53e941f03c96fe910917..4d870642029c85976c5ba56a260eb04a1d18fc69 100644
 --- a/dist/esm/runtime/omnichain.js
 +++ b/dist/esm/runtime/omnichain.js
-@@ -314,15 +314,13 @@ export async function runOmnichain({ common, preBuild, namespaceBuild, schemaBui
+@@ -313,15 +313,13 @@ export async function runOmnichain({ common, preBuild, namespaceBuild, schemaBui
      const tables = Object.values(schemaBuild.schema).filter(isTable);
      const views = Object.values(schemaBuild.schema).filter(isView);
      let endClock = startClock();
@@ -440,7 +440,7 @@ index ff59bf37e048955f06311123a89af83d401ef3a0..4e50de4d8dee15ed4a2c0722cb427cd7
      await createTriggers(database.adminQB, { tables });
      await createLiveQueryTriggers(database.adminQB, { namespaceBuild, tables });
      common.logger.debug({
-@@ -330,6 +328,35 @@ export async function runOmnichain({ common, preBuild, namespaceBuild, schemaBui
+@@ -329,6 +327,35 @@ export async function runOmnichain({ common, preBuild, namespaceBuild, schemaBui
          count: tables.length,
          duration: endClock(),
      });

@@ -5,9 +5,9 @@ settings:
   excludeLinksFromLockfile: false
 
 patchedDependencies:
-  ponder@0.16.3:
-    hash: 54580658d53abdde0c8b0020cfdc46f671f1c0c91ee91385de3eb5c451f3b7ab
-    path: patches/ponder@0.16.3.patch
+  ponder@0.16.10:
+    hash: 5540ef2f89c043e70dffde58bb52f1f9c4105160129a195a12f70d6290fd5548
+    path: patches/ponder@0.16.10.patch
 
 importers:
 
@@ -23,8 +23,8 @@ importers:
         specifier: ^4.3.2
         version: 4.3.2
       ponder:
-        specifier: 0.16.3
-        version: 0.16.3(patch_hash=54580658d53abdde0c8b0020cfdc46f671f1c0c91ee91385de3eb5c451f3b7ab)(@opentelemetry/api@1.9.0)(@types/node@20.19.33)(hono@4.11.9)(typescript@5.9.3)(viem@2.30.1(typescript@5.9.3))
+        specifier: 0.16.10
+        version: 0.16.10(patch_hash=5540ef2f89c043e70dffde58bb52f1f9c4105160129a195a12f70d6290fd5548)(@opentelemetry/api@1.9.0)(@types/node@20.19.33)(hono@4.11.9)(typescript@5.9.3)(viem@2.30.1(typescript@5.9.3))
       viem:
         specifier: 2.30.1
         version: 2.30.1(typescript@5.9.3)
@@ -695,8 +695,8 @@ packages:
   '@polka/url@1.0.0-next.29':
     resolution: {integrity: sha512-wwQAWhWSuHaag8c4q/KN/vCoeOJYshAIvMQwD4GpSb3OiZklFfvAgmj0VCBBImRpuF/aFgIRzllXlVX93Jevww==}
 
-  '@ponder/utils@0.2.17':
-    resolution: {integrity: sha512-ins3XXzm+2jMGa0aTc1N10JG0Sau9Vvk71llOatkEOkncMne9m/mMYxJsV6WfRaZGlo4FB8OoRM6DVPHZlRGHA==}
+  '@ponder/utils@0.2.18':
+    resolution: {integrity: sha512-pWacQuohfKlKO440zC39C1l6AH+Vx18mca0cPkxM0YnrB70px5hEwLKrc3fU4DMu72j4pljy/Mvfm95FBouYjw==}
     peerDependencies:
       typescript: '>=5.0.4'
       viem: '>=2'
@@ -2198,8 +2198,8 @@ packages:
     resolution: {integrity: sha512-ip4qdzjkAyDDZklUaZkcRFb2iA118H9SgRh8yzTkSQK8HilsOJF7rSY8HoW5+I0M46AZgX/pxbprf2vvzQCE0Q==}
     hasBin: true
 
-  ponder@0.16.3:
-    resolution: {integrity: sha512-QwAg5eFUujWR87ZMeTTKmF17q9IVTew26tpdaTfQrrtJVf/oU8ZN1qu7ZcP2SPtK5oScblJMWQm9zfwst6tJcg==}
+  ponder@0.16.10:
+    resolution: {integrity: sha512-fq71xPU7phJ3z2Is6n1X76leHSWuDCKEk1u/vNQmQrX+BmhtkEdWBhArox+2SdvOTwiU0xfplKFwptdUlymH3g==}
     engines: {node: '>=18.14'}
     hasBin: true
     peerDependencies:
@@ -2520,6 +2520,7 @@ packages:
   tsconfck@3.1.6:
     resolution: {integrity: sha512-ks6Vjr/jEw0P1gmOVwutM3B7fWxoWBL2KRDb1JfqGVawBmO5UsvmWOQFGHBPl5yxYz4eERr19E6L7NMv+Fej4w==}
     engines: {node: ^18 || >=20}
+    deprecated: unmaintained
     hasBin: true
     peerDependencies:
       typescript: ^5.0.0
@@ -3398,7 +3399,7 @@ snapshots:
 
   '@polka/url@1.0.0-next.29': {}
 
-  '@ponder/utils@0.2.17(typescript@5.9.3)(viem@2.30.1(typescript@5.9.3))':
+  '@ponder/utils@0.2.18(typescript@5.9.3)(viem@2.30.1(typescript@5.9.3))':
     dependencies:
       viem: 2.30.1(typescript@5.9.3)
     optionalDependencies:
@@ -4920,7 +4921,7 @@ snapshots:
       sonic-boom: 3.8.1
       thread-stream: 2.7.0
 
-  ponder@0.16.3(patch_hash=54580658d53abdde0c8b0020cfdc46f671f1c0c91ee91385de3eb5c451f3b7ab)(@opentelemetry/api@1.9.0)(@types/node@20.19.33)(hono@4.11.9)(typescript@5.9.3)(viem@2.30.1(typescript@5.9.3)):
+  ponder@0.16.10(patch_hash=5540ef2f89c043e70dffde58bb52f1f9c4105160129a195a12f70d6290fd5548)(@opentelemetry/api@1.9.0)(@types/node@20.19.33)(hono@4.11.9)(typescript@5.9.3)(viem@2.30.1(typescript@5.9.3)):
     dependencies:
       '@babel/code-frame': 7.29.0
       '@commander-js/extra-typings': 12.1.0(commander@12.1.0)
@@ -4929,7 +4930,7 @@ snapshots:
       '@escape.tech/graphql-armor-max-depth': 2.4.2
       '@escape.tech/graphql-armor-max-tokens': 2.5.1
       '@hono/node-server': 1.19.5(hono@4.11.9)
-      '@ponder/utils': 0.2.17(typescript@5.9.3)(viem@2.30.1(typescript@5.9.3))
+      '@ponder/utils': 0.2.18(typescript@5.9.3)(viem@2.30.1(typescript@5.9.3))
       abitype: 0.10.3(typescript@5.9.3)
       ansi-escapes: 7.3.0
       commander: 12.1.0
