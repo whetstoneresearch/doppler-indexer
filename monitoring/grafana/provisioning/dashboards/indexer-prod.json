@@ -1,8 +1,8 @@
 {
-  "title": "Indexer — prod",
+  "title": "Indexer \u2014 prod",
   "uid": "indexer-prod",
   "schemaVersion": 39,
-  "version": 6,
+  "version": 7,
   "refresh": "30s",
   "time": {
     "from": "now-1h",
@@ -228,7 +228,7 @@
       "id": 19,
       "type": "heatmap",
       "title": "/sql/* latency distribution",
-      "description": "Heatmap of request rate per latency bucket. Bright cells near the top (>= the 500000 ms top bucket) are requests overflowing the histogram cap — those are truly stuck/timed-out.",
+      "description": "Heatmap of request rate per latency bucket. Bright cells near the top (>= the 500000 ms top bucket) are requests overflowing the histogram cap \u2014 those are truly stuck/timed-out.",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -395,7 +395,7 @@
       "id": 13,
       "type": "timeseries",
       "title": "Indexing function avg ms (top 10)",
-      "description": "Metric ponder_indexing_function_duration is already in milliseconds (bucket le values run 0.001..100000 ms), so avg = rate(sum)/rate(count) with NO scaling. (Was previously multiplied by 1000, which inflated every value 1000x — e.g. made DopplerHookInitializer:Create's ~0.9s look like ~6-15 min.)",
+      "description": "Metric ponder_indexing_function_duration is already in milliseconds (bucket le values run 0.001..100000 ms), so avg = rate(sum)/rate(count) with NO scaling. (Was previously multiplied by 1000, which inflated every value 1000x \u2014 e.g. made DopplerHookInitializer:Create's ~0.9s look like ~6-15 min.)",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -442,6 +442,65 @@
       ]
     },
     {
+      "id": 23,
+      "type": "timeseries",
+      "title": "RPC avg latency by chain/method",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 40
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum by (chain, method) (rate(ponder_rpc_request_duration_sum{indexer=\"prod-indexer\",chain=~\"$chain\",method=~\"eth_getLogs|eth_getBlockByNumber|eth_call|eth_getTransactionReceipt\"}[5m])) / sum by (chain, method) (rate(ponder_rpc_request_duration_count{indexer=\"prod-indexer\",chain=~\"$chain\",method=~\"eth_getLogs|eth_getBlockByNumber|eth_call|eth_getTransactionReceipt\"}[5m]))",
+          "legendFormat": "{{chain}} {{method}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 24,
+      "type": "timeseries",
+      "title": "RPC latency p50/p90 by chain",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 40
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms"
+        }
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum by (chain, le) (rate(ponder_rpc_request_duration_bucket{indexer=\"prod-indexer\",chain=~\"$chain\"}[5m])))",
+          "legendFormat": "{{chain}} p50",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.90, sum by (chain, le) (rate(ponder_rpc_request_duration_bucket{indexer=\"prod-indexer\",chain=~\"$chain\"}[5m])))",
+          "legendFormat": "{{chain}} p90",
+          "refId": "B"
+        }
+      ]
+    },
+    {
       "id": 15,
       "type": "row",
       "title": "Process health (indexer + api)",
@@ -449,7 +508,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 40
+        "y": 47
       }
     },
     {
@@ -464,7 +523,7 @@
         "h": 7,
         "w": 12,
         "x": 0,
-        "y": 41
+        "y": 48
       },
       "targets": [
         {
@@ -496,7 +555,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 41
+        "y": 48
       },
       "targets": [
         {
@@ -524,14 +583,14 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 48
+        "y": 55
       }
     },
     {
       "id": 20,
       "type": "timeseries",
       "title": "Indexing time share by event (% of total)",
-      "description": "Composition of indexing time. Each series is that event's share of total indexing time: 100 x rate(duration_sum for the event) / sum(rate(duration_sum for all events)). Bands are stacked so they fill to ~100% and each band's height is proportional to its share — and because the value IS the share, the tooltip number matches the band size. Watch how the mix shifts (e.g. DERC20:Transfer swelling). The widest bands are the shave targets. Complements the avg-ms panel — a cheap-but-frequent event (PoolManager:Swap) can out-total a slow-but-rare one (DopplerHookInitializer:Create). topk(12) hides a small long tail, so the stack tops out a hair under 100%.",
+      "description": "Composition of indexing time. Each series is that event's share of total indexing time: 100 x rate(duration_sum for the event) / sum(rate(duration_sum for all events)). Bands are stacked so they fill to ~100% and each band's height is proportional to its share \u2014 and because the value IS the share, the tooltip number matches the band size. Watch how the mix shifts (e.g. DERC20:Transfer swelling). The widest bands are the shave targets. Complements the avg-ms panel \u2014 a cheap-but-frequent event (PoolManager:Swap) can out-total a slow-but-rare one (DopplerHookInitializer:Create). topk(12) hides a small long tail, so the stack tops out a hair under 100%.",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -540,7 +599,7 @@
         "h": 12,
         "w": 24,
         "x": 0,
-        "y": 49
+        "y": 56
       },
       "targets": [
         {
@@ -584,7 +643,7 @@
       "id": 22,
       "type": "timeseries",
       "title": "Indexing time cost by event (% of one indexing thread, absolute)",
-      "description": "ABSOLUTE cost companion to the share panel above: 0.1 x rate(ponder_indexing_function_duration_sum[5m]) = ms of handler time per wall-second, expressed as % of one indexing thread (100% = thread saturated by that event alone). Unlike the normalized share panel, this is comparable ACROSS restarts and load levels — use it to judge whether a handler optimization actually reduced total time. Stack height ~= total indexing-thread utilization by these events.",
+      "description": "ABSOLUTE cost companion to the share panel above: 0.1 x rate(ponder_indexing_function_duration_sum[5m]) = ms of handler time per wall-second, expressed as % of one indexing thread (100% = thread saturated by that event alone). Unlike the normalized share panel, this is comparable ACROSS restarts and load levels \u2014 use it to judge whether a handler optimization actually reduced total time. Stack height ~= total indexing-thread utilization by these events.",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -593,7 +652,7 @@
         "h": 12,
         "w": 24,
         "x": 0,
-        "y": 61
+        "y": 68
       },
       "targets": [
         {

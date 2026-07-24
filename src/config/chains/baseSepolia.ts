@@ -99,12 +99,14 @@ export const baseSepoliaConfig: ChainConfig = {
         "0x6477ae25bca3db3911af7cbb48a0ace38692720b",
         "0x82d5e22911fbbcb8d3e45812d74ee6203c5824e0",
         "0xd199e7836e91654c0475a90e0c1d0e402bb84372",
-        "0xea95DfdF69B90c65C827070852F7039D6aF6Dd7b"
+        "0xea95DfdF69B90c65C827070852F7039D6aF6Dd7b",
+        "0x9349e5a3e6458aa65e2fb7ed67e9ad08ae7f660d"
       ] as Address[],
       RehypeDopplerHookInitializer: [
         "0xC918c6Edb8e0B62B5B73B3F812249a986ba8066d",
         "0x6ab5ae3191c914de8437431091776fc90f314be4",
-        "0xBF4195ab0B03e1eB3345dd1e83BeD7650b1ed123"
+        "0xBF4195ab0B03e1eB3345dd1e83BeD7650b1ed123",
+        "0x78c79c95eaceb2d08f7a55cc0d31012f8af510c3"
       ] as Address[],
       DopplerHookMigrator: [
         "0x1e40b0875dda35f41e15cfb475403859b8c860c4",

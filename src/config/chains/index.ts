@@ -1,4 +1,4 @@
-import { IndexerConfigs } from "./types";
+import { IndexerConfigs, StockTokenConfig } from "./types";
 import { unichainConfig } from "./unichain";
 import { baseConfig } from "./base";
 import { baseSepoliaConfig } from "./baseSepolia";
@@ -36,3 +36,22 @@ export const getActiveChains = () =>
   Object.values(chainConfigs).filter(config =>
     config.addresses.shared.airlock !== "0x0000000000000000000000000000000000000000"
   );
+
+// Lazily-built per-chain lowercase-address lookup for stock quote tokens.
+// getQuoteInfo runs on every swap, so this must be a Map hit, not an array scan.
+const stockTokenMaps = new Map<string, Map<string, StockTokenConfig>>();
+
+export const getStockTokenConfig = (
+  network: keyof IndexerConfigs,
+  tokenAddress: string
+): StockTokenConfig | undefined => {
+  let map = stockTokenMaps.get(network);
+  if (!map) {
+    map = new Map();
+    for (const stock of chainConfigs[network].addresses.stockTokens ?? []) {
+      map.set(stock.address.toLowerCase(), stock);
+    }
+    stockTokenMaps.set(network, map);
+  }
+  return map.get(tokenAddress.toLowerCase());
+};

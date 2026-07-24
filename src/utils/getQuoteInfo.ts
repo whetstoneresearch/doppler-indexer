@@ -1,6 +1,6 @@
 import { Address, zeroAddress } from "viem";
 import { Context } from "ponder:registry";
-import { chainConfigs } from "@app/config";
+import { chainConfigs, getStockTokenConfig } from "@app/config";
 import { pool, token } from "ponder:schema";
 import { PriceService } from "@app/core";
 import { WAD } from "@app/utils/constants";
@@ -14,7 +14,8 @@ import {
   fetchUsdtPrice,
   fetchUsdgPrice,
   fetchEurcPrice,
-  fetchBankrPrice
+  fetchBankrPrice,
+  fetchStockPrice
 } from "@app/indexer/shared/oracle";
 
 export enum QuoteToken {
@@ -28,6 +29,7 @@ export enum QuoteToken {
   Usdg,
   Eurc,
   Bankr,
+  Stock,
   CreatorCoin,
   Unknown
 }
@@ -43,6 +45,7 @@ const VALID_QUOTE_TOKENS = new Set([
   QuoteToken.Usdg,
   QuoteToken.Eurc,
   QuoteToken.Bankr,
+  QuoteToken.Stock,
   QuoteToken.CreatorCoin,
 ]);
 
@@ -82,14 +85,18 @@ export async function getQuoteInfo(quoteAddress: Address, timestamp: bigint | nu
   const isQuoteUsdg = quoteAddress != zeroAddress && quoteAddress === usdgAddress;
   const isQuoteEurc = quoteAddress != zeroAddress && quoteAddress === eurcAddress;
   const isQuoteBankr = quoteAddress != zeroAddress && quoteAddress === bankrAddress;
-  
+
+  // Tokenized stocks/ETFs with a Chainlink USD feed (robinhood chain).
+  const stockToken = getStockTokenConfig(context.chain.name, quoteAddress);
+  const isQuoteStock = stockToken !== undefined;
+
   let creatorCoinInfo;
   // isQuoteEth is excluded here too: WETH / native ETH can never be a creator
   // coin, and the ETH branches below (quoteToken/decimals and the price path)
   // never read creatorCoinInfo — so skipping this db.find(token) is a pure
   // round-trip saving with no change in result. WETH is robinhood's numeraire,
   // so this fires on the majority of its swaps.
-  if (!(isQuoteEth || isQuoteZora || isQuoteFxh || isQuoteNoice || isQuoteMon || isQuoteUsdc || isQuoteUsdt || isQuoteUsdg || isQuoteEurc || isQuoteBankr)) {
+  if (!(isQuoteEth || isQuoteZora || isQuoteFxh || isQuoteNoice || isQuoteMon || isQuoteUsdc || isQuoteUsdt || isQuoteUsdg || isQuoteEurc || isQuoteBankr || isQuoteStock)) {
     creatorCoinInfo = await getCreatorCoinInfo(quoteAddress, context);
   } else {
     creatorCoinInfo = {
@@ -109,21 +116,22 @@ export async function getQuoteInfo(quoteAddress: Address, timestamp: bigint | nu
     : isQuoteUsdg ? QuoteToken.Usdg
     : isQuoteEurc ? QuoteToken.Eurc
     : isQuoteBankr ? QuoteToken.Bankr
+    : isQuoteStock ? QuoteToken.Stock
     : creatorCoinInfo.isQuoteCreatorCoin ? QuoteToken.CreatorCoin
     : isQuoteEth ? QuoteToken.Eth
     : QuoteToken.Unknown;
     
   // Token decimals (actual token decimals)
-  const quoteDecimals = 
-    (isQuoteZora || isQuoteFxh || isQuoteNoice || isQuoteMon || creatorCoinInfo.isQuoteCreatorCoin || isQuoteEth || isQuoteBankr) ? 18
+  const quoteDecimals =
+    (isQuoteZora || isQuoteFxh || isQuoteNoice || isQuoteMon || creatorCoinInfo.isQuoteCreatorCoin || isQuoteEth || isQuoteBankr || isQuoteStock) ? 18
     : (isQuoteUsdc || isQuoteUsdt || isQuoteUsdg || isQuoteEurc) ? 6
     // assumes 18 decimals for unknown quote tokens
     : 18;
-  
+
   // Price feed decimals (decimals of the USD price value)
   // Chainlink feeds use 8 decimals, EURC uses 18 (from computePriceFromSqrtPriceX96)
   const quotePriceDecimals =
-    (isQuoteEth || isQuoteUsdc || isQuoteUsdt || isQuoteUsdg) ? 8 // Chainlink feeds use 8 decimals
+    (isQuoteEth || isQuoteUsdc || isQuoteUsdt || isQuoteUsdg || isQuoteStock) ? 8 // Chainlink feeds use 8 decimals
     : isQuoteEurc ? 18 // EURC price computed from sqrtPriceX96 has 18 decimals
     : quoteDecimals;
   
@@ -166,6 +174,8 @@ export async function getQuoteInfo(quoteAddress: Address, timestamp: bigint | nu
     quotePrice = await fetchEurcPrice(timestamp, context);
   } else if (isQuoteBankr) {
     quotePrice = await fetchBankrPrice(timestamp, context);
+  } else if (isQuoteStock) {
+    quotePrice = await fetchStockPrice(stockToken!, timestamp, context);
   } else if (creatorCoinInfo.isQuoteCreatorCoin) {
     if (creatorCoinInfo.price === null) {
       // Creator coin pool doesn't exist yet, fall back to unknown token handling

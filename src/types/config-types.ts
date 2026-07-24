@@ -42,6 +42,18 @@ export interface ChainAddresses {
   shared: SharedAddresses;
   stables: StablesAddresses;
   oracle: OracleAddresses;
+  stockTokens?: StockTokenConfig[];
+}
+
+/**
+ * A tokenized equity/ETF quote token priced by a Chainlink USD feed
+ * (e.g. Robinhood stock tokens). `address` is the ERC20 on the chain,
+ * `chainlinkOracle` is the AggregatorV3 proxy returning USD with 8 decimals.
+ */
+export interface StockTokenConfig {
+  symbol: string;
+  address: Address;
+  chainlinkOracle: Address;
 }
 
 export interface StablesAddresses {

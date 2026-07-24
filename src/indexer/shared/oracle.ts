@@ -1,7 +1,7 @@
-import { ethPrice, zoraUsdcPrice, fxhWethPrice, noiceWethPrice, monadUsdcPrice, eurcUsdcPrice, bankrWethPrice, usdcPrice, usdtPrice } from "ponder.schema";
+import { ethPrice, zoraUsdcPrice, fxhWethPrice, noiceWethPrice, monadUsdcPrice, eurcUsdcPrice, bankrWethPrice, stockUsdPrice, usdcPrice, usdtPrice } from "ponder.schema";
 import { Context } from "ponder:registry";
 import { MarketDataService, PriceService } from "@app/core";
-import { chainConfigs, CHAIN_IDS, RPC_ENV_VARS } from "@app/config";
+import { chainConfigs, CHAIN_IDS, RPC_ENV_VARS, StockTokenConfig } from "@app/config";
 import { createPublicClient, http, parseUnits, zeroAddress } from "viem";
 import { UniswapV3PoolABI } from "@app/abis/v3-abis/UniswapV3PoolABI";
 import { ChainlinkOracleABI } from "@app/abis/ChainlinkOracleABI";
@@ -498,6 +498,63 @@ export const fetchBankrPrice = async (
 
   setCachedFallbackPrice(cacheKey, price);
   return price;
+};
+
+export const fetchStockPrice = async (
+  stockToken: StockTokenConfig,
+  timestamp: bigint,
+  context: Context
+): Promise<bigint> => {
+  const { db, chain, client } = context;
+  const tokenAddress = stockToken.address.toLowerCase() as `0x${string}`;
+
+  let roundedTimestamp = BigInt(Math.floor(Number(timestamp) / 300) * 300);
+  const requestedBucket = roundedTimestamp;
+
+  const bucketKey = `stock:${chain.id}:${tokenAddress}:${requestedBucket}`;
+  const memoizedPrice = getBucketPrice(bucketKey);
+  if (memoizedPrice !== undefined) {
+    return memoizedPrice;
+  }
+
+  let stockPriceData;
+  let attempts = 0;
+  while (!stockPriceData && attempts < MAX_PRICE_LOOKUP_ATTEMPTS) {
+    attempts++;
+    stockPriceData = await db.find(stockUsdPrice, {
+      address: tokenAddress,
+      timestamp: roundedTimestamp,
+      chainId: chain.id,
+    });
+
+    if (!stockPriceData) {
+      roundedTimestamp -= 300n;
+    }
+  }
+
+  if (stockPriceData) {
+    if (roundedTimestamp === requestedBucket) {
+      setBucketPrice(bucketKey, stockPriceData.price);
+    }
+    return stockPriceData.price;
+  }
+
+  const cacheKey = `stock:${chain.id}:${tokenAddress}`;
+  const cachedPrice = getCachedFallbackPrice(cacheKey);
+  if (cachedPrice !== null) {
+    return cachedPrice;
+  }
+
+  console.warn(`[fetchStockPrice] DB lookup failed for ${stockToken.symbol} on chain ${chain.name}, falling back to Chainlink RPC`);
+
+  const latestAnswer = await client.readContract({
+    abi: ChainlinkOracleABI,
+    address: stockToken.chainlinkOracle,
+    functionName: "latestAnswer",
+  });
+
+  setCachedFallbackPrice(cacheKey, latestAnswer);
+  return latestAnswer;
 };
 
 export const fetchUsdcPrice = async (

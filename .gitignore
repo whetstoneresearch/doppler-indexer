@@ -10,3 +10,6 @@ generated
 .env.local
 .pnpm-store
 ponder.config.local.ts
+
+# dhook repair orchestrator checkpoint
+*dhook-repair-state.json

@@ -237,6 +237,23 @@ export const noiceWethPrice = onchainTable(
   })
 );
 
+// USD prices (8 decimals, Chainlink) for tokenized stocks/ETFs used as quote
+// tokens, keyed by the stock token's (lowercase) address on the chain.
+export const stockUsdPrice = onchainTable(
+  "stock_usd_price",
+  (t) => ({
+    address: t.hex().notNull(),
+    timestamp: t.bigint().notNull(),
+    chainId: t.integer().notNull(),
+    price: t.bigint().notNull(),
+  }),
+  (table) => ({
+    pk: primaryKey({
+      columns: [table.address, table.timestamp, table.chainId],
+    }),
+  })
+);
+
 export const bankrWethPrice = onchainTable(
   "bankr_weth_price",
   (t) => ({
@@ -684,6 +701,30 @@ export const poolBeneficiary = onchainTable(
     beneficiaryUpdatedIdx: index().on(table.beneficiary, table.updatedAt, table.chainId, table.assetId),
     beneficiaryAssetUpdatedIdx: index().on(table.beneficiary, table.assetId, table.chainId, table.updatedAt),
     assetUpdatedIdx: index().on(table.assetId, table.updatedAt, table.chainId, table.beneficiary),
+  })
+);
+
+// Rehype fee beneficiaries (FeesManager pull-based shares) are a separate share
+// system from the LP-lock beneficiaries stored in pool_beneficiary; the same
+// address can appear in both sets for one pool. `initializer` is the rehype
+// hook contract to claim against.
+export const rehypeFeeBeneficiary = onchainTable(
+  "rehype_fee_beneficiary",
+  (t) => ({
+    poolId: t.hex().notNull(),
+    chainId: t.integer().notNull(),
+    beneficiary: t.hex().notNull(),
+    assetId: t.hex().notNull(),
+    shares: t.bigint().notNull(),
+    initializer: t.hex().notNull(),
+    discoveredAt: t.bigint().notNull(),
+    updatedAt: t.bigint().notNull(),
+  }),
+  (table) => ({
+    pk: primaryKey({ columns: [table.poolId, table.chainId, table.beneficiary] }),
+    beneficiaryIdx: index().on(table.beneficiary),
+    assetIdx: index().on(table.assetId),
+    beneficiaryAssetIdx: index().on(table.beneficiary, table.assetId, table.chainId),
   })
 );
 
