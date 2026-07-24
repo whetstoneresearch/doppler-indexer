@@ -862,18 +862,21 @@ function runReconcile(args) {
   const schema = args.schema;
   const chainId = Number(args.chainId);
 
-  const hasPass1 = psqlScalar(
-    args.databaseUrl,
-    `select to_regclass('${t.pass1}') is not null;`,
-  );
-  if (hasPass1 !== "t")
-    throw new Error(
-      `${t.pass1} not found — run --phase write --apply (which records it) before reconciling`,
-    );
-
   console.log("Re-aggregating with catch-up deltas...");
   runAggregate(args, true);
 
+  // Diff against what prod ACTUALLY holds, not against the pass-1 snapshot.
+  // The snapshot records what we wrote, but live indexing mutates those rows
+  // between the bulk write and this reconcile — so a pair whose balance at the
+  // catch-up block happens to equal its balance at the bulk-write block (e.g.
+  // bought and sold the same amount across the window) looks "unchanged"
+  // against the snapshot while its prod row is actually wrong.
+  //
+  // With the indexer stopped at checkpoint C and the sweep run to C, every
+  // pair's correct value IS balance_final, so any difference is an error.
+  // Pairs present in prod but absent from balance_final are left alone: they
+  // belong to tokens outside this sweep's child set (e.g. launched mid-sweep)
+  // and zeroing them would destroy correct data.
   psqlExec(
     args.databaseUrl,
     `
@@ -881,10 +884,12 @@ drop table if exists ${t.diff};
 create unlogged table ${t.diff} as
 select b.token, b.holder, b.balance, b.created_at, b.last_interaction
 from ${t.balance} b
-left join ${t.pass1} p on p.token = b.token and p.holder = b.holder
-where p.token is null
-   or p.balance is distinct from b.balance
-   or p.last_interaction is distinct from b.last_interaction;
+left join ${schema}.user_asset ua
+  on ua.chain_id = ${chainId}
+ and ua.user_id  = b.holder
+ and ua.asset_id = b.token
+where ua.user_id is null
+   or ua.balance is distinct from b.balance;
 
 alter table ${t.diff} add column rn bigint;
 update ${t.diff} set rn = s.rn
@@ -897,7 +902,7 @@ create index on ${t.diff} (rn);
   const diffCount = Number(
     psqlScalar(args.databaseUrl, `select count(*) from ${t.diff};`),
   );
-  console.log(`Pairs changed since the bulk write: ${diffCount}`);
+  console.log(`Rows in prod disagreeing with the rebuilt balances: ${diffCount}`);
   if (diffCount === 0) {
     console.log("Nothing to reconcile.");
     return;
