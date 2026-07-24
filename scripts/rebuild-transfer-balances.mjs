@@ -21,17 +21,30 @@
 //   sweep      RPC -> in-memory deltas -> staging table (resumable)
 //   aggregate  staging -> aggregated balance/user tables (in-DB)
 //   write      aggregated tables -> prod schema (batched; needs --apply)
+//   reconcile  write only the pairs that moved since `write` (needs --apply)
 //   counts     recompute token.holder_count / pool.holder_count
 //
-// CONSISTENCY: the write phase overwrites balances with absolute values as of
-// the sweep's end block. Live indexing applies deltas on top of whatever is in
-// the row, so a concurrent indexer would leave the row short by anything it
-// indexed between the sweep and the write. Correct procedure:
-//   1. run --phase sweep while live (long, hours)
-//   2. stop the indexer; note its checkpoint block C
-//   3. re-run --phase sweep --end-block C (short catch-up from the checkpoint)
-//   4. run --phase aggregate, then --phase write --apply, then --phase counts
-//   5. restart the indexer; it resumes at C and applies later deltas correctly
+// CONSISTENCY: the write phase sets ABSOLUTE balances as of the sweep's end
+// block, while live indexing applies DELTAS on top of whatever the row holds.
+// A row written while the indexer is running therefore loses anything indexed
+// between the sweep and the write.
+//
+// The two-pass sequence keeps the indexer stopped for seconds instead of the
+// whole write. The bulk write runs live and can only be wrong for pairs that
+// traded during it; those pairs are exactly the ones the catch-up sweep sees,
+// so re-aggregating and writing just the rows whose balance moved is
+// equivalent to doing the whole write offline:
+//   1. --phase sweep                 (live, long)
+//   2. --phase aggregate             (live; verify against staging here)
+//   3. --phase write --apply         (live; bulk write + records a snapshot)
+//   4. stop the indexer; note its checkpoint block C
+//   5. --phase sweep --end-block C   (seconds; catch-up deltas)
+//   6. --phase reconcile --apply     (writes only the changed pairs)
+//   7. restart the indexer
+//   8. --phase counts --apply        (live, afterwards)
+//
+// Running steps 4-6 as a single offline write (--phase all) is also correct,
+// just slower to be stopped for.
 
 import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync, renameSync } from "node:fs";
@@ -130,7 +143,7 @@ function parseArgs(argv) {
   }
   if (args.help) return args;
 
-  const phases = ["all", "sweep", "aggregate", "write", "counts"];
+  const phases = ["all", "sweep", "aggregate", "write", "reconcile", "counts"];
   if (!phases.includes(args.phase))
     throw new Error(`--phase must be one of ${phases.join(", ")}`);
   if (!args.databaseUrl) throw new Error("Missing DATABASE_URL");
@@ -160,8 +173,21 @@ Phases:
   --phase sweep       RPC sweep -> staging deltas (resumable via checkpoint)
   --phase aggregate   staging deltas -> aggregated balances (in-DB)
   --phase write       aggregated balances -> <schema> (requires --apply)
+  --phase reconcile   re-aggregate with catch-up deltas and write ONLY the
+                      pairs whose balance moved since the last write
+                      (requires --apply)
   --phase counts      recompute token/pool holder_count (requires --apply)
-  --phase all         all of the above in order (default)
+  --phase all         sweep + aggregate + write + counts (default)
+
+Low-downtime sequence (indexer stopped only for steps 4-6):
+  1. --phase sweep                      (live, long)
+  2. --phase aggregate                  (live; verify against staging here)
+  3. --phase write --apply              (live; bulk write, records a snapshot)
+  4. stop the indexer, note checkpoint C
+  5. --phase sweep --end-block <C>      (seconds)
+  6. --phase reconcile --apply          (writes only the pairs that moved)
+  7. restart the indexer
+  8. --phase counts --apply             (live, afterwards)
 
 Options:
   --schema <name>            REQUIRED prod schema (e.g. prod_2).
@@ -277,17 +303,30 @@ function psqlCopy(databaseUrl, table, columns, tsvBody) {
 // cannot answer every block. We load a strided sample and interpolate: on a
 // ~10 block/s chain a stride of 50 bounds the error at a few seconds, which is
 // well inside the meaning of created_at / last_interaction.
-function buildTimestampIndex(args) {
-  const sql = `
+function buildTimestampIndex(args, fromBlock, toBlock) {
+  // Scoped to the range being swept: `number % stride` cannot use an index, so
+  // an unbounded scan costs a full pass over the blocks table. Bounding it by
+  // block number keeps the planner on the (chain_id, number) index, which is
+  // what makes the catch-up sweep's startup a couple of seconds instead of a
+  // couple of minutes — the difference matters because the catch-up runs
+  // inside the indexer-stopped window.
+  const pad = BigInt(Math.max(1, Number(args.tsStride)) * 8);
+  const lo = fromBlock > pad ? fromBlock - pad : 0n;
+  const hi = toBlock + pad;
+  const query = (stride) => `
 select number::text || E'\\t' || timestamp::text
 from ${args.pondersyncSchema}.blocks
 where chain_id = ${Number(args.chainId)}
-  and (number % ${Math.max(1, Number(args.tsStride))}) = 0
+  and number between ${lo} and ${hi}
+  and (number % ${Math.max(1, stride)}) = 0
 order by number;`;
-  const rows = psqlRowsTsv(args.databaseUrl, sql);
+  let rows = psqlRowsTsv(args.databaseUrl, query(Number(args.tsStride)));
+  // A short range may contain fewer than two strided samples; fall back to
+  // every header we have before giving up.
+  if (rows.length < 2) rows = psqlRowsTsv(args.databaseUrl, query(1));
   if (rows.length < 2)
     throw new Error(
-      `Not enough block headers in ${args.pondersyncSchema}.blocks for chain ${args.chainId} to build a timestamp index`,
+      `Not enough block headers in ${args.pondersyncSchema}.blocks for chain ${args.chainId} in [${lo}, ${hi}] to build a timestamp index`,
     );
   const numbers = new Float64Array(rows.length);
   const times = new Float64Array(rows.length);
@@ -330,6 +369,10 @@ function stagingNames(args) {
     delta: `${s}.transfer_delta_${c}`,
     balance: `${s}.balance_final_${c}`,
     user: `${s}.user_final_${c}`,
+    // Snapshot of what the write phase last pushed to prod, so the reconcile
+    // phase can write only the pairs that moved since.
+    pass1: `${s}.balance_pass1_${c}`,
+    diff: `${s}.balance_diff_${c}`,
   };
 }
 
@@ -483,7 +526,6 @@ async function runSweep(args) {
   const t = stagingNames(args);
   const checkpoint = loadCheckpoint(args.checkpoint);
   const children = loadChildAddresses(args);
-  const tsIndex = buildTimestampIndex(args);
 
   const rpcUrl = resolveRpcUrl(args.chainId, args.rpcUrl);
   const client = createPublicClient({
@@ -516,6 +558,7 @@ async function runSweep(args) {
     console.log(`Nothing to sweep: start ${startBlock} > end ${head}.`);
     return;
   }
+  const tsIndex = buildTimestampIndex(args, startBlock, head);
 
   console.log(
     `Sweeping Transfer logs on chain ${args.chainId}: blocks [${startBlock}, ${head}]`,
@@ -675,9 +718,10 @@ async function runSweep(args) {
 // aggregate
 ////////////////////////////////////////////////////////////////////////////////
 
-function runAggregate(args) {
+function runAggregate(args, quiet = false) {
   const t = stagingNames(args);
-  console.log("Aggregating staged deltas (this is a large in-DB GROUP BY)...");
+  if (!quiet)
+    console.log("Aggregating staged deltas (this is a large in-DB GROUP BY)...");
   psqlExec(
     args.databaseUrl,
     `
@@ -718,6 +762,7 @@ create index on ${t.user} (rn);
     args.databaseUrl,
     `select count(distinct token) from ${t.balance};`,
   );
+  if (quiet) return;
   console.log(
     `Aggregate done. balance rows=${balances} distinct users=${users} distinct tokens=${tokens}`,
   );
@@ -788,7 +833,124 @@ commit;
     );
     console.log(`  user_assets ${Math.min(hi, maxBalanceRn)}/${maxBalanceRn}`);
   }
-  console.log("Write done.");
+
+  // Record exactly what prod now holds, so a later reconcile can write only
+  // the pairs that changed instead of all of them.
+  psqlExec(
+    args.databaseUrl,
+    `
+drop table if exists ${t.pass1};
+create unlogged table ${t.pass1} as
+select token, holder, balance, created_at, last_interaction from ${t.balance};
+`,
+  );
+  console.log("Write done. Snapshot recorded for reconcile.");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// reconcile
+////////////////////////////////////////////////////////////////////////////////
+
+// Second pass of the low-downtime write. The bulk write runs while the indexer
+// is live, which clobbers deltas it applies during that write — but only for
+// pairs that traded in the window. Those pairs are exactly the ones appearing
+// in the catch-up sweep, so re-aggregating and writing just the rows whose
+// balance moved is equivalent to the single-pass write, with a stopped window
+// measured in seconds rather than minutes.
+function runReconcile(args) {
+  const t = stagingNames(args);
+  const schema = args.schema;
+  const chainId = Number(args.chainId);
+
+  const hasPass1 = psqlScalar(
+    args.databaseUrl,
+    `select to_regclass('${t.pass1}') is not null;`,
+  );
+  if (hasPass1 !== "t")
+    throw new Error(
+      `${t.pass1} not found — run --phase write --apply (which records it) before reconciling`,
+    );
+
+  console.log("Re-aggregating with catch-up deltas...");
+  runAggregate(args, true);
+
+  psqlExec(
+    args.databaseUrl,
+    `
+drop table if exists ${t.diff};
+create unlogged table ${t.diff} as
+select b.token, b.holder, b.balance, b.created_at, b.last_interaction
+from ${t.balance} b
+left join ${t.pass1} p on p.token = b.token and p.holder = b.holder
+where p.token is null
+   or p.balance is distinct from b.balance
+   or p.last_interaction is distinct from b.last_interaction;
+
+alter table ${t.diff} add column rn bigint;
+update ${t.diff} set rn = s.rn
+from (select ctid, row_number() over () as rn from ${t.diff}) s
+where ${t.diff}.ctid = s.ctid;
+create index on ${t.diff} (rn);
+`,
+  );
+
+  const diffCount = Number(
+    psqlScalar(args.databaseUrl, `select count(*) from ${t.diff};`),
+  );
+  console.log(`Pairs changed since the bulk write: ${diffCount}`);
+  if (diffCount === 0) {
+    console.log("Nothing to reconcile.");
+    return;
+  }
+  if (!args.apply) {
+    console.log("Dry-run: --phase reconcile requires --apply. Nothing written.");
+    return;
+  }
+
+  const batch = Number(args.writeBatch);
+  const maxRn = Number(
+    psqlScalar(args.databaseUrl, `select coalesce(max(rn), 0) from ${t.diff};`),
+  );
+  for (let lo = 1; lo <= maxRn; lo += batch) {
+    const hi = lo + batch - 1;
+    psqlExec(
+      args.databaseUrl,
+      `
+begin;
+alter table ${schema}."user" disable trigger user;
+insert into ${schema}."user" (address, chain_id, created_at, last_seen_at)
+select holder, ${chainId}, min(created_at), max(last_interaction)
+from ${t.diff} where rn between ${lo} and ${hi}
+group by holder
+on conflict (address, chain_id) do update set
+  last_seen_at = greatest(${schema}."user".last_seen_at, excluded.last_seen_at);
+alter table ${schema}."user" enable trigger user;
+
+alter table ${schema}.user_asset disable trigger user;
+insert into ${schema}.user_asset (chain_id, user_id, asset_id, balance, created_at, last_interaction)
+select ${chainId}, holder, token, balance, created_at, last_interaction
+from ${t.diff} where rn between ${lo} and ${hi}
+on conflict (user_id, asset_id, chain_id) do update set
+  balance = excluded.balance,
+  last_interaction = greatest(${schema}.user_asset.last_interaction, excluded.last_interaction);
+alter table ${schema}.user_asset enable trigger user;
+commit;
+`,
+    );
+    console.log(`  reconciled ${Math.min(hi, maxRn)}/${maxRn}`);
+  }
+
+  // Refresh the snapshot so a repeated reconcile is a no-op rather than a
+  // rewrite of the same rows.
+  psqlExec(
+    args.databaseUrl,
+    `
+drop table if exists ${t.pass1};
+create unlogged table ${t.pass1} as
+select token, holder, balance, created_at, last_interaction from ${t.balance};
+`,
+  );
+  console.log("Reconcile done.");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -856,6 +1018,7 @@ async function main() {
   if (phase === "all" || phase === "sweep") await runSweep(args);
   if (phase === "all" || phase === "aggregate") runAggregate(args);
   if (phase === "all" || phase === "write") runWrite(args);
+  if (phase === "reconcile") runReconcile(args);
   if (phase === "all" || phase === "counts") runCounts(args);
 
   if (phase === "all" && !args.apply)
