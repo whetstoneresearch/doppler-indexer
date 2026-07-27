@@ -9,6 +9,9 @@ export default defineConfig({
   resolve: {
     alias: {
       '@app': path.resolve(__dirname, './src'),
+      // Ponder resolves this virtual module at build time; map it so entity
+      // modules that import table definitions can be unit tested.
+      'ponder:schema': path.resolve(__dirname, './ponder.schema.ts'),
     },
   },
 });

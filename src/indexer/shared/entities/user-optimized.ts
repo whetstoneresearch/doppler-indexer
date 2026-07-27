@@ -1,6 +1,7 @@
 import { Context } from "ponder:registry";
 import { user, userAsset } from "ponder:schema";
-import { Address } from "viem";
+import { Address, zeroAddress } from "viem";
+import { computeHolderCountDelta, nextHolderCount } from "./holder-count";
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as `0x${string}`;
 
@@ -84,33 +85,14 @@ export const batchUpsertUsersAndAssets = async ({
     chainId: chain.id,
   }) : null;
   
-  let holderCountDelta = 0;
-  
-  if (isMint && recipientBalance > 0n) {
-    const recipientPrevBalance = existingRecipientAsset?.balance ?? 0n;
-    if (recipientPrevBalance === 0n) {
-      holderCountDelta += 1;
-    }
-  }
-
-  else if (isBurn && senderBalance === 0n) {
-    const senderPrevBalance = existingSenderAsset?.balance ?? 0n;
-    if (senderPrevBalance > 0n) {
-      holderCountDelta -= 1;
-    }
-  }
-
-  else if (!isMint && !isBurn) {
-    const senderPrevBalance = existingSenderAsset?.balance ?? 0n;
-    const recipientPrevBalance = existingRecipientAsset?.balance ?? 0n;
-    
-    if (recipientPrevBalance === 0n && recipientBalance > 0n) {
-      holderCountDelta += 1;
-    }
-    if (senderPrevBalance > 0n && senderBalance === 0n) {
-      holderCountDelta -= 1;
-    }
-  }
+  const holderCountDelta = computeHolderCountDelta({
+    senderAddress: senderLower,
+    recipientAddress: recipientLower,
+    senderPreviousBalance: existingSenderAsset?.balance ?? 0n,
+    senderBalance,
+    recipientPreviousBalance: existingRecipientAsset?.balance ?? 0n,
+    recipientBalance,
+  });
 
   // Batch upsert user assets (skip zero address)
   let senderAsset: typeof userAsset.$inferSelect | null = null;
@@ -168,7 +150,10 @@ export const batchUpsertUsersAndAssets = async ({
 };
 
 /**
- * Batch update holder counts for multiple entities
+ * Batch update holder counts for multiple entities.
+ *
+ * `token` is authoritative and `pool` mirrors it — see `holder-count.ts` for why
+ * the pool count is never derived from its own previous value.
  */
 export const batchUpdateHolderCounts = async ({
   tokenAddress,
@@ -189,26 +174,31 @@ export const batchUpdateHolderCounts = async ({
     return;
   }
 
+  const holderCount = nextHolderCount(currentTokenHolderCount, holderCountDelta);
+
   // Update token holder count first (must succeed independently)
   await db.update(token, {
     address: tokenAddress.toLowerCase() as `0x${string}`,
     chainId: chain.id,
   }).set({
-    holderCount: currentTokenHolderCount + holderCountDelta,
+    holderCount,
   });
 
-  // Update pool holder count separately using the pool's own current value
-  if (poolAddress) {
+  // Mirror the authoritative token count onto the pool. Writing the token-derived
+  // value (rather than poolEntity.holderCount + delta) also self-heals pool rows
+  // created after the token already had holders.
+  if (poolAddress && poolAddress.toLowerCase() !== zeroAddress) {
+    const address = poolAddress.toLowerCase() as `0x${string}`;
     const poolEntity = await db.find(pool, {
-      address: poolAddress.toLowerCase() as `0x${string}`,
+      address,
       chainId: chain.id,
     });
     if (poolEntity) {
       await db.update(pool, {
-        address: poolAddress.toLowerCase() as `0x${string}`,
+        address,
         chainId: chain.id,
       }).set({
-        holderCount: poolEntity.holderCount + holderCountDelta,
+        holderCount,
       });
     }
   }
