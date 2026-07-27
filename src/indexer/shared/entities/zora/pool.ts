@@ -1,7 +1,7 @@
 import { PoolKey } from "@app/types";
 import { MarketDataService, PriceService } from "@app/core";
 import { Context } from "ponder:registry";
-import { pool } from "ponder:schema";
+import { pool, token } from "ponder:schema";
 import { Address, zeroAddress } from "viem";
 import { ZoraV4HookABI } from "@app/abis/ZoraV4HookABI";
 import { StateViewABI } from "@app/abis";
@@ -160,7 +160,16 @@ export const insertZoraPoolV4Optimized = async ({
     marketCapUsd,
     poolAddress: address
   })
-  
+
+  // The coin mints its supply — and so gains its first holders — before the
+  // factory emits the event that creates this pool row, so those transfers land
+  // on the token while `token.pool` is still null. Seed from the token instead
+  // of starting at 0, otherwise the pool can never catch up.
+  const baseTokenEntity = await db.find(token, {
+    address: baseToken.toLowerCase() as `0x${string}`,
+    chainId,
+  });
+
   const isQuoteEth = quoteInfo.quoteToken === QuoteToken.Eth;
   
   // Insert new pool with all data at once
@@ -195,7 +204,7 @@ export const insertZoraPoolV4Optimized = async ({
     integrator: zeroAddress,
     isContentCoin,
     isCreatorCoin,
-    holderCount: 0,
+    holderCount: baseTokenEntity?.holderCount ?? 0,
     lastSwapTimestamp: timestamp,
     lastRefreshed: timestamp,
     poolKey: {
