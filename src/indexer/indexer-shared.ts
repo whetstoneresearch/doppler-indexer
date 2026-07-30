@@ -1,5 +1,5 @@
 import { onIndexerEvent } from "./entrypoint";
-import { pool, tokenVestingAllocation, tokenVestingRelease, tokenVestingSchedule } from "ponder:schema";
+import { pool, token, tokenVestingAllocation, tokenVestingRelease, tokenVestingSchedule } from "ponder:schema";
 import { insertV3MigrationPoolIfNotExists } from "./shared/entities/migrationPool";
 import { insertAssetIfNotExists, updateAsset } from "./shared/entities/asset";
 import { insertTokenIfNotExists, updateToken } from "./shared/entities/token";
@@ -13,28 +13,6 @@ import { zeroAddress } from "viem";
 import { getV4MigratorForAsset, getDHookMigratorForAsset } from "@app/utils/v4-utils";
 import { isPrecompileAddress } from "@app/utils/validation";
 import { readDN404TokenData } from "./shared/entities/dn404";
-
-onIndexerEvent("DN404Factory:DN404Created", async ({ event, context }) => {
-  const { timestamp } = event.block;
-  const tokenAddress = event.args.token.toLowerCase() as `0x${string}`;
-  const mirrorAddress = event.args.collection.toLowerCase() as `0x${string}`;
-  const creatorAddress = event.args.owner.toLowerCase() as `0x${string}`;
-
-  const dn404Data = await readDN404TokenData({
-    tokenAddress,
-    mirrorAddress,
-    context,
-  });
-
-  await insertTokenIfNotExists({
-    tokenAddress,
-    creatorAddress,
-    timestamp,
-    context,
-    isDerc20: true,
-    dn404Data,
-  });
-});
 
 onIndexerEvent("Airlock:Migrate", async ({ event, context }) => {
   const { timestamp } = event.block;
@@ -419,6 +397,21 @@ onIndexerEvent("DERC20:TokensReleased", async ({ event, context }) => {
 });
 
 onIndexerEvent("DERC20:BalanceLimitDisabled", async ({ event, context }) => {
+  // A DERC20 can emit this before we've ever indexed its token row (e.g. the
+  // token was deployed outside a tracked factory). Skip rather than crash.
+  const address = event.log.address.toLowerCase() as `0x${string}`;
+  const existing = await context.db.find(token, {
+    address,
+    chainId: context.chain.id,
+  });
+
+  if (!existing) {
+    console.warn(
+      `Skipping DERC20:BalanceLimitDisabled for unknown token ${address} on chain ${context.chain.name} (block ${event.block.number})`,
+    );
+    return;
+  }
+
   await updateToken({
     tokenAddress: event.log.address,
     context,
