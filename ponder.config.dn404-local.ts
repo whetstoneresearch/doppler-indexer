@@ -2,6 +2,7 @@ import { createConfig } from "ponder";
 import { DN404FactoryABI } from "./src/abis";
 import { UniswapV4ScheduledMulticurveInitializerABI } from "./src/abis/multicurve-abis/UniswapV4ScheduledMulticurveInitializerABI";
 import { chainConfigs, CHAIN_IDS } from "./src/config/chains";
+import { DN404_FACTORY_START_BLOCKS } from "./src/config/chains/constants";
 import { configureIndexerEntrypoint } from "./src/indexer/entrypointConfig";
 
 const { baseSepolia } = chainConfigs;
@@ -11,7 +12,7 @@ const contracts = {
     abi: DN404FactoryABI,
     chain: {
       baseSepolia: {
-        startBlock: 41118945,
+        startBlock: DN404_FACTORY_START_BLOCKS.baseSepolia,
         address: baseSepolia.addresses.shared.dn404Factory!,
       },
     },

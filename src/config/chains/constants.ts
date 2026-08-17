@@ -34,6 +34,14 @@ export const V4_START_BLOCKS = {
   robinhood: 367349
 } as const;
 
+// DN404Factory deployment blocks. Scoped per chain so the source doesn't
+// replay the whole chain history looking for DN404Created.
+export const DN404_FACTORY_START_BLOCKS = {
+  baseSepolia: 41118945,
+  base: 49199335,
+  robinhood: 646846,
+} as const;
+
 export const LOCKABLE_V3_INITIALIZER_START_BLOCKS = {
   baseSepolia: 28150553,
   base: 32640102,

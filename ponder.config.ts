@@ -20,7 +20,7 @@ import {
   RehypeDopplerHookInitializerABI,
   RehypeDopplerHookMigratorABI,
 } from "./src/abis";
-import { BLOCK_INTERVALS } from "./src/config/chains/constants";
+import { BLOCK_INTERVALS, DN404_FACTORY_START_BLOCKS } from "./src/config/chains/constants";
 import { chainConfigs, CHAIN_IDS } from "./src/config/chains";
 import { LockableUniswapV3InitializerABI } from "@app/abis/v3-abis/LockableUniswapV3InitializerABI";
 import { UniswapV3MigratorAbi } from "@app/abis/v3-abis/UniswapV3Migrator";
@@ -208,9 +208,17 @@ export default createConfig({
     DN404Factory: {
       abi: DN404FactoryABI,
       chain: {
+        base: {
+          startBlock: DN404_FACTORY_START_BLOCKS.base,
+          address: base.addresses.shared.dn404Factory!,
+        },
         baseSepolia: {
-          startBlock: 41118945,
+          startBlock: DN404_FACTORY_START_BLOCKS.baseSepolia,
           address: baseSepolia.addresses.shared.dn404Factory!,
+        },
+        robinhood: {
+          startBlock: DN404_FACTORY_START_BLOCKS.robinhood,
+          address: robinhood.addresses.shared.dn404Factory!,
         },
       },
     },

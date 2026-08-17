@@ -101,6 +101,8 @@ export const baseConfig: ChainConfig = {
     shared: {
       airlock: "0x660eAaEdEBc968f8f3694354FA8EC0b4c5Ba8D12" as Address,
       tokenFactory: "0xFAafdE6a5b658684cC5eb0C5c2c755B00A246F45" as Address,
+      // DN404Factory (same address as the Robinhood deployment)
+      dn404Factory: "0x37a9fa204a4d3a429fded7e3469ab076c854bc9d" as Address,
       universalRouter: "0x6ff5693b99212da76ad316178a184ab56d299b43" as Address,
       governanceFactory:
         "0xb4deE32EB70A5E55f3D2d861F49Fb3D79f7a14d9" as Address,
