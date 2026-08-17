@@ -158,6 +158,31 @@ onIndexerEvent("MonadChainlinkEthPriceFeed:block", async ({ event, context }) =>
     .onConflictDoNothing();
 });
 
+onIndexerEvent("ArbitrumChainlinkEthPriceFeed:block", async ({ event, context }) => {
+  const { db, client, chain } = context;
+  const { timestamp } = event.block;
+
+  const latestAnswer = await client.readContract({
+    abi: ChainlinkOracleABI,
+    address: chainConfigs["arbitrum"].addresses.shared.chainlinkEthOracle,
+    functionName: "latestAnswer",
+  });
+
+  const price = latestAnswer;
+
+  const roundedTimestamp = BigInt(Math.floor(Number(timestamp) / 300) * 300);
+  const adjustedTimestamp = roundedTimestamp + 300n;
+
+  await db
+    .insert(ethPrice)
+    .values({
+      timestamp: adjustedTimestamp,
+      chainId: chain.id,
+      price,
+    })
+    .onConflictDoNothing();
+});
+
 onIndexerEvent("ZoraUsdcPrice:block", async ({ event, context }) => {
   const { db, client, chain } = context;
   const { timestamp, number: blockNumber } = event.block;

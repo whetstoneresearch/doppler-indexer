@@ -14,7 +14,8 @@ export type Network =
   | "monad"
   | "mainnet"
   | "sepolia"
-  | "robinhood";
+  | "robinhood"
+  | "arbitrum";
 
 /**
  * Chain configuration

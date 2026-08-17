@@ -9,7 +9,8 @@ export const CHAIN_IDS = {
   base: 8453,
   monad: 143,
   sepolia: 11155111,
-  robinhood: 4663
+  robinhood: 4663,
+  arbitrum: 42161
 } as const;
 
 // Block numbers organized by purpose
@@ -21,7 +22,11 @@ export const START_BLOCKS = {
   base: 28415520,
   monad: 34746370,
   sepolia: 10134362,
-  robinhood: 367349
+  robinhood: 367349,
+  // Airlock deployment (its OwnershipTransferred log). The rest of the Doppler
+  // deployment landed within ~20 blocks, and the Airlock's SetModuleState calls
+  // wiring the initializers/migrators came later at 495566005.
+  arbitrum: 494617839
 } as const;
 
 export const V4_START_BLOCKS = {
@@ -31,7 +36,11 @@ export const V4_START_BLOCKS = {
   ink: 14937170,
   base: 30822164,
   monad: 34746371,
-  robinhood: 367349
+  robinhood: 367349,
+  // Same deployment batch as START_BLOCKS.arbitrum; the V4 PoolManager itself is
+  // the canonical (much older) Uniswap deployment, so this only bounds how far
+  // back we sync its logs.
+  arbitrum: 494617839
 } as const;
 
 // DN404Factory deployment blocks. Scoped per chain so the source doesn't
@@ -82,7 +91,8 @@ export const RPC_ENV_VARS = {
   base: "PONDER_RPC_URL_8453",
   monad: "PONDER_RPC_URL_143",
   sepolia: "PONDER_RPC_URL_11155111",
-  robinhood: "PONDER_RPC_URL_4663"
+  robinhood: "PONDER_RPC_URL_4663",
+  arbitrum: "PONDER_RPC_URL_42161"
 } as const;
 
 export const BLOCK_INTERVALS = {
@@ -90,6 +100,8 @@ export const BLOCK_INTERVALS = {
   FIVE_MINUTES_MONAD: (60 * 5) / 0.5,
   // Robinhood sustains ~10 blk/s (measured 100k blocks / ~10,000s at head).
   FIVE_MINUTES_ROBINHOOD: 60 * 5 * 10,
+  // Arbitrum One targets 250ms blocks (measured 0.2501s/blk over 100k blocks).
+  FIVE_MINUTES_ARBITRUM: 60 * 5 * 4,
   FIFTY_BLOCKS: 50, // every 50 blocks
   THOUSAND_BLOCKS: 1000, // every 1000 blocks
   FIVE_THOUSAND_BLOCKS: 5000,
