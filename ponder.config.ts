@@ -30,7 +30,7 @@ import { UniswapV4MulticurveInitializerABI } from "@app/abis/multicurve-abis/Uni
 import { UniswapV4ScheduledMulticurveInitializerHookABI } from "@app/abis/multicurve-abis/UniswapV4ScheduledMulticurveInitializerHookABI";
 import { UniswapV4ScheduledMulticurveInitializerABI } from "@app/abis/multicurve-abis/UniswapV4ScheduledMulticurveInitializerABI";
 
-const { base, baseSepolia, monad, mainnet, sepolia, ink, unichain, robinhood } = chainConfigs;
+const { base, baseSepolia, monad, mainnet, sepolia, ink, unichain, robinhood, arbitrum } = chainConfigs;
 
 export default createConfig({
   database: {
@@ -86,6 +86,10 @@ export default createConfig({
       // fall behind in coarse 50-block (MAX_QUEUED_BLOCKS) ticks it can't recover
       // from. Poll 4x more often so each reconcile tick is smaller and tracks tip.
       pollingInterval: 250,
+    },
+    arbitrum: {
+      id: CHAIN_IDS.arbitrum,
+      rpc: process.env.PONDER_RPC_URL_42161,
     },
   },
   blocks: {
@@ -203,6 +207,11 @@ export default createConfig({
       startBlock: robinhood.startBlock,
       interval: BLOCK_INTERVALS.FIVE_MINUTES_ROBINHOOD,
     },
+    ArbitrumChainlinkEthPriceFeed: {
+      chain: "arbitrum",
+      startBlock: arbitrum.startBlock,
+      interval: BLOCK_INTERVALS.FIVE_MINUTES_ARBITRUM,
+    },
   },
   contracts: {
     DN404Factory: {
@@ -240,6 +249,10 @@ export default createConfig({
         robinhood: {
           startBlock: robinhood.startBlock,
           address: robinhood.addresses.shared.airlock,
+        },
+        arbitrum: {
+          startBlock: arbitrum.startBlock,
+          address: arbitrum.addresses.shared.airlock,
         }
       },
     },
@@ -288,6 +301,14 @@ export default createConfig({
             event: getAbiItem({ abi: AirlockABI, name: "Migrate" }),
             parameter: "pool",
           }),
+        },
+        arbitrum: {
+          startBlock: arbitrum.startBlock,
+          address: factory({
+            address: arbitrum.addresses.shared.airlock,
+            event: getAbiItem({ abi: AirlockABI, name: "Migrate" }),
+            parameter: "pool",
+          }),
         }
       },
     },
@@ -330,6 +351,10 @@ export default createConfig({
         robinhood: {
           startBlock: robinhood.v4StartBlock,
           address: robinhood.addresses.v4.v4Initializer,
+        },
+        arbitrum: {
+          startBlock: arbitrum.v4StartBlock,
+          address: arbitrum.addresses.v4.v4Initializer,
         }
       },
     },
@@ -380,6 +405,14 @@ export default createConfig({
           startBlock: robinhood.startBlock,
           address: factory({
             address: robinhood.addresses.shared.airlock,
+            event: getAbiItem({ abi: AirlockABI, name: "Create" }),
+            parameter: "asset",
+          }),
+        },
+        arbitrum: {
+          startBlock: arbitrum.startBlock,
+          address: factory({
+            address: arbitrum.addresses.shared.airlock,
             event: getAbiItem({ abi: AirlockABI, name: "Create" }),
             parameter: "asset",
           }),
@@ -459,6 +492,17 @@ export default createConfig({
             }),
             parameter: "poolOrHook"
           })
+        },
+        arbitrum: {
+          startBlock: arbitrum.startBlock,
+          address: factory({
+            address: arbitrum.addresses.v3.lockableV3Initializer,
+            event: getAbiItem({
+              abi: LockableUniswapV3InitializerABI,
+              name: "Create"
+            }),
+            parameter: "poolOrHook"
+          })
         }
       },
     },
@@ -504,6 +548,10 @@ export default createConfig({
         robinhood: {
           startBlock: robinhood.v4StartBlock,
           address: robinhood.addresses.v4.poolManager,
+        },
+        arbitrum: {
+          startBlock: arbitrum.v4StartBlock,
+          address: arbitrum.addresses.v4.poolManager,
         }
       },
     },
@@ -591,6 +639,14 @@ export default createConfig({
             event: getAbiItem({ abi: UniswapV4InitializerABI, name: "Create" }),
             parameter: "poolOrHook",
           }),
+        },
+        arbitrum: {
+          startBlock: arbitrum.v4StartBlock,
+          address: factory({
+            address: arbitrum.addresses.v4.v4Initializer,
+            event: getAbiItem({ abi: UniswapV4InitializerABI, name: "Create" }),
+            parameter: "poolOrHook",
+          }),
         }
       },
     },
@@ -608,6 +664,10 @@ export default createConfig({
         robinhood: {
           startBlock: robinhood.startBlock,
           address: robinhood.addresses.v3.lockableV3Initializer
+        },
+        arbitrum: {
+          startBlock: arbitrum.startBlock,
+          address: arbitrum.addresses.v3.lockableV3Initializer
         }
       },
     },
@@ -767,6 +827,10 @@ export default createConfig({
           startBlock: robinhood.v4StartBlock,
           address: robinhood.addresses.v4.DopplerHookInitializer,
         },
+        arbitrum: {
+          startBlock: arbitrum.v4StartBlock,
+          address: arbitrum.addresses.v4.DopplerHookInitializer,
+        },
       },
     },
     DopplerHookMigrator: {
@@ -787,6 +851,10 @@ export default createConfig({
         robinhood: {
           startBlock: robinhood.v4StartBlock,
           address: robinhood.addresses.v4.DopplerHookMigrator,
+        },
+        arbitrum: {
+          startBlock: arbitrum.v4StartBlock,
+          address: arbitrum.addresses.v4.DopplerHookMigrator,
         },
       },
     },
@@ -809,6 +877,10 @@ export default createConfig({
           startBlock: robinhood.v4StartBlock,
           address: robinhood.addresses.v4.RehypeDopplerHookInitializer,
         },
+        arbitrum: {
+          startBlock: arbitrum.v4StartBlock,
+          address: arbitrum.addresses.v4.RehypeDopplerHookInitializer,
+        },
       },
     },
     RehypeDopplerHookMigrator: {
@@ -829,6 +901,10 @@ export default createConfig({
         robinhood: {
           startBlock: robinhood.v4StartBlock,
           address: robinhood.addresses.v4.RehypeDopplerHookMigrator,
+        },
+        arbitrum: {
+          startBlock: arbitrum.v4StartBlock,
+          address: arbitrum.addresses.v4.RehypeDopplerHookMigrator,
         },
       },
     },

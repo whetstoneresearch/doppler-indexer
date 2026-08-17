@@ -36,6 +36,7 @@ jobs:
           PONDER_RPC_URL_143: https://rpc.monad.xyz
           PONDER_RPC_URL_57073: https://rpc-gel.inkonchain.com
           PONDER_RPC_URL_130: https://mainnet.unichain.org
+          PONDER_RPC_URL_42161: https://arb1.arbitrum.io/rpc
         run: pnpm dev --disable-ui &
 
       - name: Wait for healthy status

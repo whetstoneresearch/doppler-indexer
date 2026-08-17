@@ -7,6 +7,7 @@ import { monadConfig } from "./monad";
 import { mainnetConfig } from "./mainnet";
 import { sepoliaConfig } from "./sepolia";
 import { robinhoodConfig } from "./robinhood";
+import { arbitrumConfig } from "./arbitrum";
 
 export * from "./types";
 export * from "./constants";
@@ -20,7 +21,8 @@ export const chainConfigs: IndexerConfigs = {
   ink: inkConfig,
   monad: monadConfig,
   sepolia: sepoliaConfig,
-  robinhood: robinhoodConfig
+  robinhood: robinhoodConfig,
+  arbitrum: arbitrumConfig
 };
 
 // Utility functions

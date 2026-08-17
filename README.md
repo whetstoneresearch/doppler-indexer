@@ -95,4 +95,5 @@ The script pins one snapshot block per selected chain, reads `getBeneficiaries()
   - Unichain: `PONDER_RPC_URL_130`
   - Ink: `PONDER_RPC_URL_57073`
   - Monad: `PONDER_RPC_URL_143`
+  - Arbitrum One: `PONDER_RPC_URL_42161`
 - The database connection defaults to Postgres at `postgresql://postgres:postgres@localhost:5432/default` (see `docker-compose.yml`).
