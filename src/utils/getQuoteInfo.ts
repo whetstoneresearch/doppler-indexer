@@ -86,7 +86,7 @@ export async function getQuoteInfo(quoteAddress: Address, timestamp: bigint | nu
   const isQuoteEurc = quoteAddress != zeroAddress && quoteAddress === eurcAddress;
   const isQuoteBankr = quoteAddress != zeroAddress && quoteAddress === bankrAddress;
 
-  // Tokenized stocks/ETFs with a Chainlink USD feed (robinhood chain).
+  // Tokenized stocks/ETFs with a Chainlink USD feed (robinhood + base chains).
   const stockToken = getStockTokenConfig(context.chain.name, quoteAddress);
   const isQuoteStock = stockToken !== undefined;
 
@@ -123,7 +123,9 @@ export async function getQuoteInfo(quoteAddress: Address, timestamp: bigint | nu
     
   // Token decimals (actual token decimals)
   const quoteDecimals =
-    (isQuoteZora || isQuoteFxh || isQuoteNoice || isQuoteMon || creatorCoinInfo.isQuoteCreatorCoin || isQuoteEth || isQuoteBankr || isQuoteStock) ? 18
+    (isQuoteZora || isQuoteFxh || isQuoteNoice || isQuoteMon || creatorCoinInfo.isQuoteCreatorCoin || isQuoteEth || isQuoteBankr) ? 18
+    // per-token: 18 on robinhood, 8 for Coinbase tokenized equities on base
+    : isQuoteStock ? stockToken!.decimals
     : (isQuoteUsdc || isQuoteUsdt || isQuoteUsdg || isQuoteEurc) ? 6
     // assumes 18 decimals for unknown quote tokens
     : 18;

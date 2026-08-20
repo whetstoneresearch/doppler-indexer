@@ -48,13 +48,16 @@ export interface ChainAddresses {
 
 /**
  * A tokenized equity/ETF quote token priced by a Chainlink USD feed
- * (e.g. Robinhood stock tokens). `address` is the ERC20 on the chain,
- * `chainlinkOracle` is the AggregatorV3 proxy returning USD with 8 decimals.
+ * (e.g. Robinhood or Coinbase stock tokens). `address` is the ERC20 on the
+ * chain, `chainlinkOracle` is the AggregatorV3 proxy returning USD with
+ * 8 decimals, `decimals` is the ERC20's own decimals (18 on robinhood,
+ * 8 for Coinbase tokenized equities on base).
  */
 export interface StockTokenConfig {
   symbol: string;
   address: Address;
   chainlinkOracle: Address;
+  decimals: number;
 }
 
 export interface StablesAddresses {

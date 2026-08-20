@@ -207,6 +207,14 @@ export default createConfig({
       startBlock: robinhood.startBlock,
       interval: BLOCK_INTERVALS.FIVE_MINUTES_ROBINHOOD,
     },
+    // Chainlink USD feeds for Coinbase tokenized equities on base. Starts
+    // just after the last of the 13 feeds posted its first round
+    // (2026-08-03 ~15:47 UTC), so every tick has live feeds.
+    BaseStockPriceFeed: {
+      chain: "base",
+      startBlock: 49491350,
+      interval: BLOCK_INTERVALS.FIVE_MINUTES,
+    },
     ArbitrumChainlinkEthPriceFeed: {
       chain: "arbitrum",
       startBlock: arbitrum.startBlock,
